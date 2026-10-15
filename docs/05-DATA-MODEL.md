@@ -8,6 +8,10 @@
 - Conteúdo sensível não deve aparecer em logs.
 - Esquema é versionado com Flyway.
 - A representação vetorial precisa ser compatível com o modelo de embedding configurado.
+- Identificadores são UUID v7 gerados na aplicação pelo `IdGenerator` do módulo `shared` (D-024).
+- Caminhos absolutos do sistema de arquivos não são persistidos (D-020, D-028).
+
+> **⚠️ Pendente O-008 (antes da Etapa 3):** a estrutura de `snapshots`, `files` e `chunks`, a ligação entre snapshots e chunks/arquivos e o armazenamento do conteúdo completo de arquivos para o visualizador ainda serão decididos. Os trechos marcados abaixo não devem ser implementados como estão.
 
 ## 2. Entidades principais
 
@@ -20,12 +24,20 @@
 ### `projects`
 - `id` UUID, PK
 - `workspace_id` FK
-- `name`
+- `name` (nome de exibição)
 - `source_type` (`LOCAL_FOLDER`, `ZIP`)
-- `root_label` (rótulo amigável; evitar persistir caminho absoluto desnecessariamente)
-- `active_snapshot_id` nullable
+- `source_root_key` nullable: chave da raiz permitida configurada no backend, nunca caminho absoluto (D-018, D-020)
+- `source_relative_path` nullable: caminho relativo à raiz
+- `current_import_job_id` nullable, FK para `import_jobs`: último import ZIP concluído com sucesso; sem relação com snapshots (D-020)
 - `created_at`
 - `updated_at`
+
+Restrições:
+- `LOCAL_FOLDER`: `source_root_key` e `source_relative_path` obrigatórios; `current_import_job_id` nulo.
+- `ZIP`: `source_root_key` e `source_relative_path` nulos; `current_import_job_id` nulo até o primeiro upload concluído.
+- `projects.current_import_job_id` e `import_jobs.project_id` formam uma referência circular: `current_import_job_id` usa `ON DELETE SET NULL` para que a remoção em cascata do projeto (D-021) funcione.
+
+`active_snapshot_id` (FK para `snapshots`) **não entra na migração da Etapa 1**; será adicionada na migração da Etapa 3, junto com o modelo de snapshots (O-008).
 
 ### `project_settings`
 - `project_id` PK/FK
@@ -36,7 +48,23 @@
 - `settings_version`
 - `updated_at`
 
+### `import_jobs`
+- `id` UUID, PK
+- `project_id` FK
+- `status` (`PENDING`, `EXTRACTING`, `COMPLETED`, `REJECTED`, `FAILED`)
+- `compressed_bytes`
+- `uncompressed_bytes` nullable
+- `entry_count` nullable
+- `error_code` nullable
+- `error_message_sanitized` nullable
+- `created_at`
+- `completed_at` nullable
+
+O nome original do arquivo enviado não é persistido. O diretório de trabalho é derivado do ID (`DATA_DIR/imports/<importJobId>`, D-028) e não é armazenado.
+
 ### `snapshots`
+> ⚠️ Pendente O-008 (antes da Etapa 3).
+
 - `id` UUID, PK
 - `project_id` FK
 - `status` (`PENDING`, `SCANNING`, `INDEXING`, `READY`, `PARTIAL`, `FAILED`)
@@ -50,6 +78,8 @@
 - `error_summary` (sanitizado)
 
 ### `files`
+> ⚠️ Pendente O-008 (antes da Etapa 3), incluindo a unicidade e o histórico por snapshot.
+
 - `id` UUID, PK
 - `project_id` FK
 - `relative_path`
@@ -65,32 +95,46 @@
 
 Índice único recomendado para arquivo ativo: `(project_id, relative_path)`; histórico por snapshot deve ser representado explicitamente se for necessário reconstruir versões antigas.
 
+Índice para busca de caminhos (D-017): GIN com `gin_trgm_ops` em `relative_path`.
+
 ### `chunks`
+> ⚠️ Pendente O-008 (antes da Etapa 3): ligação com snapshots e arquivos. As colunas de conteúdo, `chunk_hash` e as colunas lexicais independem dessa decisão.
+
 - `id` UUID, PK
 - `project_id` FK
 - `snapshot_id` FK
 - `file_id` FK
 - `relative_path`
-- `content_hash`
+- `chunk_hash`: hash do texto do chunk combinado com `chunking_version`; chave para o cache de embeddings
 - `start_line`
 - `end_line`
 - `content`
 - `language`
 - `chunk_type`
 - `symbol_name` nullable
+- `identifier_terms` text: identificadores do chunk pré-tokenizados pela aplicação, preservando também o original (ex.: `getUserById get user by id`) (D-017)
+- `lexical_tsv` tsvector: `setweight(to_tsvector('simple', identifier_terms), 'A') || setweight(to_tsvector('simple', content), 'B')` (D-017)
 - `token_count_estimate`
 - `chunking_version`
 - `created_at`
 
+Índices de busca (D-017):
+- GIN em `lexical_tsv`;
+- GIN com `gin_trgm_ops` em `symbol_name`.
+
+A tokenização de identificadores (camelCase, snake_case, siglas como `HTTPClient`) é feita na aplicação, porque fazê-la em SQL é frágil.
+
 ### `chunk_embeddings`
-- `chunk_id` FK/PK ou chave composta apropriada
-- `provider`
-- `model`
-- `dimensions`
+- `chunk_hash` (parte da PK)
+- `provider` (parte da PK)
+- `model` (parte da PK)
+- `dimensions` (parte da PK)
 - `embedding` vector(dimensão configurada)
 - `created_at`
 
-**Nota:** a dimensão de `vector` pode ser fixa por tabela ou separada por coleção/modelo. Não misturar dimensões incompatíveis. A decisão final depende do provedor escolhido.
+PK: `(chunk_hash, provider, model, dimensions)`. Chunks com o mesmo texto e a mesma versão de chunking reutilizam o embedding, o que implementa o cache por hash/modelo (`04-RAG-PIPELINE.md` §5).
+
+**Nota:** a dimensão do `vector` é fixada por migração quando o provedor for escolhido (O-004). Não misturar dimensões incompatíveis.
 
 ### `index_jobs`
 - `id` UUID, PK
@@ -151,10 +195,13 @@
 
 ```text
 Workspace 1---N Project
-Project   1---N Snapshot
-Project   1---N File
-Snapshot  1---N Chunk
-File      1---N Chunk
+Project   1---N ImportJob
+Project   1---0..1 ImportJob (import atual via current_import_job_id, somente ZIP)
+Project   1---N Snapshot                  ⚠️ pendente O-008
+Project   1---N File                      ⚠️ pendente O-008
+Snapshot  1---N Chunk                     ⚠️ pendente O-008
+File      1---N Chunk                     ⚠️ pendente O-008
+Chunk     N---1 ChunkEmbedding (por chunk_hash + modelo)
 Project   1---N Conversation
 Conversation 1---N Message
 Message   1---0..1 Answer
@@ -164,7 +211,12 @@ Project   1---N IndexJob
 
 ## 4. Busca lexical
 
-Avaliar `tsvector`/`tsquery` do PostgreSQL, com configuração apropriada para identificadores de código. Busca por símbolos e caminhos pode exigir campos normalizados ou uma consulta adicional. A implementação deve preservar termos como `getUserById`, `HTTPClient` e nomes de arquivos.
+Baseline definido na D-017 (comparação final em O-005):
+- full-text do PostgreSQL com configuração `simple` (sem stemming), sobre `chunks.lexical_tsv`;
+- identificadores pré-tokenizados em `chunks.identifier_terms`, com peso maior que o conteúdo;
+- `pg_trgm` para caminhos (`files.relative_path`) e símbolos (`chunks.symbol_name`).
+
+A implementação deve preservar termos como `getUserById`, `HTTPClient` e nomes de arquivos.
 
 ## 5. Migrações e acesso
 
@@ -177,11 +229,14 @@ Avaliar `tsvector`/`tsquery` do PostgreSQL, com configuração apropriada para i
 
 ## 6. Retenção e limpeza
 
-Definir política para:
+Remoção (D-021):
+- Excluir um projeto remove em cascata imports (incluindo diretórios remanescentes em `DATA_DIR/imports`), snapshots, arquivos, chunks, índices, conversas, respostas e evidências.
+- A exclusão de projeto é recusada com `409 PROJECT_BUSY` enquanto houver job de importação ou indexação em execução.
+- Excluir um workspace com projetos é recusado com `409 WORKSPACE_NOT_EMPTY`.
+- Diretórios de importação são apagados quando o job conclui ou falha (D-028).
+
+Ainda a definir:
 - snapshots antigos;
 - conversas e respostas;
-- chunks e embeddings órfãos;
-- jobs expirados;
-- exclusão de projeto e remoção de dados locais.
-
-Excluir um projeto deve remover índices e histórico associados, conforme a política de retenção documentada.
+- chunks e embeddings órfãos (depende de O-008);
+- jobs expirados.

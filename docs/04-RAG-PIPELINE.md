@@ -31,11 +31,14 @@ A ausência de adaptador não deve impedir indexação textual.
 
 ## 4. Chunking
 
+> ⚠️ Pendente O-008 (antes da Etapa 3): a ligação do chunk com snapshot e arquivo (`project_id`, `snapshot_id`, hash do arquivo) depende do modelo de snapshots. Ver `05-DATA-MODEL.md`.
+
 Cada chunk deve conter:
 - `project_id`;
 - `snapshot_id`;
 - caminho relativo;
 - hash do arquivo;
+- hash do chunk (texto + versão de chunking), usado como chave do cache de embeddings;
 - `start_line` e `end_line`;
 - conteúdo;
 - linguagem detectada, quando disponível;
@@ -64,7 +67,7 @@ Busca por termos, identificadores, nomes de classe/função, caminhos e palavras
 Busca por similaridade semântica em embeddings.
 
 ### Fusão
-Combinar rankings dos canais. Reciprocal Rank Fusion é um candidato simples para o primeiro protótipo, mas deve ser comparado com alternativas no conjunto de avaliação.
+Combinar rankings dos canais. O baseline é Reciprocal Rank Fusion com k=60 (D-017), a ser comparado com alternativas no conjunto de avaliação (O-005).
 
 ### Filtros
 Sempre restringir por projeto e snapshot, respeitando permissões e exclusões. Considerar filtros por linguagem e caminho quando forem úteis.

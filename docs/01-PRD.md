@@ -25,7 +25,10 @@ Desenvolvedor que recebe um repositório existente e precisa contribuir com segu
 - “Quais módulos chamam este serviço?”
 - “Como um dado sai da tela e chega ao banco?”
 - “Quais arquivos sustentam esta explicação?”
-- “O que mudou entre dois snapshots indexados?”
+
+### Casos pós-MVP
+
+- “O que mudou entre dois snapshots indexados?” (comparação entre snapshots, Etapa 9; D-027)
 
 ## 4. Princípios de produto
 
@@ -35,7 +38,7 @@ Desenvolvedor que recebe um repositório existente e precisa contribuir com segu
 - **Transparência:** informar exclusões, progresso, erros e estimativas de custo.
 - **Reversibilidade:** permitir reindexar e trocar o provedor de IA.
 - **Segurança por padrão:** conteúdo do repositório é dado não confiável, nunca instrução de sistema.
-- **Multilíngue pragmático:** indexação genérica primeiro; análise estrutural por adaptador.
+- **Multilíngue pragmático:** indexação genérica primeiro; análise estrutural por adaptador após o MVP (D-027).
 
 ## 5. Escopo funcional do MVP
 
@@ -100,6 +103,7 @@ Exibir duração, quantidade de evidências recuperadas, tokens quando informado
 - Integrações com GitHub/GitLab por OAuth.
 - Colaboração multiusuário hospedada.
 - Análise semântica equivalente para toda linguagem existente.
+- Análise estrutural por AST e comparação entre snapshots (pós-MVP, Etapa 9; D-027).
 - Geração automática de documentação considerada confiável sem revisão humana.
 
 ## 8. Fluxos principais
@@ -118,7 +122,7 @@ Exibir duração, quantidade de evidências recuperadas, tokens quando informado
 - Respostas sem evidência suficiente podem se abster.
 - Arquivos excluídos não são enviados ao provedor de embeddings ou geração.
 - ZIP malicioso não consegue escrever fora do diretório de destino.
-- Uma alteração de arquivo provoca reindexação somente do conteúdo afetado e das dependências necessárias.
+- Uma alteração provoca a reindexação somente dos arquivos novos ou alterados; arquivos removidos ou excluídos saem do índice ativo.
 - Erros de provedor são comunicados sem perder o histórico da pergunta.
 - O usuário consegue distinguir custo conhecido, estimado e indisponível.
 

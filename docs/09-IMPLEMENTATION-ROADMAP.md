@@ -14,7 +14,7 @@
 
 - Confirmar versões de Java, Spring Boot e Spring AI.
 - Escolher Maven ou Gradle.
-- Criar monorepo com frontend e backend.
+- Criar monorepo com o backend; o scaffold do frontend (`apps/web`) fica para a Etapa 7 (D-026).
 - Criar Docker Compose para PostgreSQL com pgvector.
 - Configurar Flyway, testes, lint/format e `.env.example`.
 - Publicar OpenAPI inicial.

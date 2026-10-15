@@ -100,6 +100,25 @@ Este documento registra decisões aceitas e itens que ainda precisam de validaç
 
 **O que levaria à revisão:** incompatibilidade de alguma dependência crítica, bug bloqueante no Spring AI 2.0 ou mudança no calendário de suporte.
 
+#### Atualização de 15/10/2026 — versões verificadas
+**Contexto:** a Etapa 0 exige fixar e registrar as versões efetivamente usadas.  
+**Opções consideradas:**
+1. Adicionar o Spring AI ao `pom.xml` já na Etapa 0.
+2. Fixar apenas o que é usado agora e adiar o Spring AI até existir uma porta de provedor.
+
+**Decisão:** opção 2. Versões verificadas em 15/10/2026:
+- **Java 25.0.4.1**;
+- **Spring Boot 4.1.1**;
+- **PostgreSQL 17.11** (imagem `pgvector/pgvector:pg17`);
+- **Spring AI 2.0.1** como versão-alvo, que **não entra no `pom.xml` até a Etapa 4**.
+
+**Motivo:** nenhuma etapa anterior à 4 usa o Spring AI; adicioná-lo antes traria dependências sem uso e exigiria revalidar a compatibilidade sem necessidade.  
+**Consequências:**
+- Na Etapa 4, confirmar que o Spring AI 2.0.1 (ou o patch 2.0.x mais recente) é compatível com o Spring Boot em uso e registrar a verificação aqui.
+- A tag `pg17` da imagem é móvel; a versão exata do PostgreSQL pode mudar ao atualizar a imagem.
+
+**O que levaria à revisão:** incompatibilidade do Spring AI 2.0.x com o Spring Boot 4.1 na Etapa 4, ou atualização da imagem que altere o comportamento do pgvector.
+
 ### D-015 — Build tool (resolve O-002)
 **Status:** Aceita  
 **Decisão:** **Maven com wrapper (`mvnw`)**.  
@@ -153,6 +172,141 @@ Este documento registra decisões aceitas e itens que ainda precisam de validaç
 **Decisão:** não implementar integração com modelos locais no MVP.  
 **Consequência:** as portas de geração e de embeddings devem ter um **provedor fake** nos testes, o que também prepara a integração futura (por exemplo, via Ollama). Modelos locais não devem ser apresentados como funcionalidade existente.
 
+### D-020 — Origem do projeto (complementa D-018)
+**Status:** Aceita  
+**Contexto:** a D-018 define raízes permitidas no backend, mas o modelo de dados só previa `root_label`, insuficiente para reindexar um projeto de pasta local.  
+**Opções consideradas:**
+1. Persistir o caminho absoluto da pasta.
+2. Persistir a chave da raiz permitida e o caminho relativo a ela.
+
+**Decisão:** opção 2. A tabela `projects` guarda:
+- `source_type` (`LOCAL_FOLDER`, `ZIP`);
+- `source_root_key`: chave da raiz permitida configurada no backend, **nunca um caminho absoluto**;
+- `source_relative_path`: caminho relativo à raiz.
+
+Projetos ZIP não têm caminho; guardam uma referência ao import correspondente em `current_import_job_id` (FK anulável para `import_jobs`, sem relação com snapshots). O projeto ZIP é criado primeiro; a referência é preenchida quando um upload conclui com sucesso. `root_label` foi removido; o nome de exibição fica em `name`.  
+**Motivo:** evita persistir e expor caminhos absolutos, mantém a validação na configuração do backend e permite mover a raiz sem migrar dados.  
+**Consequências:**
+- `05-DATA-MODEL.md` (`projects`, `import_jobs`) e `06-API-CONTRACTS.md` (criação de projeto, raízes locais, importação ZIP) atualizados em 15/10/2026.
+- Se a chave de raiz deixar de existir na configuração, o projeto fica indisponível para reindexação, com erro explícito.
+
+**O que levaria à revisão:** necessidade de importar pastas fora das raízes configuradas ou de executar o backend remotamente.
+
+### D-021 — Remoção de projetos e workspaces
+**Status:** Aceita  
+**Contexto:** o aceite da Etapa 1 exige remoção, e `05-DATA-MODEL.md` §6 deixava a política em aberto.  
+**Opções consideradas:**
+1. Remoção em cascata também para workspaces.
+2. Cascata para projetos; bloqueio da remoção de workspaces não vazios.
+
+**Decisão:** opção 2.
+- `DELETE /projects/{id}` remove em cascata imports, índices, snapshots e histórico do projeto (`05-DATA-MODEL.md` §6).
+- `DELETE /projects/{id}` retorna **409** com `code` `PROJECT_BUSY` se houver job de importação ou indexação em execução. Cancelamento de job fica como evolução futura.
+- `DELETE /workspaces/{id}` retorna **409** com `code` `WORKSPACE_NOT_EMPTY` se houver projetos.
+
+**Motivo:** a remoção de um workspace inteiro apagaria vários índices e históricos de uma vez; exigir a remoção explícita dos projetos evita perda acidental.  
+**Consequências:** `06-API-CONTRACTS.md` atualizado com `DELETE /workspaces/{id}` e o `DELETE /projects/{id}` na seção de projetos; testes de integração cobrem a cascata e os dois 409.  
+**O que levaria à revisão:** demanda clara por remoção em massa, com confirmação explícita na UI.
+
+### D-022 — Formato de erro
+**Status:** Aceita  
+**Contexto:** `06-API-CONTRACTS.md` §2 definia um formato próprio; o Spring oferece suporte nativo a RFC 9457.  
+**Opções consideradas:**
+1. Formato próprio (`code`, `message`, `requestId`, `details`).
+2. `ProblemDetail` (RFC 9457) do Spring, com propriedades extras.
+
+**Decisão:** opção 2 — `ProblemDetail` com as propriedades extras `code` e `requestId`. **Substitui o formato próprio de `06-API-CONTRACTS.md` §2.**
+- Erros de validação acrescentam a propriedade `errors`, cujos itens contêm **apenas** `field` e `message`.
+- O valor rejeitado **nunca** é devolvido, pois pode conter dados sensíveis.
+
+**Motivo:** padrão aberto, suporte nativo no Spring e menos código de infraestrutura.  
+**Consequências:** `06-API-CONTRACTS.md` §2 atualizado; mantêm-se as regras de não expor stack traces, credenciais, conteúdo sensível ou caminhos internos.  
+**O que levaria à revisão:** limitação do `ProblemDetail` que impeça representar erros de validação ou a geração de tipos do frontend.
+
+### D-023 — Contrato OpenAPI
+**Status:** Aceita  
+**Contexto:** a Etapa 0 exige publicar o OpenAPI, e o frontend deve usar tipos derivados do contrato.  
+**Opções consideradas:**
+1. Contract-first (escrever o `openapi.json` e gerar código).
+2. Code-first com springdoc, versionando o contrato gerado.
+
+**Decisão:** opção 2 — code-first com **springdoc**. O `openapi.json` gerado é versionado no repositório, e um teste falha se ele mudar sem ser commitado. Os tipos do frontend serão gerados a partir dele.  
+**Motivo:** uma única fonte de verdade (o código), sem perder a revisão de mudanças de contrato em diff.  
+**Consequências:** mudanças de API exigem regenerar e commitar o `openapi.json`; mudanças incompatíveis seguem o versionamento de `06-API-CONTRACTS.md` §11.  
+**O que levaria à revisão:** divergência recorrente entre anotações e comportamento real, ou incompatibilidade do springdoc com o Spring Boot em uso.
+
+### D-024 — Geração de IDs
+**Status:** Aceita  
+**Contexto:** as entidades usam UUID; o PostgreSQL 17 não tem `uuidv7()` nativo.  
+**Opções consideradas:**
+1. UUID v4 (`gen_random_uuid()` no banco).
+2. UUID v7 gerado na aplicação.
+
+**Decisão:** opção 2 — UUID v7 gerado na aplicação por um `IdGenerator` no módulo `shared`.  
+**Motivo:** IDs ordenáveis por tempo melhoram a localidade dos índices B-tree e permitem conhecer o ID antes do `INSERT`.  
+**Consequências:** implementação própria, sem dependência externa (`UuidV7Generator`, aprovada em 15/10/2026): 48 bits de timestamp em ms + bits aleatórios via `SecureRandom`. IDs gerados no mesmo milissegundo não têm ordem estrita, o que não afeta a localidade dos índices; um contador monotônico pode ser adicionado se necessário. Os testes podem injetar um `IdGenerator` determinístico.  
+**O que levaria à revisão:** migração para PostgreSQL com `uuidv7()` nativo ou disponibilidade de UUID v7 no JDK.
+
+### D-025 — Idioma
+**Status:** Aceita  
+**Decisão:**
+- Código-fonte e `code` de erro: **inglês** (ex.: `PROJECT_NOT_FOUND`).
+- Mensagens ao usuário (API e UI) e documentação: **pt-BR**.
+
+**Motivo:** código e identificadores estáveis em inglês seguem a convenção do ecossistema; o público inicial lê em português.  
+**Consequências:** o exemplo de `06-API-CONTRACTS.md` §2 (`code` em inglês, mensagem em pt-BR) já segue a regra; o `CLAUDE.md` reflete a mesma política.  
+**O que levaria à revisão:** necessidade de internacionalizar a interface.
+
+### D-026 — Momento do scaffold do frontend
+**Status:** Aceita  
+**Contexto:** a Etapa 0 previa criar o monorepo com frontend e backend, mas nenhuma etapa antes da 7 usa o frontend.  
+**Opções consideradas:**
+1. Criar `apps/web` na Etapa 0.
+2. Adiar o scaffold de `apps/web` para a Etapa 7.
+
+**Decisão:** opção 2.  
+**Motivo:** evita manter dependências e configuração de frontend sem uso; o contrato OpenAPI (D-023) garante que os tipos poderão ser gerados quando o frontend for criado.  
+**Consequências:** texto da Etapa 0 em `09-IMPLEMENTATION-ROADMAP.md` ajustado; a biblioteca de UI e o gerenciamento de estado continuam a decidir na Etapa 7.  
+**O que levaria à revisão:** necessidade de validar fluxos de UX com protótipo funcional antes da Etapa 7.
+
+### D-027 — Escopo do MVP (resolve O-013)
+**Status:** Aceita  
+**Contexto:** resumo executivo, PRD e roadmap divergiam sobre adaptadores AST, comparação entre snapshots e o critério de reindexação.  
+**Opções consideradas:**
+1. Trazer AST e comparação entre snapshots para o MVP, adiantando etapas do roadmap.
+2. Manter o roadmap e ajustar o resumo executivo e o PRD.
+
+**Decisão:** opção 2.
+- Adaptadores de análise estrutural (AST) ficam **fora do MVP** (Etapa 9); o MVP usa indexação textual genérica.
+- Comparação entre snapshots fica **fora do MVP** (Etapa 9).
+- O critério de reindexação do PRD passa a ser "somente arquivos novos ou alterados; arquivos removidos ou excluídos saem do índice ativo", já que não há grafo de dependências no MVP.
+
+**Motivo:** o roadmap prioriza validar o núcleo RAG antes de recursos de análise; manter os três documentos coerentes evita promessas que o MVP não cumpre.  
+**Consequências:** `RESUMO-EXECUTIVO.md` e `01-PRD.md` atualizados em 15/10/2026.  
+**O que levaria à revisão:** resultados da avaliação mostrarem que o chunking genérico é insuficiente para as linguagens prioritárias.
+
+### D-028 — Diretório de dados das importações
+**Status:** Aceita  
+**Contexto:** a importação ZIP precisa extrair arquivos em disco com segurança, sem misturá-los ao repositório nem às raízes permitidas.  
+**Opções consideradas:**
+1. Diretório temporário do sistema operacional.
+2. Diretório de dados da aplicação, configurável.
+
+**Decisão:** opção 2.
+- Variável `DATA_DIR`, configurável via `.env.example`, com padrão `~/.codebase-copilot` (expandido a partir de `user.home`).
+- Cada import usa uma pasta própria: `DATA_DIR/imports/<importJobId>`.
+- A pasta do job é apagada quando o job conclui ou falha.
+- `DATA_DIR` deve ficar **fora das raízes permitidas** (D-018) e **fora do repositório do Codebase Copilot**; a aplicação recusa iniciar se essa condição não for atendida.
+- O caminho é derivado do ID e não é persistido (`05-DATA-MODEL.md`, `import_jobs`).
+
+**Motivo:** isola conteúdo não confiável em local previsível e fácil de limpar; evita que arquivos extraídos sejam importados de novo como pasta local ou commitados por engano.  
+**Consequências:**
+- Testes de segurança cobrem a limpeza após falhas e a escrita restrita à pasta do job.
+- A remoção de um projeto apaga pastas remanescentes de seus imports (D-021).
+- O conteúdo extraído precisa ser consumido (pré-análise e indexação) antes de o job ser encerrado; a fronteira entre o job de importação e o de indexação será definida na Etapa 2, junto com a O-009.
+
+**O que levaria à revisão:** necessidade de reindexar projetos ZIP sem novo upload, o que exigiria reter o conteúdo extraído.
+
 ---
 
 ## Decisões em aberto
@@ -174,7 +328,7 @@ Este documento registra decisões aceitas e itens que ainda precisam de validaç
 **Evidência para decidir:** resultados no corpus da Etapa 5 (recall@k, MRR, latência).
 
 ### O-008 — Modelo de snapshot, arquivos e conteúdo
-**Status:** A decidir antes da Etapa 3 (urgente)  
+**Status:** A decidir antes da Etapa 3 (bloqueia apenas a Etapa 3)  
 **Contexto:** `chunks` possui um único `snapshot_id`, mas a reindexação incremental reaproveita chunks de arquivos inalterados. A unicidade `(project_id, relative_path)` em `files` não representa histórico por snapshot. Além disso, o F-06 exige abrir o arquivo no estado do snapshot, e o modelo atual só guarda chunks (com sobreposição).  
 **Opções:**
 1. Copiar chunks e embeddings a cada snapshot (simples, mas caro e contraditório com o cache por hash).
@@ -182,7 +336,8 @@ Este documento registra decisões aceitas e itens que ainda precisam de validaç
 
 E, para o conteúdo: guardar o conteúdo completo deduplicado por hash (`file_contents`) ou reconstruí-lo a partir dos chunks.  
 **Recomendação:** opção 2 para chunks e `file_contents` deduplicado para o visualizador.  
-**Consequência:** exige atualizar `05-DATA-MODEL.md` e a política de retenção (limpeza de chunks sem snapshot associado).
+**Consequência:** exige atualizar `05-DATA-MODEL.md` e a política de retenção (limpeza de chunks sem snapshot associado).  
+**Impacto na Etapa 1 (15/10/2026):** nenhum. A coluna `projects.active_snapshot_id` e a FK para `snapshots` entram na migração da Etapa 3, não na da Etapa 1.
 
 ### O-009 — Execução assíncrona dos jobs
 **Status:** A decidir antes da Etapa 3  
@@ -204,13 +359,6 @@ E, para o conteúdo: guardar o conteúdo completo deduplicado por hash (`file_co
 **Status:** A decidir antes da Etapa 2  
 **Questão:** usar biblioteca existente de detecção de segredos ou apenas padrões de exclusão no MVP.  
 **Restrição:** a detecção é defesa adicional, nunca garantia; a interface não deve prometer que todos os segredos serão detectados.
-
-### O-013 — Alinhamento entre documentos
-**Status:** A decidir (ajuste documental)  
-**Itens:**
-- Adaptadores de análise estrutural: o resumo executivo os coloca no MVP; o roadmap, na Etapa 9. Sugestão: fora do MVP.
-- Comparação entre snapshots: listada como caso prioritário no PRD, mas adiada no roadmap. Sugestão: fora do MVP.
-- Critério de aceite do PRD sobre "dependências necessárias" na reindexação: sem grafo de dependências no MVP, reescrever como "somente arquivos novos ou alterados".
 
 ---
 

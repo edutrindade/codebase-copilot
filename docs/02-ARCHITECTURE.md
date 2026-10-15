@@ -33,25 +33,25 @@ Embedding / Chat provider (remote initially)
 - React
 - Vite
 - TypeScript
-- Biblioteca de componentes a decidir durante a implementação.
+- Biblioteca de componentes e gerenciamento de estado decididos na Etapa 7, junto com o scaffold de `apps/web` (D-026).
 - Cliente HTTP gerado ou tipado a partir do OpenAPI, se isso reduzir divergência.
 
 ### Backend
-- Java (versão LTS compatível com a versão escolhida de Spring Boot).
-- Spring Boot.
-- Spring Web para REST.
+- Java 25 e Spring Boot 4.1.x (D-014).
+- Maven com wrapper `./mvnw` (D-015).
+- Spring Web MVC para REST.
 - Bean Validation para validação de requests.
-- Spring AI para integrações de modelo e embeddings, encapsulado por interfaces internas.
-- Spring JDBC ou Spring Data JDBC/JPA conforme o agregado; SQL explícito para consultas de recuperação híbrida.
+- Spring AI 2.0.x para integrações de modelo e embeddings, a partir da Etapa 4, somente no módulo `providers` e encapsulado por interfaces internas (D-006, D-014).
+- Spring Data JDBC para CRUD de agregados pequenos; `JdbcClient` com SQL explícito para indexação e para toda a recuperação híbrida; **sem JPA** (D-016).
 - Flyway para migrações.
-- OpenAPI para contrato HTTP.
-- Testes unitários e de integração.
+- OpenAPI code-first com springdoc; contrato versionado em `apps/backend/openapi.json` (D-023).
+- Testes unitários e de integração (Testcontainers); formatação verificada com Spotless.
 
 ### Persistência
 - PostgreSQL.
 - Extensão pgvector.
 - Índices relacionais para metadados e busca lexical.
-- Estratégia de busca lexical a validar; opções incluem full-text search do PostgreSQL e/ou índice auxiliar, sem assumir que a primeira versão precisa de um serviço externo.
+- Busca lexical inicial (D-017): full-text do PostgreSQL com configuração `simple`, identificadores pré-tokenizados e `pg_trgm` para caminhos e símbolos, sem serviço externo. A comparação com alternativas segue em aberto (O-005).
 
 ### Desenvolvimento local
 - Docker Compose para PostgreSQL e dependências.
@@ -90,7 +90,7 @@ Persiste perguntas, respostas, evidências, latência, tokens e custo estimado.
 - **Sem execução do repositório:** o importador lê texto; não roda scripts, build tools nem hooks.
 - **Spring AI atrás de portas:** permite mudar provedor ou adicionar modelos locais sem reescrever o domínio.
 - **SQL especializado na recuperação:** o ranking híbrido precisa ser observável e testável; abstrações genéricas não devem esconder o comportamento.
-- **Processamento assíncrono:** começar com jobs persistidos e execução assíncrona no backend. Separar worker apenas se consumo de recursos, escalabilidade ou confiabilidade justificarem.
+- **Processamento assíncrono:** começar com jobs persistidos e execução assíncrona no backend; o mecanismo está em definição na O-009 (antes da Etapa 3). Separar worker apenas se consumo de recursos, escalabilidade ou confiabilidade justificarem.
 - **Versionamento por snapshot:** respostas devem estar ligadas ao snapshot que forneceu as evidências.
 
 ## 6. Estrutura de repositório sugerida
@@ -98,8 +98,9 @@ Persiste perguntas, respostas, evidências, latência, tokens e custo estimado.
 ```text
 codebase-copilot/
   apps/
-    web/
+    web/            (Etapa 7, D-026)
     backend/
+      openapi.json  (contrato versionado, D-023)
   docs/
   infra/
     docker-compose.yml
@@ -158,13 +159,15 @@ Registrar IDs de correlação, status, duração por etapa, contagens e erros. N
 - Testes de citações e abstenção.
 - Testes de idempotência e reindexação incremental.
 
-## 10. Decisões em aberto
+## 10. Rastreio de decisões
 
-- Versões exatas de Java, Spring Boot e Spring AI.
-- Maven ou Gradle.
-- JPA, JDBC ou abordagem híbrida para cada agregado.
-- Algoritmo de fusão inicial (por exemplo, Reciprocal Rank Fusion).
-- Provedor inicial de chat e embeddings.
-- Biblioteca de UI e solução de estado do frontend.
+As decisões técnicas e os itens em aberto são mantidos em `10-DECISIONS.md`. Situação dos temas levantados originalmente neste documento:
 
-Resolver as decisões em aberto antes de iniciar a implementação, registrando a justificativa em `10-DECISIONS.md`.
+| Tema | Situação |
+|---|---|
+| Versões de Java, Spring Boot e Spring AI | D-014 |
+| Maven ou Gradle | D-015 (Maven) |
+| JPA, JDBC ou abordagem híbrida | D-016 (sem JPA) |
+| Busca lexical e algoritmo de fusão | D-017 (provisória); comparação final em O-005 |
+| Provedor inicial de chat e embeddings | O-004 (em aberto) |
+| Biblioteca de UI e estado do frontend | Etapa 7 (D-026) |

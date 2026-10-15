@@ -36,7 +36,7 @@ Desenvolvedores que precisam compreender uma base existente, especialmente em on
 - Importação de pasta local e ZIP.
 - Exclusão configurável de dependências, artefatos gerados e arquivos sensíveis.
 - Indexação textual multilíngue, com metadados de caminho e linhas.
-- Adaptadores de análise estrutural para linguagens selecionadas, com fallback genérico.
+- Indexação textual genérica para todas as linguagens; análise estrutural (AST) por adaptadores fica após o MVP.
 - Embeddings e armazenamento em PostgreSQL/pgvector.
 - Recuperação híbrida lexical + vetorial.
 - Chat com citações verificáveis e validação das referências.
@@ -52,6 +52,7 @@ Desenvolvedores que precisam compreender uma base existente, especialmente em on
 - Integrações OAuth com repositórios privados.
 - Produto hospedado multiusuário.
 - Promessa de análise semântica completa para todas as linguagens.
+- Adaptadores de análise estrutural (AST) e comparação entre snapshots (Etapa 9; D-027).
 - Geração definitiva e automática de `AGENTS.md` antes de validar o RAG central.
 
 ## Arquitetura aprovada

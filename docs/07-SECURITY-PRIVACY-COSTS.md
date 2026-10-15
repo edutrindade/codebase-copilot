@@ -35,7 +35,7 @@ O mecanismo de acesso à pasta deve:
 - lidar com arquivos alterados durante a leitura;
 - não executar hooks, scripts ou ferramentas do projeto.
 
-A experiência de selecionar pasta em uma aplicação web local exige uma decisão técnica explícita; não presumir que o browser pode enviar qualquer caminho local ao backend.
+A seleção de pasta segue a D-018: o backend expõe apenas raízes permitidas configuradas, a UI navega dentro delas e o cliente envia somente caminhos relativos, que o backend canonicaliza e valida. Links simbólicos não são seguidos. O browser nunca envia caminhos locais arbitrários ao backend.
 
 ## 4. Importação ZIP
 
@@ -46,8 +46,8 @@ Mitigações obrigatórias:
 - limitar tamanho total descompactado e tamanho por entrada;
 - limitar razão de expansão;
 - tratar links simbólicos com cautela;
-- impedir escrita fora do diretório temporário;
-- limpar arquivos temporários após falhas.
+- impedir escrita fora da pasta do job (`DATA_DIR/imports/<importJobId>`, D-028);
+- apagar a pasta do job quando ele concluir ou falhar (D-028).
 
 ## 5. Segredos e arquivos excluídos
 
