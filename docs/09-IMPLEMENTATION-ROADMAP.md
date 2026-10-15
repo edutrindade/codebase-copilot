@@ -1,0 +1,127 @@
+# Roadmap de implementação
+
+## Princípios de execução
+
+- Entregar fatias verticais testáveis.
+- Criar avaliação do RAG antes de otimizações avançadas.
+- Manter monólito modular.
+- Não começar por agentes autônomos nem por recursos de edição de código.
+- Cada etapa termina com critérios de aceite e documentação atualizada.
+
+## Etapa 0 — Decisões e ambiente
+
+**Objetivo:** tornar o projeto reproduzível.
+
+- Confirmar versões de Java, Spring Boot e Spring AI.
+- Escolher Maven ou Gradle.
+- Criar monorepo com frontend e backend.
+- Criar Docker Compose para PostgreSQL com pgvector.
+- Configurar Flyway, testes, lint/format e `.env.example`.
+- Publicar OpenAPI inicial.
+
+**Aceite:** outra pessoa consegue iniciar o ambiente seguindo o README, sem segredos versionados.
+
+## Etapa 1 — Fundação do domínio
+
+- Criar módulos de workspace e projeto.
+- Criar esquema inicial por Flyway.
+- Implementar CRUD essencial.
+- Criar tratamento de erro padronizado.
+- Adicionar testes de integração com PostgreSQL.
+
+**Aceite:** workspace e projeto podem ser criados, listados e removidos com testes.
+
+## Etapa 2 — Importação e inventário seguro
+
+- Definir mecanismo seguro de seleção de pasta local.
+- Implementar upload ZIP com limites.
+- Validar caminhos, links e limites.
+- Implementar exclusões padrão e customizadas.
+- Gerar inventário por linguagem, diretório e estado.
+- Não executar conteúdo importado.
+
+**Aceite:** testes de segurança demonstram que arquivos não escapam da raiz e ZIPs maliciosos são rejeitados.
+
+## Etapa 3 — Snapshots, hashes e chunking
+
+- Criar snapshots e jobs.
+- Calcular hashes de arquivos.
+- Implementar chunking genérico com linhas.
+- Registrar linguagem e metadados.
+- Criar estratégia de reindexação incremental.
+- Testar idempotência e recuperação de falhas.
+
+**Aceite:** arquivos novos, alterados e removidos são refletidos corretamente.
+
+## Etapa 4 — Embeddings e busca vetorial
+
+- Definir porta de embeddings.
+- Integrar provedor inicial por meio de adaptador.
+- Armazenar vetores no pgvector.
+- Implementar busca vetorial e filtros por projeto/snapshot.
+- Criar cache por hash/modelo.
+
+**Aceite:** consultas vetoriais retornam chunks do snapshot correto e os vetores têm dimensão compatível.
+
+## Etapa 5 — Busca lexical e recuperação híbrida
+
+- Implementar busca lexical.
+- Preservar identificadores e caminhos.
+- Combinar rankings.
+- Criar corpus de avaliação inicial.
+- Medir lexical, vetorial e híbrida.
+
+**Aceite:** resultados são reprodutíveis e o baseline híbrido é comparado com os baselines individuais.
+
+## Etapa 6 — Resposta com evidências
+
+- Definir porta de geração.
+- Montar contexto com limite de tokens.
+- Implementar prompt de evidência e abstenção.
+- Validar IDs de evidência e linhas no backend.
+- Persistir perguntas, respostas, evidências e métricas.
+
+**Aceite:** citações inválidas são rejeitadas/sinalizadas e perguntas sem evidência suficiente podem se abster.
+
+## Etapa 7 — UX completa do MVP
+
+- Workspace e lista de projetos.
+- Fluxo de importação com pré-análise.
+- Progresso e erros da indexação.
+- Inventário e snapshot ativo.
+- Chat e painel de evidências.
+- Visualizador de código.
+- Histórico e métricas.
+
+**Aceite:** usuário consegue importar, indexar, perguntar e abrir evidências sem usar ferramentas internas.
+
+## Etapa 8 — Qualidade e hardening
+
+- Ampliar corpus de avaliação.
+- Testar prompt injection e importações maliciosas.
+- Medir latência, custo e memória.
+- Melhorar ranking/chunking apenas com evidência de avaliação.
+- Documentar limitações e recuperação de falhas.
+
+**Aceite:** resultados do conjunto de avaliação e riscos conhecidos são documentados.
+
+## Etapa 9 — Recursos posteriores ao MVP
+
+Priorizar após validar o núcleo:
+- adaptadores AST para linguagens prioritárias;
+- comparação entre snapshots;
+- exportação de mapa arquitetural;
+- geração assistida de `AGENTS.md` com evidências e revisão humana;
+- provedor local de modelos;
+- worker separado, se medições justificarem;
+- integração com Git, caso exista demanda clara.
+
+## Fora do roadmap inicial
+
+Não implementar inicialmente:
+- execução de comandos no repositório;
+- agentes autônomos;
+- edição automática de código;
+- criação de commits/PRs;
+- arquitetura de microserviços;
+- SaaS multiusuário.

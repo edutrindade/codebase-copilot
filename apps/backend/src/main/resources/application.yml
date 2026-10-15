@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: codebase-copilot
+  config:
+    import: optional:file:../../.env[.properties]
+  datasource:
+    url: jdbc:postgresql://localhost:${DB_PORT}/${DB_NAME}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+  flyway:
+    enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
