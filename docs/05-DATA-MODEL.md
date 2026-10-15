@@ -26,8 +26,8 @@
 - `workspace_id` FK
 - `name` (nome de exibição)
 - `source_type` (`LOCAL_FOLDER`, `ZIP`)
-- `source_root_key` nullable: chave da raiz permitida configurada no backend, nunca caminho absoluto (D-018, D-020)
-- `source_relative_path` nullable: caminho relativo à raiz
+- `source_root_key` nullable: chave da raiz permitida configurada no backend (`app.local-roots[n].key`), nunca caminho absoluto (D-018, D-020, D-029)
+- `source_relative_path` nullable: caminho relativo à raiz, normalizado (D-020); string vazia representa a própria raiz
 - `current_import_job_id` nullable, FK para `import_jobs`: último import ZIP concluído com sucesso; sem relação com snapshots (D-020)
 - `created_at`
 - `updated_at`
@@ -35,6 +35,7 @@
 Restrições:
 - `LOCAL_FOLDER`: `source_root_key` e `source_relative_path` obrigatórios; `current_import_job_id` nulo.
 - `ZIP`: `source_root_key` e `source_relative_path` nulos; `current_import_job_id` nulo até o primeiro upload concluído.
+- Índice único parcial `(workspace_id, source_root_key, source_relative_path) WHERE source_type = 'LOCAL_FOLDER'`: impede projeto duplicado no mesmo workspace (`409 PROJECT_ALREADY_EXISTS`, D-020). Nomes iguais são permitidos; projetos ZIP não são verificados.
 - `projects.current_import_job_id` e `import_jobs.project_id` formam uma referência circular: `current_import_job_id` usa `ON DELETE SET NULL` para que a remoção em cascata do projeto (D-021) funcione.
 
 `active_snapshot_id` (FK para `snapshots`) **não entra na migração da Etapa 1**; será adicionada na migração da Etapa 3, junto com o modelo de snapshots (O-008).
@@ -59,6 +60,8 @@ Restrições:
 - `error_message_sanitized` nullable
 - `created_at`
 - `completed_at` nullable
+
+Índice único parcial `(project_id) WHERE status IN ('PENDING', 'EXTRACTING')`: no máximo um import em andamento por projeto (`409 PROJECT_BUSY`, D-028).
 
 O nome original do arquivo enviado não é persistido. O diretório de trabalho é derivado do ID (`DATA_DIR/imports/<importJobId>`, D-028) e não é armazenado.
 
@@ -98,7 +101,7 @@ O nome original do arquivo enviado não é persistido. O diretório de trabalho 
 Índice para busca de caminhos (D-017): GIN com `gin_trgm_ops` em `relative_path`.
 
 ### `chunks`
-> ⚠️ Pendente O-008 (antes da Etapa 3): ligação com snapshots e arquivos. As colunas de conteúdo, `chunk_hash` e as colunas lexicais independem dessa decisão.
+> ⚠️ Pendente O-008 (antes da Etapa 3): ligação com snapshots e arquivos, incluindo como o chunk referencia a versão do arquivo. O hash do arquivo fica em `files.content_hash`, não no chunk. As colunas de conteúdo, `chunk_hash` e as colunas lexicais independem dessa decisão.
 
 - `id` UUID, PK
 - `project_id` FK

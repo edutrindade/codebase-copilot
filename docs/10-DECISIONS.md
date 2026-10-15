@@ -158,7 +158,7 @@ Este documento registra decisões aceitas e itens que ainda precisam de validaç
 
 **Decisão:** opção 3.
 - O backend roda localmente; apenas o PostgreSQL roda no Docker Compose.
-- A configuração define uma ou mais **raízes permitidas** (ex.: `PROJECTS_ROOT`).
+- A configuração define uma ou mais **raízes permitidas** (ex.: `PROJECTS_ROOT`; formato detalhado na D-029).
 - A UI navega e escolhe **somente dentro dessas raízes**, por endpoint que lista subdiretórios.
 - O cliente envia apenas caminho **relativo** à raiz; o backend canonicaliza e valida.
 - Links simbólicos **não são seguidos** por padrão.
@@ -189,6 +189,8 @@ Projetos ZIP não têm caminho; guardam uma referência ao import correspondente
 **Consequências:**
 - `05-DATA-MODEL.md` (`projects`, `import_jobs`) e `06-API-CONTRACTS.md` (criação de projeto, raízes locais, importação ZIP) atualizados em 15/10/2026.
 - Se a chave de raiz deixar de existir na configuração, o projeto fica indisponível para reindexação, com erro explícito.
+- **Duplicidade (15/10/2026):** um workspace não pode ter dois projetos `LOCAL_FOLDER` com o mesmo `source_root_key` + `source_relative_path` normalizado; a criação responde `409 PROJECT_ALREADY_EXISTS`. Garantido por índice único parcial (`05-DATA-MODEL.md`). Nomes iguais são permitidos; projetos ZIP não são verificados.
+- **Normalização de `source_relative_path`:** caminho canônico (sem seguir links simbólicos) relativizado à raiz, com separador `/`, sem `/` inicial ou final e sem segmentos `.`; string vazia representa a própria raiz. Segmentos `..` que escapem da raiz são rejeitados (`PATH_OUTSIDE_ROOT`). Usar o caminho canônico faz com que variações de maiúsculas em sistemas de arquivos que não diferenciam caixa resultem no mesmo valor.
 
 **O que levaria à revisão:** necessidade de importar pastas fora das raízes configuradas ou de executar o backend remotamente.
 
@@ -218,6 +220,8 @@ Projetos ZIP não têm caminho; guardam uma referência ao import correspondente
 **Decisão:** opção 2 — `ProblemDetail` com as propriedades extras `code` e `requestId`. **Substitui o formato próprio de `06-API-CONTRACTS.md` §2.**
 - Erros de validação acrescentam a propriedade `errors`, cujos itens contêm **apenas** `field` e `message`.
 - O valor rejeitado **nunca** é devolvido, pois pode conter dados sensíveis.
+- **`title` e `detail` em pt-BR**, resolvidos por `MessageSource` a partir do `code`, com as chaves `error.<CODE>.title` e `error.<CODE>.detail` (ex.: `error.PROJECT_NOT_FOUND.title`). As mensagens de `errors[].message` também vêm do `MessageSource` em pt-BR. O `code` permanece em inglês (D-025).
+- Todo `code` novo exige as duas chaves; um teste deve falhar se alguma estiver ausente.
 
 **Motivo:** padrão aberto, suporte nativo no Spring e menos código de infraestrutura.  
 **Consequências:** `06-API-CONTRACTS.md` §2 atualizado; mantêm-se as regras de não expor stack traces, credenciais, conteúdo sensível ou caminhos internos.  
@@ -252,6 +256,7 @@ Projetos ZIP não têm caminho; guardam uma referência ao import correspondente
 **Decisão:**
 - Código-fonte e `code` de erro: **inglês** (ex.: `PROJECT_NOT_FOUND`).
 - Mensagens ao usuário (API e UI) e documentação: **pt-BR**.
+- Nos erros da API, `title`, `detail` e `errors[].message` são mensagens ao usuário (pt-BR, via `MessageSource` com chaves `error.<CODE>.title` e `error.<CODE>.detail`); `code` é identificador estável (inglês). Ver D-022.
 
 **Motivo:** código e identificadores estáveis em inglês seguem a convenção do ecossistema; o público inicial lê em português.  
 **Consequências:** o exemplo de `06-API-CONTRACTS.md` §2 (`code` em inglês, mensagem em pt-BR) já segue a regra; o `CLAUDE.md` reflete a mesma política.  
@@ -293,11 +298,13 @@ Projetos ZIP não têm caminho; guardam uma referência ao import correspondente
 2. Diretório de dados da aplicação, configurável.
 
 **Decisão:** opção 2.
-- Variável `DATA_DIR`, configurável via `.env.example`, com padrão `~/.codebase-copilot` (expandido a partir de `user.home`).
+- Variável `DATA_DIR`, configurável via `.env.example`, com padrão `~/.codebase-copilot`. Um `~` inicial, no padrão ou no valor configurado, é expandido pela aplicação a partir de `user.home`.
 - Cada import usa uma pasta própria: `DATA_DIR/imports/<importJobId>`.
 - A pasta do job é apagada quando o job conclui ou falha.
 - `DATA_DIR` deve ficar **fora das raízes permitidas** (D-018) e **fora do repositório do Codebase Copilot**; a aplicação recusa iniciar se essa condição não for atendida.
 - O caminho é derivado do ID e não é persistido (`05-DATA-MODEL.md`, `import_jobs`).
+- **Limites de upload (15/10/2026):** tamanho máximo do ZIP em `app.import.max-zip-bytes`, padrão **100 MB** (hipótese a ajustar com medições). Os limites do multipart do Spring (`spring.servlet.multipart.max-file-size` e `max-request-size`) são configurados de forma coerente com esse valor; excedido qualquer um dos dois, a resposta é `413 UPLOAD_TOO_LARGE`.
+- **Concorrência:** no máximo um import em andamento (`PENDING` ou `EXTRACTING`) por projeto; um novo upload nesse estado responde `409 PROJECT_BUSY`.
 
 **Motivo:** isola conteúdo não confiável em local previsível e fácil de limpar; evita que arquivos extraídos sejam importados de novo como pasta local ou commitados por engano.  
 **Consequências:**
@@ -306,6 +313,50 @@ Projetos ZIP não têm caminho; guardam uma referência ao import correspondente
 - O conteúdo extraído precisa ser consumido (pré-análise e indexação) antes de o job ser encerrado; a fronteira entre o job de importação e o de indexação será definida na Etapa 2, junto com a O-009.
 
 **O que levaria à revisão:** necessidade de reindexar projetos ZIP sem novo upload, o que exigiria reter o conteúdo extraído.
+
+### D-029 — Configuração das raízes permitidas (complementa D-018)
+**Status:** Aceita  
+**Contexto:** a D-018 define raízes permitidas, mas não como configurá-las; a API (`GET /local-roots`) precisa de `key` e `label`, e a criação de projeto `LOCAL_FOLDER` na Etapa 1 depende delas.  
+**Opções consideradas:**
+1. Uma única variável `PROJECTS_ROOT`.
+2. Lista de raízes em propriedades do Spring, com `PROJECTS_ROOT` como atalho para o caso comum.
+
+**Decisão:** opção 2.
+- Propriedade `app.local-roots[n]` com `key`, `label` e `path`. O `path` é absoluto e **nunca é exposto pela API**.
+- Caso comum, via `.env.example`: `PROJECTS_ROOT` (e `PROJECTS_ROOT_LABEL`, opcional, padrão "Projetos") gera a raiz de key `default`. Se `PROJECTS_ROOT` estiver vazio, essa raiz não é criada.
+- Várias raízes são configuradas por propriedades do Spring, definindo a lista completa (por exemplo, em `apps/backend/config/application.yml`, carregado automaticamente a partir do diretório de execução e não versionado). Como o Spring substitui listas por inteiro, a raiz `default` deve ser repetida ali se for desejada.
+- Validação na inicialização (a aplicação não inicia se falhar):
+  - `path` absoluto, existente, diretório e legível;
+  - `key` única, no formato `[a-z0-9-]+`;
+  - `label` opcional; ausente, usa a `key`.
+- Sem nenhuma raiz configurada:
+  - `GET /local-roots` devolve lista vazia;
+  - a criação de projeto `LOCAL_FOLDER` responde `409 LOCAL_ROOTS_NOT_CONFIGURED`;
+  - o fluxo ZIP continua funcionando.
+
+**Motivo:** mantém o caso comum em uma variável e permite várias raízes sem inventar formato próprio; validar na inicialização evita falhas tardias em uso.  
+**Consequências:**
+- Na Etapa 1: mapear `PROJECTS_ROOT`/`PROJECTS_ROOT_LABEL` em `application.yml`, implementar a validação e adicionar `apps/backend/config/` ao `.gitignore`.
+- `DATA_DIR` não pode estar dentro de nenhuma raiz (D-028).
+- Uma raiz removida da configuração torna indisponíveis os projetos que a usam (D-020).
+
+**O que levaria à revisão:** necessidade de alterar raízes em tempo de execução, pela UI.
+
+### D-030 — Paginação
+**Status:** Aceita  
+**Contexto:** as listagens de workspaces e projetos precisam de um formato único antes da Etapa 1.  
+**Opções consideradas:**
+1. Paginação por página (offset).
+2. Paginação por cursor.
+
+**Decisão:** opção 1.
+- Parâmetros `page` (base 0, padrão 0) e `size` (padrão 20, máximo 100). Valores fora da faixa respondem `400 VALIDATION_FAILED`; página além da última devolve `items` vazio.
+- Resposta: `{ "items", "page", "size", "totalItems", "totalPages" }`.
+- Ordenação fixa por `createdAt` decrescente nas listas de workspaces e projetos, com `id` decrescente como desempate (UUID v7, D-024).
+
+**Motivo:** volumes pequenos nessas listas; offset é simples de implementar, testar e exibir na UI.  
+**Consequências:** listagens grandes (arquivos, chunks) serão reavaliadas na Etapa 2 ou 3, podendo adotar cursor.  
+**O que levaria à revisão:** listas com volume que torne o `COUNT` ou o offset caros.
 
 ---
 

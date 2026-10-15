@@ -24,17 +24,19 @@
 ## Etapa 1 — Fundação do domínio
 
 - Criar módulos de workspace e projeto.
-- Criar esquema inicial por Flyway.
-- Implementar CRUD essencial.
-- Criar tratamento de erro padronizado.
+- Criar esquema inicial por Flyway (`workspaces`, `projects` sem `active_snapshot_id`; ver `05-DATA-MODEL.md`).
+- Configurar e validar na inicialização as raízes permitidas (D-029).
+- Implementar CRUD essencial, com projetos `LOCAL_FOLDER` e `ZIP` (sem upload), duplicidade (D-020) e paginação (D-030).
+- Criar tratamento de erro padronizado: ProblemDetail com `code`, `requestId` e mensagens pt-BR via `MessageSource` (D-022, D-025).
 - Adicionar testes de integração com PostgreSQL.
 
 **Aceite:** workspace e projeto podem ser criados, listados e removidos com testes.
 
 ## Etapa 2 — Importação e inventário seguro
 
-- Definir mecanismo seguro de seleção de pasta local.
-- Implementar upload ZIP com limites.
+- Implementar a navegação nas raízes permitidas (`GET /local-roots`, D-018, D-029).
+- Implementar `DATA_DIR` com validação na inicialização (D-028).
+- Implementar upload ZIP com limites e concorrência (D-028).
 - Validar caminhos, links e limites.
 - Implementar exclusões padrão e customizadas.
 - Gerar inventário por linguagem, diretório e estado.

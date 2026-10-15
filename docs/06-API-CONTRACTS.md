@@ -11,6 +11,22 @@
 - Não devolver caminhos absolutos do sistema operacional.
 - Endpoints de consulta devem operar sobre um snapshot explícito ou sobre o snapshot ativo claramente indicado.
 
+### Paginação (D-030)
+
+Listagens paginadas aceitam `page` (base 0, padrão 0) e `size` (padrão 20, máximo 100). Valores fora da faixa respondem `400 VALIDATION_FAILED`; página além da última devolve `items` vazio.
+
+```json
+{
+  "items": [],
+  "page": 0,
+  "size": 20,
+  "totalItems": 0,
+  "totalPages": 0
+}
+```
+
+Workspaces e projetos são ordenados por `createdAt` decrescente (desempate por `id` decrescente). Listagens grandes (arquivos, chunks) serão reavaliadas na Etapa 2 ou 3.
+
 ## 2. Formato de erro
 
 Erros usam `ProblemDetail` (RFC 9457) do Spring, com `Content-Type: application/problem+json` e as propriedades extras `code` e `requestId` (D-022):
@@ -18,9 +34,9 @@ Erros usam `ProblemDetail` (RFC 9457) do Spring, com `Content-Type: application/
 ```json
 {
   "type": "about:blank",
-  "title": "Not Found",
+  "title": "Projeto não encontrado",
   "status": 404,
-  "detail": "O projeto não foi encontrado.",
+  "detail": "O projeto informado não existe ou foi removido.",
   "instance": "/api/v1/projects/0192f5c4-7e3a-7b1e-9c3d-2f4a6b8c0d1e",
   "code": "PROJECT_NOT_FOUND",
   "requestId": "0192f5c4-7e3b-7a2f-8d4e-3a5b7c9d1e2f"
@@ -32,7 +48,7 @@ Erros de validação acrescentam `errors`, com itens contendo **apenas** `field`
 ```json
 {
   "type": "about:blank",
-  "title": "Bad Request",
+  "title": "Requisição inválida",
   "status": 400,
   "detail": "A requisição contém campos inválidos.",
   "instance": "/api/v1/workspaces",
@@ -43,6 +59,8 @@ Erros de validação acrescentam `errors`, com itens contendo **apenas** `field`
   ]
 }
 ```
+
+`title`, `detail` e `errors[].message` são em pt-BR, resolvidos por `MessageSource` a partir do `code`, com as chaves `error.<CODE>.title` e `error.<CODE>.detail` (D-022, D-025). O `code` é estável e em inglês.
 
 Não incluir stack traces, credenciais, conteúdo sensível, valores rejeitados ou caminhos internos nos erros destinados ao frontend.
 
@@ -59,7 +77,7 @@ Request:
 Response: `201 Created`, objeto com `id`, `name`, `createdAt`.
 
 ### `GET /workspaces`
-Lista workspaces e resumo de projetos.
+Lista workspaces com a contagem de projetos. Paginada (§1, D-030).
 
 ### `GET /workspaces/{workspaceId}`
 Retorna detalhes do workspace.
@@ -74,7 +92,7 @@ Responses:
 
 ## 4. Raízes locais
 
-Seleção segura de pasta local (D-018). O backend expõe apenas as raízes permitidas configuradas; o cliente nunca envia nem recebe caminhos absolutos.
+Seleção segura de pasta local (D-018). O backend expõe apenas as raízes permitidas configuradas em `app.local-roots` (D-029); o cliente nunca envia nem recebe caminhos absolutos.
 
 ### `GET /local-roots`
 Lista as raízes permitidas.
@@ -82,9 +100,11 @@ Lista as raízes permitidas.
 Response `200 OK`:
 ```json
 [
-  { "key": "projects", "label": "Projetos" }
+  { "key": "default", "label": "Projetos" }
 ]
 ```
+
+Sem nenhuma raiz configurada, devolve `[]`. O fluxo ZIP continua disponível.
 
 ### `GET /local-roots/{rootKey}/directories?path=<relativo>`
 Lista os subdiretórios imediatos de `path` (relativo à raiz; vazio ou ausente = a própria raiz).
@@ -116,7 +136,7 @@ Pasta local:
 {
   "name": "codebase-copilot",
   "sourceType": "LOCAL_FOLDER",
-  "rootKey": "projects",
+  "rootKey": "default",
   "relativePath": "codebase-copilot"
 }
 ```
@@ -131,15 +151,21 @@ ZIP (o arquivo é enviado depois, em `POST /projects/{projectId}/imports/zip`):
 
 Response: `201 Created` com o projeto.
 
+`relativePath` é normalizado pelo backend (caminho canônico relativo à raiz, separador `/`; vazio = a própria raiz), e o valor normalizado é o que a resposta devolve (D-020).
+
 Erros:
 - `404 WORKSPACE_NOT_FOUND`;
+- `409 LOCAL_ROOTS_NOT_CONFIGURED`: `LOCAL_FOLDER` sem nenhuma raiz configurada (D-029);
 - `404 ROOT_NOT_FOUND`;
 - `400 PATH_OUTSIDE_ROOT`;
 - `404 DIRECTORY_NOT_FOUND`;
+- `409 PROJECT_ALREADY_EXISTS`: o workspace já tem projeto com a mesma `rootKey` e o mesmo `relativePath` normalizado. Nomes iguais são permitidos; projetos ZIP não são verificados (D-020);
 - `400 VALIDATION_FAILED` (por exemplo, `rootKey` informado para `ZIP`).
 
 ### `GET /workspaces/{workspaceId}/projects`
-Lista os projetos do workspace, com paginação.
+Lista os projetos do workspace. Paginada (§1, D-030).
+
+Erros: `404 WORKSPACE_NOT_FOUND`.
 
 ### `GET /projects/{projectId}`
 Retorna metadados, origem, snapshot ativo e estado de indexação.
@@ -149,7 +175,7 @@ Origem:
 {
   "source": {
     "type": "LOCAL_FOLDER",
-    "rootKey": "projects",
+    "rootKey": "default",
     "relativePath": "codebase-copilot"
   }
 }
@@ -182,8 +208,17 @@ Response: `202 Accepted` com `importJobId` e estado inicial.
 
 Regras:
 - válido apenas para projetos com `sourceType` `ZIP`; caso contrário, `409 PROJECT_SOURCE_MISMATCH`;
+- tamanho máximo do arquivo em `app.import.max-zip-bytes` (padrão 100 MB, hipótese a ajustar); os limites do multipart do Spring são coerentes com ele (D-028);
+- no máximo um import em andamento por projeto;
 - cada upload cria um novo import em `DATA_DIR/imports/<importJobId>` (D-028);
 - `current_import_job_id` do projeto só é substituído quando o novo import conclui com sucesso.
+
+Erros:
+- `404 PROJECT_NOT_FOUND`;
+- `409 PROJECT_SOURCE_MISMATCH`;
+- `409 PROJECT_BUSY`: já existe import em andamento no projeto;
+- `413 UPLOAD_TOO_LARGE`: arquivo acima de `app.import.max-zip-bytes` ou dos limites do multipart;
+- `400 VALIDATION_FAILED`: requisição sem arquivo.
 
 O serviço precisa validar path traversal, quantidade de entradas, tamanho descompactado e tipos permitidos.
 
