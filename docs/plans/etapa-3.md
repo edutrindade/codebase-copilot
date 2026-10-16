@@ -463,9 +463,11 @@ CREATE TABLE snapshot_files (
     CONSTRAINT snapshot_files_state_consistency CHECK (
         (status = 'INDEXED' AND content_hash IS NOT NULL AND reason IS NULL)
      OR (status = 'UNSUPPORTED'
+            AND reason IS NOT NULL
             AND reason IN ('BINARY', 'INVALID_ENCODING', 'LINE_TOO_LONG')
             AND content_hash IS NULL)
      OR (status = 'FAILED'
+            AND reason IS NOT NULL
             AND reason IN ('READ_ERROR', 'CHANGED_DURING_READ')
             AND content_hash IS NULL)
     )
@@ -557,3 +559,8 @@ A preencher no fechamento (F7). Desvios registrados durante as fatias:
 - Comprimento de linha e de chunk contado em unidades UTF-16 (`String.length()`), nos dois limites.
 - Detalhes do `lines-v1` fixados na implementação: chunks nunca começam nem terminam em linha em branco; depois de um corte em linha em branco não há sobreposição (a fronteira já é natural); depois de um corte pelo limite, a sobreposição é de até 10 linhas, mas o chunk seguinte começa pelo menos na metade do anterior, para não gerar chunks redundantes quando o corte é por caracteres.
 - As propriedades do `LineChunker` são verificadas sobre 200 textos gerados com sementes fixas.
+
+**F2**
+- Os testes de esquema mostraram que `reason IN (…)` com `reason` nulo passa no `CHECK` (o resultado é `NULL`); a V7 exige `reason IS NOT NULL` em `UNSUPPORTED` e `FAILED`.
+- A F2 entrega só o `IndexStore` (conteúdo, chunks e arquivos do snapshot); os repositórios de jobs e snapshots ficam para a F3, que os usa.
+- `IndexStore.chunkedHashes` decide o que já está pronto: conteúdo com chunks da versão atual, ou conteúdo em branco (que não tem chunks). O teste de branco no SQL usa um conjunto de espaços contido no do `String.isBlank()`, então uma divergência só causa reprocessamento, nunca chunks faltando.
