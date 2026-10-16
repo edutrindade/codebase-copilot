@@ -28,6 +28,8 @@ cp .env.example .env
 | `PROJECTS_ROOT` | Opcional (a partir da Etapa 1). Caminho absoluto da pasta sob a qual ficam os repositórios que podem ser importados; gera a raiz permitida de key `default` (D-029). Vazio: só o fluxo ZIP fica disponível. |
 | `PROJECTS_ROOT_LABEL` | Opcional. Rótulo da raiz `default` na UI. Padrão: "Projetos". |
 | `DATA_DIR` | Opcional. Diretório de dados da aplicação; imports ZIP são extraídos em `DATA_DIR/imports/<id>/source` (D-028, D-033). Padrão: `~/.codebase-copilot`; um `~` inicial é expandido pela aplicação. |
+| `EMBEDDING_PROVIDER` | Opcional. Provedor de embeddings: `none` (padrão; nada é enviado), `fake` (testes e demonstração) ou `openai` (D-047). |
+| `EMBEDDING_API_KEY` | Chave da API do provedor; obrigatória com `openai`. Nunca aparece em logs nem em mensagens de erro. |
 
 A porta do banco é definida uma única vez, em `DB_PORT` no `.env`, e usada em dois lugares: o Compose publica o container em `127.0.0.1:${DB_PORT}`, e o backend se conecta em `localhost:${DB_PORT}` (`application.yml`). Se a porta 5432 já estiver ocupada, altere apenas `DB_PORT`.
 
@@ -77,6 +79,16 @@ A indexação (`POST /api/v1/projects/{id}/index-jobs`) lê os arquivos incluíd
 | `app.indexing.max-attempts` | 3 | Tentativas por job antes de falhar. |
 | `app.indexing.batch-files` | 100 | Arquivos gravados por transação. |
 | `app.indexing.retained-snapshots` | 3 | Snapshots anteriores mantidos com arquivos, além do ativo. |
+
+### Embeddings
+
+Com `EMBEDDING_PROVIDER=openai`, o texto dos chunks indexados e as perguntas de busca são enviados ao provedor (`docs/07-SECURITY-PRIVACY-COSTS.md` §7). Com `none`, nada sai da máquina.
+
+| Propriedade | Padrão | Uso |
+|---|---|---|
+| `app.embeddings.base-url` | `https://api.openai.com/v1` | Endereço da API do provedor. |
+
+**Atenção:** `app.embeddings.base-url` decide para onde vão a chave e os trechos de código. Mudar esse endereço muda o destino dos dados. Só são aceitos endereços `https`; `http` é aceito apenas para `localhost` ou `127.0.0.1` (servidor de teste ou servidor local). Qualquer outro valor, ou um endereço com usuário e senha embutidos, impede a aplicação de iniciar.
 
 O `.env` está no `.gitignore` e nunca deve ser commitado.
 

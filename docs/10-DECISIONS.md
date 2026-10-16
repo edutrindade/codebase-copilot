@@ -119,6 +119,21 @@ Este documento registra decisões aceitas e itens que ainda precisam de validaç
 
 **O que levaria à revisão:** incompatibilidade do Spring AI 2.0.x com o Spring Boot 4.1 na Etapa 4, ou atualização da imagem que altere o comportamento do pgvector.
 
+#### Atualização de 16/10/2026 — Spring AI e pgvector na Etapa 4
+**Contexto:** a Etapa 4 adiciona o Spring AI (D-047) e precisa confirmar a compatibilidade prevista acima.  
+**Verificação (16/10/2026):**
+- **Spring AI 2.0.1** é o patch 2.0.x mais recente no Maven Central (há também 2.1.0-M1, que é marco e não entra).
+- start.spring.io (`/actuator/info`, `bom-ranges`) indica o Spring AI 2.0.1 para `Spring Boot >=4.0.0 and <4.2.0-M1`; o 2.1.0-M1 exige Spring Boot 4.2.
+- O POM do `spring-ai-autoconfigure-model-openai` 2.0.1 é construído contra o **Spring Boot 4.1.1**, a mesma versão do projeto.
+- O anúncio oficial do GA (spring.io, 12/06/2026) diz que o Spring AI 2.0 foi feito para Spring Boot 4.0/4.1 e Spring Framework 7.0, e que o módulo OpenAI passou a ter uma única variante, baseada no SDK oficial.
+- **pgvector 0.8.7** na imagem `pgvector/pgvector:pg17` (imagem de 01/10/2026, PostgreSQL 17.11), conferido com `pg_available_extensions`.
+
+**Decisão:** BOM `spring-ai-bom` 2.0.1 e apenas o módulo **`spring-ai-openai`** (core), sem o `spring-ai-starter-model-openai`. O módulo traz `openai-java-core` 4.49.0 e OkHttp 4.12.0; nenhum jar do Spring AI incluído registra autoconfiguração.  
+**Motivo:** o starter traria a autoconfiguração do OpenAI, do `ChatClient` e da memória de chat, com propriedades `spring.ai.*` paralelas às `app.embeddings.*`. Sem ele, o módulo `providers` monta o modelo de embeddings só quando `app.embeddings.provider=openai` (D-006), e não há bean do Spring AI com `none` ou `fake`.  
+**Consequências:**
+- O SDK da OpenAI tem repetição própria; o adaptador da F1 a desliga (D-047), para que a política da D-051 seja a única.
+- A troca para o patch 2.0.x seguinte exige repetir esta verificação.
+
 ### D-015 — Build tool (resolve O-002)
 **Status:** Aceita  
 **Decisão:** **Maven com wrapper (`mvnw`)**.  
@@ -672,6 +687,29 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Motivo:** o histórico (F-07) precisa continuar verificável depois da poda.  
 **Consequências:** `05-DATA-MODEL.md` (`answer_evidence`) e `06-API-CONTRACTS.md` §9 atualizados. A remoção do projeto continua apagando o histórico (D-021).  
 **O que levaria à revisão:** volume de evidências copiadas relevante frente ao conteúdo indexado.
+
+### D-047 — Provedor inicial de embeddings (O-004, provisória)
+**Status:** Aceita (provisória, 16/10/2026; bake-off na Etapa 5)  
+**Contexto:** a O-004 pede um provedor de embeddings antes de concluir a Etapa 4, mas a comparação de qualidade depende do corpus da Etapa 5 (O-011).  
+**Opções consideradas:**
+1. OpenAI `text-embedding-3-small`, pelo módulo OpenAI do Spring AI.
+2. Voyage `voyage-code-3`, especializado em código.
+3. Adiar a escolha e entregar a etapa só com um provedor fake.
+
+**Decisão:** opção 1, provisória; a Voyage entra como candidata no bake-off.
+- `app.embeddings.provider`: `none` (padrão), `fake` ou `openai`; `app.embeddings.model` (padrão `text-embedding-3-small`) e `app.embeddings.dimensions` (padrão 1536, entre 1 e 2.000).
+- A chave vem de `EMBEDDING_API_KEY` no `.env`, obrigatória com `openai`; a aplicação não inicia sem ela. A chave nunca aparece em código, logs ou mensagens de erro.
+- `app.embeddings.base-url` (padrão `https://api.openai.com/v1`) decide para onde vão a chave e os trechos de código. Só `https` é aceito; `http` apenas para `localhost` ou `127.0.0.1` (servidor de teste e servidores locais futuros). Endereço com usuário e senha embutidos também é recusado. Fora disso, a aplicação não inicia, e a mensagem de erro não repete o valor.
+- Os testes do `./mvnw verify` usam `fake` e nunca precisam de chave; a chave real só entra no teste manual de fumaça. Uma `ContextCustomizerFactory` de teste, registrada em `META-INF/spring.factories`, impede qualquer contexto de teste de subir com `provider=openai`, inclusive contextos novos que esqueçam de fixar o provedor e herdem o valor do `.env`.
+- O SDK da OpenAI tem repetição própria, que o adaptador desliga: a política da D-051 é a única camada de repetição.
+
+**Preço e uso de dados (fonte oficial, consultada em 16/10/2026):**
+- Preço: **US$ 0,02 por 1M de tokens de entrada** para `text-embedding-3-small` (tarifa Standard; a página não lista preço Batch para o modelo). Fonte: `developers.openai.com/api/docs/pricing`.
+- Uso de dados: pela tabela de endpoints, `/v1/embeddings` **não usa os dados para treino** (sem opt-in), tem **retenção de 30 dias** para monitoramento de abuso, sem retenção de estado da aplicação, e é elegível a Zero Data Retention (mediante acordo com a OpenAI). Fonte: `developers.openai.com/api/docs/guides/your-data`.
+
+**Motivo:** integração mais madura no Spring AI 2.0 (D-014) e API "compatível com OpenAI" oferecida por outros provedores e servidores locais, o que facilita a Etapa 9 (D-019).  
+**Consequências:** o texto dos chunks indexados e as perguntas de busca saem da máquina quando `provider=openai` (D-054). Preço e política devem ser reconferidos antes de alterar esta decisão.  
+**O que levaria à revisão:** resultado do bake-off da Etapa 5, mudança de preço ou de política de dados, ou integração da Voyage no Spring AI.
 
 ---
 

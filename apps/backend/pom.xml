@@ -33,7 +33,21 @@
 		<!-- 1.37.0 fails inside spotless-maven-plugin 3.10.4 (InvocationTargetException) -->
 		<google-java-format.version>1.36.1</google-java-format.version>
 		<archunit.version>1.5.1</archunit.version>
+		<spring-ai.version>2.0.1</spring-ai.version>
+		<!-- Manual tests (D-049, D-054); run with -Dtest.excluded-groups= -Dgroups=<tag> -->
+		<test.excluded-groups>performance,smoke</test.excluded-groups>
 	</properties>
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.springframework.ai</groupId>
+				<artifactId>spring-ai-bom</artifactId>
+				<version>${spring-ai.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
 	<dependencies>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -63,6 +77,11 @@
 			<groupId>org.springdoc</groupId>
 			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
 			<version>${springdoc-openapi.version}</version>
+		</dependency>
+		<!-- Core module only: no Spring AI auto-configuration; providers builds its beans (D-006). -->
+		<dependency>
+			<groupId>org.springframework.ai</groupId>
+			<artifactId>spring-ai-openai</artifactId>
 		</dependency>
 
 		<dependency>
@@ -131,7 +150,17 @@
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<excludedGroups>${test.excluded-groups}</excludedGroups>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-failsafe-plugin</artifactId>
+				<configuration>
+					<excludedGroups>${test.excluded-groups}</excludedGroups>
+				</configuration>
 				<executions>
 					<execution>
 						<goals>

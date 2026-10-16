@@ -12,7 +12,13 @@ import org.springframework.test.context.ContextConfiguration;
 // Second (and only other) cached context: no local roots configured (D-029).
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
-@SpringBootTest(properties = {TestProperties.CONFIG_LOCATION, TestProperties.NO_PROJECTS_ROOT})
+@SpringBootTest(
+        properties = {
+            TestProperties.CONFIG_LOCATION,
+            TestProperties.NO_PROJECTS_ROOT,
+            TestProperties.EMBEDDING_PROVIDER,
+            TestProperties.NO_EMBEDDING_API_KEY
+        })
 @AutoConfigureMockMvc
 @ContextConfiguration(initializers = TestFileSystemInitializer.class)
 @Import(TestcontainersConfiguration.class)

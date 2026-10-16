@@ -52,7 +52,8 @@ Todas aprovadas em 16/10/2026. Os ajustes pedidos na aprovação já estão inco
 
 **Decisão:** opção 1 como provisória, com a Voyage como candidata no bake-off da Etapa 5.
 - **Sem chave nesta etapa:** F0 a F5 funcionam só com o provedor fake e com o servidor HTTP de teste. A chave real só entra no teste manual de fumaça da F6.
-- Configuração: `app.embeddings.provider` (`none`, `fake`, `openai`), `app.embeddings.model` e `app.embeddings.dimensions`; a chave vem de `EMBEDDING_API_KEY` no `.env`, nunca do código nem dos logs.
+- Configuração: `app.embeddings.provider` (`none`, `fake`, `openai`), `app.embeddings.model`, `app.embeddings.dimensions` e `app.embeddings.base-url`; a chave vem de `EMBEDDING_API_KEY` no `.env`, nunca do código nem dos logs.
+- **`base-url` decide o destino dos dados:** padrão no endereço oficial; `https` obrigatório; `http` só para `localhost` ou `127.0.0.1` (servidor de teste e servidores locais futuros); qualquer outro endereço impede a inicialização. O README avisa que mudar o endereço muda o destino dos dados (`07` §7).
 - Na F0, confirmar no site do Spring e no start.spring.io a versão do Spring AI 2.0.x compatível com o Spring Boot em uso, o nome do módulo OpenAI e a versão da extensão pgvector da imagem; registrar na D-014.
 - Na F0, preço por token e política de retenção de dados do provedor são conferidos em fonte oficial (páginas de preços e de uso de dados da OpenAI), com a data da consulta, e registrados na D-047. Nenhum valor de memória.
 
@@ -160,25 +161,28 @@ Um chunk rejeitado pelo provedor (`INVALID_REQUEST`) falha o job inteiro com `EM
 - Preço e política de retenção da OpenAI para o modelo, conferidos em fonte oficial e registrados na D-047 com a data (P1).
 - Exclusão das tags `performance` e `smoke` na configuração do Surefire e do Failsafe.
 - BOM do Spring AI e módulo do provedor no `pom.xml`, sem autoconfiguração ativa fora de `provider=openai`.
-- `ProviderProperties` (`app.embeddings.*`) com validação na inicialização: provedor conhecido; `dimensions` entre 1 e 2.000; chave obrigatória para `openai`; `max-retry-wait` e `max-chunks-per-job` positivos.
+- `ProviderProperties` (`app.embeddings.*`) com validação na inicialização: provedor conhecido; `dimensions` entre 1 e 2.000; chave obrigatória para `openai`; `max-retry-wait` e `max-chunks-per-job` positivos; `base-url` em `https`, ou `http` só para `localhost`/`127.0.0.1`.
+- Contextos de teste fixam `provider=fake` e chave vazia (o `application.yml` importa o `.env` também nos testes), com uma guarda registrada em `META-INF/spring.factories` que impede qualquer contexto de teste de subir com `provider=openai`.
 - `.env.example` com `EMBEDDING_API_KEY` vazio e `EMBEDDING_PROVIDER=none` como padrão.
 - ArchUnit: `org.springframework.ai` só em `providers`; `providers` não depende de módulos de domínio.
 
 **Testes**
 - `ApplicationContextRunner`: inicialização falha sem chave com `openai`, com provedor desconhecido e com dimensão fora da faixa; sobe com `none` e com `fake`.
 - Nenhuma mensagem de erro ou log contém o valor da chave.
+- `base-url`: aceita `https` e `http` para `localhost`/`127.0.0.1`; recusa `http` para outros hosts, esquemas que não sejam http(s), endereços relativos e endereços com usuário e senha, sem repetir o valor na mensagem.
+- Guarda dos testes: um contexto de teste real com `provider=openai` falha ao subir.
 
 ### F1 — Porta de embeddings, provedor fake e adaptador
 
 **Entregas**
 - Em `providers`: `EmbeddingProvider` (`EmbeddingResult embed(List<String> texts)`, `ModelInfo model()`), `EmbeddingFailure` com o tipo da P5; nenhum tipo do Spring AI na assinatura.
 - `FakeEmbeddingProvider` determinístico.
-- `OpenAiEmbeddingProvider`, que usa o Spring AI por dentro, traduz erros e devolve o uso de tokens quando reportado.
+- `OpenAiEmbeddingProvider`, que usa o Spring AI por dentro, traduz erros e devolve o uso de tokens quando reportado. A repetição própria do cliente da OpenAI fica desligada: a única camada de repetição é a da P5.
 - Repetição com espera exponencial, `Retry-After` com teto em `max-retry-wait` e espera fatiada com um gancho de heartbeat, num componente próprio, com relógio e espera injetáveis.
 
 **Testes**
 - Fake: mesmo texto → mesmo vetor; dimensão configurada; norma 1; textos com termos em comum ficam mais próximos que textos sem termos em comum.
-- Adaptador contra o servidor de teste: lote com N textos → N vetores na ordem; dimensão diferente da configurada → erro; 401 → `UNAUTHORIZED`; 429 com `Retry-After` → `RATE_LIMITED` com o atraso; 500 e timeout → `UNAVAILABLE`; 400 → `INVALID_REQUEST`; uso de tokens repassado.
+- Adaptador contra o servidor de teste: lote com N textos → N vetores na ordem; dimensão diferente da configurada → erro; 401 → `UNAUTHORIZED`; 429 com `Retry-After` → `RATE_LIMITED` com o atraso; 500 e timeout → `UNAVAILABLE`; 400 → `INVALID_REQUEST`; uso de tokens repassado; com 429 e `max-retries=4`, o servidor recebe **exatamente 5 requisições** (1 original e 4 repetições), o que prova que só uma camada repete.
 - Repetição, com relógio controlado (sem dormir): para nos erros permanentes; respeita o máximo de tentativas; espera crescente; `Retry-After` de 300 s é limitado a 60 s; durante uma espera longa, o gancho de heartbeat é chamado a cada intervalo; se o gancho sinalizar claim perdido, a espera é interrompida.
 
 ### F2 — Modelo de vetores (V8)
@@ -298,6 +302,7 @@ ALTER TABLE index_jobs
 | `max-retry-wait` | 60s | teto de cada espera, inclusive com `Retry-After` maior |
 | `max-chunks-per-job` | 50000 | chunks a enviar por job; acima disso, `EMBEDDING_CHUNK_LIMIT_EXCEEDED` sem chamar o provedor |
 | `timeout` | 30s | tempo máximo de uma chamada |
+| `base-url` | `https://api.openai.com/v1` | destino da chave e dos trechos; `https`, ou `http` só para `localhost`/`127.0.0.1` |
 
 A chave vem de `EMBEDDING_API_KEY`. Padrões em `ProviderProperties`, sem entradas no `application.yml` além do mapeamento das variáveis de ambiente.
 

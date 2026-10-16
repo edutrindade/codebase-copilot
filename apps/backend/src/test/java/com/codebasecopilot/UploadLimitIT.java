@@ -22,7 +22,9 @@ import org.springframework.test.context.ContextConfiguration;
         properties = {
             TestProperties.CONFIG_LOCATION,
             TestProperties.NO_PROJECTS_ROOT,
-            TestProperties.MAX_ZIP_BYTES
+            TestProperties.MAX_ZIP_BYTES,
+            TestProperties.EMBEDDING_PROVIDER,
+            TestProperties.NO_EMBEDDING_API_KEY
         })
 @ContextConfiguration(initializers = TestFileSystemInitializer.class)
 @Import(TestcontainersConfiguration.class)

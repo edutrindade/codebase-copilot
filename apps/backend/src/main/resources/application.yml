@@ -35,6 +35,11 @@ app:
   # app.import.* limits and their defaults are in ImportProperties.
   import:
     max-zip-bytes: 100MB
+  # Embeddings provider (D-047): none, fake or openai. The other app.embeddings.*
+  # defaults are in ProviderProperties.
+  embeddings:
+    provider: ${EMBEDDING_PROVIDER:none}
+    api-key: ${EMBEDDING_API_KEY:}
 
 springdoc:
   default-produces-media-type: application/json
