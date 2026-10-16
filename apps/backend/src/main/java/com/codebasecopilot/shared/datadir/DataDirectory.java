@@ -22,13 +22,7 @@ public final class DataDirectory {
         this.imports = imports;
     }
 
-    /**
-     * Validates {@code app.data-dir}, creating it and its {@code imports/} folder when missing.
-     *
-     * @param workingDirectory used to find the Codebase Copilot repository, which must not contain
-     *     the data directory
-     * @throws IllegalStateException if the directory is invalid, so the application does not start
-     */
+    // Throws IllegalStateException so the application does not start with an invalid value.
     public static DataDirectory from(
             @Nullable String configured, LocalRoots roots, Path userHome, Path workingDirectory) {
         String value = configured == null || configured.isBlank() ? DEFAULT : configured.strip();

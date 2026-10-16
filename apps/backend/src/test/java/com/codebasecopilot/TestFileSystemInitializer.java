@@ -2,17 +2,32 @@ package com.codebasecopilot;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.file.FileSystems;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
-import java.util.Comparator;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Map;
-import java.util.stream.Stream;
 import org.springframework.context.ApplicationContextInitializer;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.env.MapPropertySource;
 
-// Test roots are rebuilt once per JVM, because Git keeps neither links nor permissions; the data
+// Rebuilds the test roots once per JVM, because Git keeps neither links nor permissions; the data
 // directory lives outside the repository, as the application requires (D-028).
+//
+// Tree of the default root:
+//   alpha/inner/            listed, has children
+//   Beta/file.txt           listed, no subdirectory
+//   gamma/link-to-alpha     listed; holds only a link, so no children
+//   locked/                 listed, unreadable (POSIX only)
+//   many/d1 … many/d6       more directories than app.browse.max-directories
+//   readme.txt              file, never listed
+//   outside-link            link to ../outside, never listed
+//   back\slash, tab\tname   names a client could not send back, never listed (if the FS allows)
 public final class TestFileSystemInitializer
         implements ApplicationContextInitializer<ConfigurableApplicationContext> {
 
@@ -36,14 +51,46 @@ public final class TestFileSystemInitializer
     private static Path prepare() {
         try {
             deleteRecursively(ROOTS_DIR);
-            Files.createDirectories(ROOTS_DIR.resolve("default"));
+            buildDefaultRoot(Files.createDirectories(ROOTS_DIR.resolve("default")));
             Files.createDirectories(ROOTS_DIR.resolve("work"));
+            Files.createDirectories(ROOTS_DIR.resolve("outside/secret"));
             Path dataDir = Files.createTempDirectory("codebase-copilot-it-");
             Runtime.getRuntime().addShutdownHook(new Thread(() -> deleteQuietly(dataDir)));
             return dataDir;
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
+    }
+
+    private static void buildDefaultRoot(Path root) throws IOException {
+        Files.createDirectories(root.resolve("alpha/inner"));
+        Files.createDirectories(root.resolve("Beta"));
+        Files.writeString(root.resolve("Beta/file.txt"), "text");
+        Files.createDirectories(root.resolve("gamma"));
+        Files.createSymbolicLink(root.resolve("gamma/link-to-alpha"), Path.of("../alpha"));
+        for (int i = 1; i <= 6; i++) {
+            Files.createDirectories(root.resolve("many/d" + i));
+        }
+        Files.writeString(root.resolve("readme.txt"), "text");
+        Files.createSymbolicLink(root.resolve("outside-link"), Path.of("../outside"));
+        createIfAllowed(root, "back\\slash");
+        createIfAllowed(root, "tab\tname");
+        if (isPosix()) {
+            Path locked = Files.createDirectory(root.resolve("locked"));
+            Files.setPosixFilePermissions(locked, PosixFilePermissions.fromString("---------"));
+        }
+    }
+
+    private static void createIfAllowed(Path root, String name) {
+        try {
+            Files.createDirectory(root.resolve(name));
+        } catch (IOException | InvalidPathException e) {
+            // Not every file system accepts these names; the listing test covers the rest.
+        }
+    }
+
+    private static boolean isPosix() {
+        return FileSystems.getDefault().supportedFileAttributeViews().contains("posix");
     }
 
     private static void deleteQuietly(Path path) {
@@ -54,14 +101,42 @@ public final class TestFileSystemInitializer
         }
     }
 
+    // Links are deleted, never followed; unreadable directories are unlocked first.
     private static void deleteRecursively(Path path) throws IOException {
-        if (!Files.exists(path)) {
+        if (!Files.exists(path, LinkOption.NOFOLLOW_LINKS)) {
             return;
         }
-        try (Stream<Path> paths = Files.walk(path)) {
-            for (Path p : paths.sorted(Comparator.reverseOrder()).toList()) {
-                Files.delete(p);
-            }
-        }
+        Files.walkFileTree(
+                path,
+                new SimpleFileVisitor<>() {
+                    @Override
+                    public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
+                            throws IOException {
+                        Files.delete(file);
+                        return FileVisitResult.CONTINUE;
+                    }
+
+                    @Override
+                    public FileVisitResult visitFileFailed(Path file, IOException exc)
+                            throws IOException {
+                        if (!isPosix()) {
+                            throw exc;
+                        }
+                        Files.setPosixFilePermissions(
+                                file, PosixFilePermissions.fromString("rwx------"));
+                        deleteRecursively(file);
+                        return FileVisitResult.CONTINUE;
+                    }
+
+                    @Override
+                    public FileVisitResult postVisitDirectory(Path dir, IOException exc)
+                            throws IOException {
+                        if (exc != null) {
+                            throw exc;
+                        }
+                        Files.delete(dir);
+                        return FileVisitResult.CONTINUE;
+                    }
+                });
     }
 }

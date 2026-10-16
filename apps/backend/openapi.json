@@ -9,6 +9,110 @@
     "description" : "Generated server url"
   } ],
   "paths" : {
+    "/api/v1/local-roots" : {
+      "get" : {
+        "operationId" : "list_2",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/LocalRootResponse"
+                  }
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "500" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
+          }
+        },
+        "tags" : [ "local-roots-controller" ]
+      }
+    },
+    "/api/v1/local-roots/{rootKey}/directories" : {
+      "get" : {
+        "operationId" : "directories",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "rootKey",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "path",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DirectoryListingResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: VALIDATION_FAILED, PATH_OUTSIDE_ROOT."
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: ROOT_NOT_FOUND, DIRECTORY_NOT_FOUND."
+          },
+          "409" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: DIRECTORY_NOT_READABLE."
+          },
+          "500" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
+          }
+        },
+        "tags" : [ "local-roots-controller" ]
+      }
+    },
     "/api/v1/projects/{projectId}" : {
       "delete" : {
         "operationId" : "delete_1",
@@ -550,6 +654,42 @@
         },
         "required" : [ "id", "status" ]
       },
+      "DirectoryListingResponse" : {
+        "type" : "object",
+        "properties" : {
+          "directories" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/DirectoryResponse"
+            }
+          },
+          "path" : {
+            "type" : "string"
+          },
+          "truncated" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "directories", "path", "truncated" ]
+      },
+      "DirectoryResponse" : {
+        "type" : "object",
+        "properties" : {
+          "hasChildren" : {
+            "type" : "boolean"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "readable" : {
+            "type" : "boolean"
+          },
+          "relativePath" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "hasChildren", "name", "readable", "relativePath" ]
+      },
       "FieldError" : {
         "type" : "object",
         "properties" : {
@@ -577,6 +717,18 @@
           },
           "required" : [ "relativePath", "rootKey" ]
         } ]
+      },
+      "LocalRootResponse" : {
+        "type" : "object",
+        "properties" : {
+          "key" : {
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "key", "label" ]
       },
       "PageResponseProjectResponse" : {
         "type" : "object",
@@ -639,7 +791,7 @@
         "properties" : {
           "code" : {
             "type" : "string",
-            "enum" : [ "VALIDATION_FAILED", "MALFORMED_REQUEST", "RESOURCE_NOT_FOUND", "METHOD_NOT_ALLOWED", "UNSUPPORTED_MEDIA_TYPE", "INTERNAL_ERROR", "WORKSPACE_NOT_FOUND", "WORKSPACE_NOT_EMPTY", "PROJECT_NOT_FOUND", "LOCAL_ROOTS_NOT_CONFIGURED", "ROOT_NOT_FOUND", "PATH_OUTSIDE_ROOT", "PROJECT_ALREADY_EXISTS" ]
+            "enum" : [ "VALIDATION_FAILED", "MALFORMED_REQUEST", "RESOURCE_NOT_FOUND", "METHOD_NOT_ALLOWED", "UNSUPPORTED_MEDIA_TYPE", "INTERNAL_ERROR", "WORKSPACE_NOT_FOUND", "WORKSPACE_NOT_EMPTY", "PROJECT_NOT_FOUND", "LOCAL_ROOTS_NOT_CONFIGURED", "ROOT_NOT_FOUND", "PATH_OUTSIDE_ROOT", "PROJECT_ALREADY_EXISTS", "DIRECTORY_NOT_FOUND", "DIRECTORY_NOT_READABLE" ]
           },
           "detail" : {
             "type" : "string"

@@ -15,7 +15,9 @@ public enum ErrorCode {
     LOCAL_ROOTS_NOT_CONFIGURED(HttpStatus.CONFLICT),
     ROOT_NOT_FOUND(HttpStatus.NOT_FOUND),
     PATH_OUTSIDE_ROOT(HttpStatus.BAD_REQUEST),
-    PROJECT_ALREADY_EXISTS(HttpStatus.CONFLICT);
+    PROJECT_ALREADY_EXISTS(HttpStatus.CONFLICT),
+    DIRECTORY_NOT_FOUND(HttpStatus.NOT_FOUND),
+    DIRECTORY_NOT_READABLE(HttpStatus.CONFLICT);
 
     private final HttpStatus status;
 

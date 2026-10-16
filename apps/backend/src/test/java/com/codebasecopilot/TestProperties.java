@@ -15,5 +15,8 @@ final class TestProperties {
     static final String WORK_ROOT_LABEL = "app.local-roots[1].label=Trabalho";
     static final String WORK_ROOT_PATH = "app.local-roots[1].path=" + ROOTS_DIR + "/work";
 
+    // The default test root has one more directory than this inside many/.
+    static final String MAX_BROWSE_DIRECTORIES = "app.browse.max-directories=5";
+
     private TestProperties() {}
 }

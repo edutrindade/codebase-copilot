@@ -21,7 +21,8 @@ import org.springframework.test.context.ContextConfiguration;
             TestProperties.DEFAULT_ROOT_PATH,
             TestProperties.WORK_ROOT_KEY,
             TestProperties.WORK_ROOT_LABEL,
-            TestProperties.WORK_ROOT_PATH
+            TestProperties.WORK_ROOT_PATH,
+            TestProperties.MAX_BROWSE_DIRECTORIES
         })
 @AutoConfigureMockMvc
 @ContextConfiguration(initializers = TestFileSystemInitializer.class)

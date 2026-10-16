@@ -19,7 +19,7 @@ public final class ConfinedPaths {
         NOT_READABLE
     }
 
-    /** {@code directory} is the real path and is present only when the status is FOUND. */
+    // directory is the real path, present only when the status is FOUND.
     public record Resolution(Status status, @Nullable Path directory) {
 
         static Resolution of(Status status) {
@@ -29,12 +29,7 @@ public final class ConfinedPaths {
 
     private ConfinedPaths() {}
 
-    /**
-     * Resolves a directory below {@code base}, checking every segment without following links.
-     *
-     * @param relativePath already normalized by {@link RelativePaths#normalize}; {@code ""} is the
-     *     base itself
-     */
+    // relativePath must already be normalized by RelativePaths; "" is the base itself.
     public static Resolution resolveDirectory(Path base, String relativePath) {
         Path realBase;
         try {

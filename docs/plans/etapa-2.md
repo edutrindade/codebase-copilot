@@ -563,3 +563,6 @@ Preenchido ao longo da implementação e fechado na F6.
 **Desvios e acréscimos em relação ao plano:**
 - **Árvore de teste (F0):** o initializer cria apenas `target/test-roots/{default,work}` vazios. Links, arquivo ilegível e FIFO entram na F1 e na F4, junto com os testes que os usam.
 - **`DataDirectory` (F0):** a posição (raízes e repositório) é validada **antes** de criar o diretório, resolvendo o caminho real a partir do ancestral existente; uma configuração inválida não deixa pasta criada.
+- **Nomes na navegação (F1):** os nomes de diretório são devolvidos em NFC, igual ao que o cliente envia de volta. Diretórios cujo nome tem `\` ou caracteres de controle são omitidos, porque o caminho seria recusado como entrada. Limitação: em sistemas que diferenciam formas Unicode (Linux), um diretório gravado em NFD aparece na lista, mas não pode ser aberto.
+- **Mensagem de `path` inválido (F1):** reusa a chave `validation.project.relative-path-chars`, cujo texto já é genérico.
+- **Árvore de teste (F1):** `target/test-roots/default` ganhou a estrutura descrita no comentário do `TestFileSystemInitializer`, e a remoção da árvore entre execuções desbloqueia diretórios sem permissão antes de apagá-los.
