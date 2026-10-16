@@ -700,7 +700,7 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 - `app.embeddings.provider`: `none` (padrão), `fake` ou `openai`; `app.embeddings.model` (padrão `text-embedding-3-small`) e `app.embeddings.dimensions` (padrão 1536, entre 1 e 2.000).
 - A chave vem de `EMBEDDING_API_KEY` no `.env`, obrigatória com `openai`; a aplicação não inicia sem ela. A chave nunca aparece em código, logs ou mensagens de erro.
 - `app.embeddings.base-url` (padrão `https://api.openai.com/v1`) decide para onde vão a chave e os trechos de código. Só `https` é aceito; `http` apenas para `localhost` ou `127.0.0.1` (servidor de teste e servidores locais futuros). Endereço com usuário e senha embutidos também é recusado. Fora disso, a aplicação não inicia, e a mensagem de erro não repete o valor.
-- Os testes do `./mvnw verify` usam `fake` e nunca precisam de chave; a chave real só entra no teste manual de fumaça. Uma `ContextCustomizerFactory` de teste, registrada em `META-INF/spring.factories`, impede qualquer contexto de teste de subir com `provider=openai`, inclusive contextos novos que esqueçam de fixar o provedor e herdem o valor do `.env`.
+- Os testes do `./mvnw verify` usam `fake` e nunca precisam de chave; a chave real só entra no teste manual de fumaça. Uma `ContextCustomizerFactory` de teste, registrada em `META-INF/spring.factories`, impede qualquer contexto de teste de subir com `provider=openai`, inclusive contextos novos que esqueçam de fixar o provedor e herdem o valor do `.env`. A única exceção são classes com a tag JUnit `smoke` (o teste de fumaça, F6), que o Surefire e o Failsafe excluem do `verify`.
 - O SDK da OpenAI tem repetição própria, que o adaptador desliga: a política da D-051 é a única camada de repetição.
 
 **Implementação (F1, 16/10/2026):**
@@ -839,7 +839,7 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **O que levaria à revisão:** a Etapa 5 (modo híbrido) ou a Etapa 6 (evidências da resposta).
 
 ### D-054 — Privacidade, custo e limites de entrada dos embeddings
-**Status:** Aceita (16/10/2026; F3 entregue, a F6 documenta no README e no `07`)  
+**Status:** Aceita (16/10/2026; F3 entregue, documentada no README e no `07` na F6)  
 **Contexto:** com `provider=openai`, trechos de código saem da máquina e cada token tem custo (D-047).  
 **Decisão:**
 - Só o texto de chunks de arquivos `INDEXED` vai ao provedor; arquivos excluídos, não suportados ou com falha nunca saem da máquina. A pergunta da busca também é enviada (F4).
@@ -853,7 +853,7 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 - Sem tokenizador exato nesta etapa.
 
 **Motivo:** o custo e o destino dos dados ficam previsíveis, e uma configuração incompatível com o modelo falha na inicialização, não no meio de um job.  
-**Consequências:** modelos novos ou servidores compatíveis exigem acrescentar o limite oficial ao adaptador. `07-SECURITY-PRIVACY-COSTS.md` e o README são atualizados na F6.  
+**Consequências:** modelos novos ou servidores compatíveis exigem acrescentar o limite oficial ao adaptador. `07-SECURITY-PRIVACY-COSTS.md` §7 e §9 e o README documentam o que é enviado, o custo e como desligar (`provider=none`).  
 **O que levaria à revisão:** chunks recusados por tamanho no teste de fumaça ou no uso real (pediria tokenizador exato), ou provedores locais na Etapa 9 (pediria limite configurável).
 
 ---
@@ -868,7 +868,7 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 - Provedor de embeddings e de chat podem ser diferentes (a Anthropic, por exemplo, não oferece modelo de embeddings próprio), o que justifica as duas portas separadas.
 
 **Critérios de comparação:** recall@k e MRR no corpus, qualidade em código, custo por 1M de tokens, latência, limites de taxa e política de retenção de dados do provedor.  
-**Prazo:** decidir antes de concluir a Etapa 4, mesmo que provisoriamente, para fixar a dimensão do vetor na migração.
+**Estado (16/10/2026):** embeddings decididos provisoriamente na Etapa 4: OpenAI `text-embedding-3-small`, 1.536 dimensões (D-047), com armazenamento que não exige migração para trocar de modelo (D-048). A escolha definitiva de embeddings, com a Voyage `voyage-code-3` como candidata, sai do bake-off da Etapa 5, com o corpus de avaliação. O provedor de chat é decidido na Etapa 6.
 
 ### O-005 — Comparação final de estratégia lexical e fusão
 **Status:** A validar  

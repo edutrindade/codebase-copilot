@@ -2,7 +2,7 @@
 
 Ferramenta local-first que responde perguntas sobre um repositório com evidências verificáveis (arquivo + linhas). A documentação do produto e da arquitetura está em [`docs/`](docs/README.md), e as decisões técnicas em [`docs/10-DECISIONS.md`](docs/10-DECISIONS.md).
 
-> Estado atual: Etapa 2 do [roadmap](docs/09-IMPLEMENTATION-ROADMAP.md) concluída (importação e inventário seguro). Só o backend existe; o frontend (`apps/web`) entra na Etapa 7.
+> Estado atual: Etapa 4 do [roadmap](docs/09-IMPLEMENTATION-ROADMAP.md) concluída (embeddings e busca vetorial). Só o backend existe; o frontend (`apps/web`) entra na Etapa 7.
 
 ## Pré-requisitos
 
@@ -82,10 +82,27 @@ A indexação (`POST /api/v1/projects/{id}/index-jobs`) lê os arquivos incluíd
 
 ### Embeddings
 
-Com `EMBEDDING_PROVIDER=openai`, o texto dos chunks indexados e as perguntas de busca são enviados ao provedor (`docs/07-SECURITY-PRIVACY-COSTS.md` §7). Com `none`, nada sai da máquina.
+A indexação gera um vetor por chunk e a busca (`POST /api/v1/projects/{id}/search`) compara a pergunta com os chunks do snapshot (D-047 a D-054). O provedor vem de `EMBEDDING_PROVIDER`:
+
+- `none` (padrão): **nada sai da máquina.** Os snapshots são criados sem vetores e a busca responde `409 EMBEDDINGS_NOT_AVAILABLE`.
+- `fake`: vetores calculados localmente a partir dos termos do texto, sem qualidade semântica. Serve para testes e demonstração.
+- `openai`: modelo `text-embedding-3-small` da OpenAI. Exige `EMBEDDING_API_KEY` no `.env`; sem ela, a aplicação não inicia.
+
+**O que é enviado com `openai`:** o texto dos chunks de arquivos indexados que ainda não têm vetor do modelo (o cache por conteúdo vale para todos os projetos) e o texto de cada pergunta de busca. Arquivos excluídos (`.env`, chaves, dependências etc.), binários, não suportados ou com falha nunca são enviados. Pela política da OpenAI consultada em 16/10/2026, os dados de `/v1/embeddings` não são usados para treino e ficam retidos por até 30 dias para monitoramento de abuso. Detalhes em `docs/07-SECURITY-PRIVACY-COSTS.md` §7 e §9.
+
+**Custo:** US$ 0,02 por 1M de tokens (preço oficial de 16/10/2026). Os tokens reportados pelo provedor ficam em `embedding.tokens` do snapshot (`GET /api/v1/snapshots/{id}`); reindexar sem mudanças não envia nada.
+
+**Trocar de modelo** (`app.embeddings.model` ou `dimensions`): o projeto passa a informar `EMBEDDING_MODEL_CHANGED` e a busca responde `409 SNAPSHOT_EMBEDDING_MISMATCH` até a próxima indexação, que gera os vetores do modelo novo.
 
 | Propriedade | Padrão | Uso |
 |---|---|---|
+| `app.embeddings.model` | `text-embedding-3-small` | Modelo do provedor. Com `openai`, só `text-embedding-3-small`, `text-embedding-3-large` e `text-embedding-ada-002`. |
+| `app.embeddings.dimensions` | 1536 | Dimensão dos vetores, de 1 a 2.000. |
+| `app.embeddings.batch-size` | 64 | Textos por chamada (até 75 com `openai`). |
+| `app.embeddings.max-retries` | 4 | Repetições de limite de taxa e indisponibilidade dentro do job. |
+| `app.embeddings.max-retry-wait` | 60s | Teto de cada espera entre repetições, inclusive com `Retry-After` maior. |
+| `app.embeddings.max-chunks-per-job` | 50000 | Chunks a enviar por job; acima disso, o job falha com `EMBEDDING_CHUNK_LIMIT_EXCEEDED` sem chamar o provedor. |
+| `app.embeddings.timeout` | 30s | Tempo máximo de uma chamada. |
 | `app.embeddings.base-url` | `https://api.openai.com/v1` | Endereço da API do provedor. |
 
 **Atenção:** `app.embeddings.base-url` decide para onde vão a chave e os trechos de código. Mudar esse endereço muda o destino dos dados. Só são aceitos endereços `https`; `http` é aceito apenas para `localhost` ou `127.0.0.1` (servidor de teste ou servidor local). Qualquer outro valor, ou um endereço com usuário e senha embutidos, impede a aplicação de iniciar.
@@ -124,6 +141,28 @@ brew install google-java-format
 ```
 
 O formatador padrão do VS Code (Eclipse) não segue o estilo AOSP e faz o `spotless:check` falhar.
+
+### Testes manuais
+
+Dois testes ficam fora do `verify` (tags `performance` e `smoke`) e só rodam com comando explícito, a partir de `apps/backend`, com o Docker no ar.
+
+**Medição da busca vetorial** (`VectorSearchPerformanceIT`, D-049): grava 50 mil chunks sintéticos de 1.536 dimensões e imprime média, p95 e máximo de 50 buscas. Não chama provedor nem precisa de chave.
+
+```bash
+./mvnw verify -Dtest.excluded-groups= -Dgroups=performance -Dtest=none \
+  -Dsurefire.failIfNoSpecifiedTests=false -Dit.test=VectorSearchPerformanceIT
+```
+
+**Fumaça com o provedor real** (`EmbeddingSmokeIT`, D-047): indexa um repositório de exemplo de quatro arquivos, escrito pelo próprio teste, com `provider=openai`; confere provedor, modelo, dimensão e tokens no snapshot e um vetor para cada chunk; faz uma busca sem palavras em comum com o arquivo esperado e confere que ele vem em primeiro. Imprime data, modelo, chunks, tokens e as latências da indexação e da busca.
+
+```bash
+./mvnw verify -Dtest.excluded-groups= -Dgroups=smoke -Dtest=none \
+  -Dsurefire.failIfNoSpecifiedTests=false -Dit.test=EmbeddingSmokeIT
+```
+
+- **Chave:** `EMBEDDING_API_KEY` no `.env` (ou no ambiente). O teste usa `provider=openai` qualquer que seja o `EMBEDDING_PROVIDER` do `.env`, e o endereço padrão da OpenAI.
+- **Custo:** algumas centenas de tokens por execução, menos de US$ 0,0001 pelo preço da D-047.
+- Só testes com a tag `smoke` podem subir com `provider=openai`; em qualquer outro teste, a guarda dos testes (`RealEmbeddingProviderGuard`) impede o contexto de subir.
 
 ## Executar o backend
 

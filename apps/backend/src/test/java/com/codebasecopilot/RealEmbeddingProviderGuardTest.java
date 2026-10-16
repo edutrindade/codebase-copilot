@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.List;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -31,6 +33,15 @@ class RealEmbeddingProviderGuardTest {
                 .rootCause()
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("must not use app.embeddings.provider=openai");
+    }
+
+    @Test
+    void exemptsOnlyTestsTaggedSmoke() {
+        RealEmbeddingProviderGuard guard = new RealEmbeddingProviderGuard();
+
+        assertThat(guard.createContextCustomizer(SmokeContext.class, List.of())).isNull();
+        assertThat(guard.createContextCustomizer(PerformanceContext.class, List.of())).isNotNull();
+        assertThat(guard.createContextCustomizer(OpenAiContext.class, List.of())).isNotNull();
     }
 
     @ParameterizedTest
@@ -73,6 +84,12 @@ class RealEmbeddingProviderGuardTest {
     @ContextConfiguration(classes = OpenAiContext.class)
     @TestPropertySource(properties = "app.embeddings.provider=openai")
     static class OpenAiContext {}
+
+    @Tag("smoke")
+    static class SmokeContext {}
+
+    @Tag("performance")
+    static class PerformanceContext {}
 
     private static GenericApplicationContext context(String provider) {
         GenericApplicationContext context = new GenericApplicationContext();

@@ -307,6 +307,13 @@ Um chunk rejeitado pelo provedor (`INVALID_REQUEST`) falha o job inteiro com `EM
 - `04` (§5 e §6), `05` (`chunk_embeddings`, `snapshots`), `06` (busca, snapshot, códigos), `07` (§7 e §9, inclusive a limitação do lote rejeitado), `09` (status) e README (provedor, chave, `provider=none`, o que é enviado, testes manuais).
 - Seção "Resultado e desvios" neste arquivo.
 
+**Como foi entregue (16/10/2026)**
+- `EmbeddingSmokeIT` (tag `smoke`): sobe um contexto próprio com `provider=openai`, a chave de `EMBEDDING_API_KEY` (`.env` ou ambiente) e o endereço padrão. Escreve um repositório de exemplo de quatro arquivos (cobrança, senha, imagem e README), indexa pela API, confere provedor, modelo, dimensão e tokens positivos no snapshot e nenhum chunk sem vetor, e busca "How does a customer get their money back?", que não tem palavras em comum com o arquivo esperado (`src/billing/RefundService.java`). Imprime data, modelo, chunks, tokens e latências, sem texto.
+- **Desvio:** o "repositório de exemplo" é escrito pelo próprio teste, como nos demais testes de integração, em vez de uma pasta versionada em `samples/`.
+- A guarda dos testes (`RealEmbeddingProviderGuard`) passa a dispensar só as classes com a tag `smoke`, que o `verify` exclui; teste unitário cobre a dispensa.
+- Docs: `04` §5 e §6, `05` (`snapshots`, `index_jobs`, `chunk_embeddings`, limpeza), `06` (§7 vira "Indexação e busca", com o endpoint de busca, `embedding` no snapshot, etapa `EMBEDDING` e `outdatedReasons`), `07` §7 e §9 (inclusive a limitação do lote recusado), `09` (status), README (provedores, o que é enviado, custo, propriedades e testes manuais) e `10` (D-047, D-054 e O-004). D-014 e D-047 a D-053 já estavam registradas nas fatias anteriores.
+- `openapi.json` sem mudança na F6 (a última regeneração foi na F5).
+
 ## Migração
 
 ### V8__create_chunk_embeddings.sql (esboço)
@@ -382,7 +389,20 @@ A chave vem de `EMBEDDING_API_KEY`. Padrões em `ProviderProperties`, sem entrad
 
 ## Resultado e desvios
 
-A preencher no fechamento (F6).
+**Aceite:** consultas vetoriais retornam chunks do snapshot correto, nunca de outro snapshot nem de outro projeto (`SearchApiIT`, F4), e os vetores têm a dimensão do modelo, garantida antes do banco (`VectorLiteral`, repositório), pelo `CHECK` da V8 e pelo filtro de provedor, modelo e dimensão na busca (F2, F4). `./mvnw verify` verde ao fim de cada fatia.
+
+**Desvios em relação ao plano** (detalhes em cada fatia):
+- F1: o adaptador chama o SDK da OpenAI diretamente, com o cliente montado pelo Spring AI, porque o `OpenAiEmbeddingModel` falha sem uso de tokens na resposta (D-047). A validação do limite de entrada passou para a F3.
+- F3: a validação do limite de entrada conta um token por caractere, que não é um limite rigoroso fora do ASCII (D-054); varredura de órfãos na inicialização acrescentada (D-052).
+- F4: `model` na resposta virou objeto; `502 EMBEDDING_REQUEST_REJECTED` acrescentado na busca (D-051, D-053).
+- F5: o snapshot "indexado com `provider=none`" dos testes é um snapshot do fake com os metadados apagados por SQL.
+- F6: repositório de exemplo escrito pelo teste de fumaça, não versionado.
+
+**Para as próximas etapas:** bake-off de embeddings (Voyage como candidata) e decisão sobre manter o `spring-ai-openai` ou só o SDK (Etapa 5); comparação com HNSW parcial e varredura iterativa (Etapa 5 ou 8); `Retry-After` na resposta da busca; isolamento do lote recusado e tokenizador exato, se o uso real pedir; revisão de `max-chunks-per-job` (Etapa 8).
+
+### Teste de fumaça com chave real (F6)
+
+Pendente: execução com a chave real.
 
 ### Medição da busca exata (F4, 16/10/2026)
 
