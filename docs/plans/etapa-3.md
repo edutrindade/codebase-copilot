@@ -574,3 +574,12 @@ A preencher no fechamento (F7). Desvios registrados durante as fatias:
 - `SCAN_LIMIT_REACHED` é coberto por teste unitário de `IndexRunner.check`: o limite de entradas é global e baixá-lo exigiria outro contexto de teste.
 - Os executores do worker são criados a cada `start()`: o Spring Test pausa contextos em cache (chama `stop()`) e os retoma depois.
 - Correção fora do escopo: `Directories.deleteRecursively` passou a ignorar entradas removidas durante a remoção. Havia uma corrida no `ImportApiIT` entre a remoção da pasta de um import, depois do commit, e a limpeza do teste seguinte; a nova configuração de testes a tornou frequente.
+
+**F4**
+- O record `Project` ganhou `activeSnapshotId`, e `ProjectService.activateSnapshot` troca o ativo e devolve o anterior, usado no resumo de mudanças; tudo na transação de finalização, junto com a poda e a limpeza.
+- `SourceFileReader` só abre arquivos regulares (sem seguir links) e compara tamanho, data de modificação e `fileKey` antes e depois da leitura; diferença, ou tamanho acima do limite, vira `CHANGED_DURING_READ`.
+- Lotes limitados também por 16 MB de bytes lidos, além de `batch-files`.
+- Conteúdo já com chunks da versão atual não é decodificado de novo; arquivos `UNSUPPORTED` não têm conteúdo guardado e são reclassificados a cada job.
+- `inventory` do snapshot usa o schema `ScanResult` no OpenAPI (os mesmos campos de `GET /inventory`) e vem `null` nas listagens.
+- Falhas de leitura e poda são testadas num contexto próprio (`IndexingEdgeCasesIT`): precisam de um spy no leitor e de `retained-snapshots = 1`.
+- "Nenhum insert para arquivo inalterado" é verificado pelas contagens de `file_contents` e pelo id do chunk, que não muda.

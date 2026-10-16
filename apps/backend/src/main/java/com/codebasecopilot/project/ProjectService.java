@@ -84,6 +84,7 @@ public class ProjectService {
                         rootKey,
                         relativePath,
                         null,
+                        null,
                         now,
                         now);
         try {
@@ -160,6 +161,17 @@ public class ProjectService {
         repository.updateCurrentImport(
                 projectId, importJobId, clock.instant().truncatedTo(ChronoUnit.MICROS));
         return project.currentImportJobId();
+    }
+
+    // Returns the previous active snapshot; only the index worker calls it, while the project
+    // has an active job, so the value cannot change concurrently (D-041, D-044).
+    @Transactional
+    public @Nullable UUID activateSnapshot(UUID projectId, UUID snapshotId) {
+        Project project =
+                repository.findByIdForUpdate(projectId).orElseThrow(ProjectService::notFound);
+        repository.updateActiveSnapshot(
+                projectId, snapshotId, clock.instant().truncatedTo(ChronoUnit.MICROS));
+        return project.activeSnapshotId();
     }
 
     // LOCAL_FOLDER projects of the same workspace and root whose path differs only by case;

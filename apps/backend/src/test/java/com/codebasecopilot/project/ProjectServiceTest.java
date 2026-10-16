@@ -62,6 +62,7 @@ class ProjectServiceTest {
                                 null,
                                 null,
                                 null,
+                                null,
                                 micros,
                                 micros));
         verify(repository).insert(project);
@@ -388,7 +389,16 @@ class ProjectServiceTest {
 
     private static Project zipProject(UUID currentImportJobId) {
         return new Project(
-                ID, WORKSPACE, "ZIP", SourceType.ZIP, null, null, currentImportJobId, NOW, NOW);
+                ID,
+                WORKSPACE,
+                "ZIP",
+                SourceType.ZIP,
+                null,
+                null,
+                currentImportJobId,
+                null,
+                NOW,
+                NOW);
     }
 
     private static CreateProjectCommand zip(String name) {
