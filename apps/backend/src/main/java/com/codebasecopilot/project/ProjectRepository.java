@@ -102,6 +102,28 @@ class ProjectRepository {
                         .list());
     }
 
+    List<Project> findCaseVariants(Project project) {
+        return jdbc.sql(
+                        """
+                        SELECT id, workspace_id, name, source_type, source_root_key,
+                               source_relative_path, current_import_job_id, created_at,
+                               updated_at
+                        FROM projects
+                        WHERE workspace_id = :workspaceId
+                          AND source_type = 'LOCAL_FOLDER'
+                          AND source_root_key = :rootKey
+                          AND lower(source_relative_path) = lower(:relativePath)
+                          AND id <> :id
+                        ORDER BY id
+                        """)
+                .param("workspaceId", project.workspaceId())
+                .param("rootKey", project.sourceRootKey())
+                .param("relativePath", project.sourceRelativePath())
+                .param("id", project.id())
+                .query(ProjectRepository::map)
+                .list();
+    }
+
     long countByWorkspace(UUID workspaceId) {
         return jdbc.sql("SELECT count(*) FROM projects WHERE workspace_id = :workspaceId")
                 .param("workspaceId", workspaceId)

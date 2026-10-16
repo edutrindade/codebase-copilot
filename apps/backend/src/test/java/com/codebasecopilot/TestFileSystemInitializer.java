@@ -29,6 +29,12 @@ import org.springframework.core.env.MapPropertySource;
 //   readme.txt              file, never listed
 //   outside-link            link to ../outside, never listed
 //   back\slash, tab\tname   names a client could not send back, never listed (if the FS allows)
+//
+// Tree of the work root, used by the inventory tests (app.inventory.max-file-bytes is 4 KB):
+//   inventory-repo/         src/Main.java, src/util/Helper.kt, README.md and .env.example
+//                           included; .env, big.txt (5 KB), link-out (link to ../../outside),
+//                           data.bin (binary) and node_modules/ excluded
+//   only-excluded/          .env and node_modules/ only
 public final class TestFileSystemInitializer
         implements ApplicationContextInitializer<ConfigurableApplicationContext> {
 
@@ -56,7 +62,7 @@ public final class TestFileSystemInitializer
         try {
             deleteRecursively(ROOTS_DIR);
             buildDefaultRoot(Files.createDirectories(ROOTS_DIR.resolve("default")));
-            Files.createDirectories(ROOTS_DIR.resolve("work"));
+            buildWorkRoot(Files.createDirectories(ROOTS_DIR.resolve("work")));
             Files.createDirectories(ROOTS_DIR.resolve("outside/secret"));
         } catch (IOException e) {
             throw new UncheckedIOException(e);
@@ -90,6 +96,25 @@ public final class TestFileSystemInitializer
             Path locked = Files.createDirectory(root.resolve("locked"));
             Files.setPosixFilePermissions(locked, PosixFilePermissions.fromString("---------"));
         }
+    }
+
+    private static void buildWorkRoot(Path root) throws IOException {
+        Path repo = Files.createDirectories(root.resolve("inventory-repo"));
+        Files.createDirectories(repo.resolve("src/util"));
+        Files.writeString(repo.resolve("src/Main.java"), "class Main {}");
+        Files.writeString(repo.resolve("src/util/Helper.kt"), "object Helper");
+        Files.writeString(repo.resolve("README.md"), "# Repo");
+        Files.writeString(repo.resolve(".env"), "SECRET=1");
+        Files.writeString(repo.resolve(".env.example"), "SECRET=");
+        Files.createDirectories(repo.resolve("node_modules/lib"));
+        Files.writeString(repo.resolve("node_modules/lib/index.js"), "module.exports = 1");
+        Files.writeString(repo.resolve("big.txt"), "x".repeat(5 * 1024));
+        Files.write(repo.resolve("data.bin"), new byte[] {1, 0, 2});
+        Files.createSymbolicLink(repo.resolve("link-out"), Path.of("../../outside"));
+        Path excluded = Files.createDirectories(root.resolve("only-excluded"));
+        Files.writeString(excluded.resolve(".env"), "SECRET=1");
+        Files.createDirectories(excluded.resolve("node_modules"));
+        Files.writeString(excluded.resolve("node_modules/x.js"), "x");
     }
 
     private static void createIfAllowed(Path root, String name) {

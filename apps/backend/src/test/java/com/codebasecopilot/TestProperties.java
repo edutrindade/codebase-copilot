@@ -21,5 +21,8 @@ final class TestProperties {
     // Small enough for MockMvc tests to exceed without large files.
     static final String MAX_ZIP_BYTES = "app.import.max-zip-bytes=64KB";
 
+    // The inventory fixture has one file above this limit.
+    static final String MAX_INVENTORY_FILE_BYTES = "app.inventory.max-file-bytes=4KB";
+
     private TestProperties() {}
 }

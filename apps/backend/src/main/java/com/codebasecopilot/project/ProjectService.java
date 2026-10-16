@@ -135,6 +135,16 @@ public class ProjectService {
         return project.currentImportJobId();
     }
 
+    // LOCAL_FOLDER projects of the same workspace and root whose path differs only by case;
+    // on case-insensitive file systems they point to the same folder (D-020).
+    @Transactional(readOnly = true)
+    public List<Project> findCaseVariants(Project project) {
+        if (project.sourceType() != SourceType.LOCAL_FOLDER) {
+            return List.of();
+        }
+        return repository.findCaseVariants(project);
+    }
+
     // Which of the given imports are still the current import of some project.
     @Transactional(readOnly = true)
     public Set<UUID> currentImportsAmong(Collection<UUID> importJobIds) {

@@ -465,6 +465,73 @@
         "tags" : [ "import-controller" ]
       }
     },
+    "/api/v1/projects/{projectId}/inventory" : {
+      "get" : {
+        "operationId" : "inventory",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/InventoryResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: VALIDATION_FAILED."
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: PROJECT_NOT_FOUND."
+          },
+          "409" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: SOURCE_ROOT_NOT_CONFIGURED, SOURCE_DIRECTORY_NOT_FOUND, SOURCE_IS_SYMLINK, SOURCE_NOT_READABLE, SOURCE_NOT_IMPORTED."
+          },
+          "500" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
+          }
+        },
+        "tags" : [ "inventory-controller" ]
+      }
+    },
     "/api/v1/workspaces" : {
       "get" : {
         "operationId" : "list",
@@ -901,6 +968,31 @@
         },
         "required" : [ "id", "status" ]
       },
+      "DirectoryCountResponse" : {
+        "type" : "object",
+        "properties" : {
+          "excludedFiles" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "includedFiles" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "path" : {
+            "type" : "string"
+          },
+          "unreadableFiles" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "unsupportedFiles" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [ "excludedFiles", "includedFiles", "path", "unreadableFiles", "unsupportedFiles" ]
+      },
       "DirectoryListingResponse" : {
         "type" : "object",
         "properties" : {
@@ -936,6 +1028,36 @@
           }
         },
         "required" : [ "hasChildren", "name", "readable", "relativePath" ]
+      },
+      "ExclusionGroupResponse" : {
+        "type" : "object",
+        "properties" : {
+          "directories" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "examples" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "files" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "pattern" : {
+            "type" : "string"
+          },
+          "reason" : {
+            "type" : "string",
+            "enum" : [ "DEFAULT_RULE", "CUSTOM_PATTERN", "SYMLINK", "SPECIAL_FILE", "DEPTH_LIMIT", "TOO_LARGE", "BINARY", "UNREADABLE" ]
+          },
+          "ruleId" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "directories", "examples", "files", "pattern", "reason", "ruleId" ]
       },
       "FieldError" : {
         "type" : "object",
@@ -1005,6 +1127,105 @@
           }
         },
         "required" : [ "completedAt", "compressedBytes", "createdAt", "entryCount", "error", "id", "projectId", "status", "uncompressedBytes" ]
+      },
+      "InventoryResponse" : {
+        "type" : "object",
+        "properties" : {
+          "byDirectory" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/DirectoryCountResponse"
+            }
+          },
+          "byLanguage" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/LanguageCountResponse"
+            }
+          },
+          "exclusions" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ExclusionGroupResponse"
+            }
+          },
+          "projectId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "scannedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "settingsVersion" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "totals" : {
+            "$ref" : "#/components/schemas/InventoryTotalsResponse"
+          },
+          "truncated" : {
+            "type" : "boolean"
+          },
+          "warnings" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/WarningResponse"
+            }
+          }
+        },
+        "required" : [ "byDirectory", "byLanguage", "exclusions", "projectId", "scannedAt", "settingsVersion", "totals", "truncated", "warnings" ]
+      },
+      "InventoryTotalsResponse" : {
+        "type" : "object",
+        "properties" : {
+          "excludedDirectories" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "excludedFiles" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "files" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "includedBytes" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "includedFiles" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "unreadableFiles" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "unsupportedFiles" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [ "excludedDirectories", "excludedFiles", "files", "includedBytes", "includedFiles", "unreadableFiles", "unsupportedFiles" ]
+      },
+      "LanguageCountResponse" : {
+        "type" : "object",
+        "properties" : {
+          "bytes" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "files" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "language" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "bytes", "files", "language" ]
       },
       "LocalFolderSourceResponse" : {
         "allOf" : [ {
@@ -1123,7 +1344,7 @@
         "properties" : {
           "code" : {
             "type" : "string",
-            "enum" : [ "VALIDATION_FAILED", "MALFORMED_REQUEST", "RESOURCE_NOT_FOUND", "METHOD_NOT_ALLOWED", "UNSUPPORTED_MEDIA_TYPE", "INTERNAL_ERROR", "WORKSPACE_NOT_FOUND", "WORKSPACE_NOT_EMPTY", "PROJECT_NOT_FOUND", "LOCAL_ROOTS_NOT_CONFIGURED", "ROOT_NOT_FOUND", "PATH_OUTSIDE_ROOT", "PROJECT_ALREADY_EXISTS", "DIRECTORY_NOT_FOUND", "DIRECTORY_NOT_READABLE", "PROJECT_BUSY", "PROJECT_SOURCE_MISMATCH", "UPLOAD_TOO_LARGE", "IMPORT_NOT_FOUND" ]
+            "enum" : [ "VALIDATION_FAILED", "MALFORMED_REQUEST", "RESOURCE_NOT_FOUND", "METHOD_NOT_ALLOWED", "UNSUPPORTED_MEDIA_TYPE", "INTERNAL_ERROR", "WORKSPACE_NOT_FOUND", "WORKSPACE_NOT_EMPTY", "PROJECT_NOT_FOUND", "LOCAL_ROOTS_NOT_CONFIGURED", "ROOT_NOT_FOUND", "PATH_OUTSIDE_ROOT", "PROJECT_ALREADY_EXISTS", "DIRECTORY_NOT_FOUND", "DIRECTORY_NOT_READABLE", "PROJECT_BUSY", "PROJECT_SOURCE_MISMATCH", "UPLOAD_TOO_LARGE", "IMPORT_NOT_FOUND", "SOURCE_ROOT_NOT_CONFIGURED", "SOURCE_DIRECTORY_NOT_FOUND", "SOURCE_IS_SYMLINK", "SOURCE_NOT_READABLE", "SOURCE_NOT_IMPORTED" ]
           },
           "detail" : {
             "type" : "string"
@@ -1196,6 +1417,25 @@
           }
         },
         "required" : [ "type" ]
+      },
+      "WarningResponse" : {
+        "type" : "object",
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "relatedProjectIds" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "format" : "uuid"
+            }
+          }
+        },
+        "required" : [ "code", "message", "relatedProjectIds" ]
       },
       "WorkspaceResponse" : {
         "type" : "object",

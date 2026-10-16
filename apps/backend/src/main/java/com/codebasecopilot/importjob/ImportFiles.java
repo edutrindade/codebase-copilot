@@ -47,7 +47,7 @@ class ImportFiles {
     }
 
     Path sourceDir(UUID importJobId) {
-        return dataDirectory.importDir(importJobId).resolve("source");
+        return dataDirectory.importSourceDir(importJobId);
     }
 
     // Called inside the transaction that inserts the job; a rollback removes the folder.

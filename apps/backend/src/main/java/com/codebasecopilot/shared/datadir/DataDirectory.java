@@ -66,6 +66,11 @@ public final class DataDirectory {
         return imports.resolve(importJobId.toString());
     }
 
+    // Extracted tree of a ZIP import, the source of its project while it is current (D-033).
+    public Path importSourceDir(UUID importJobId) {
+        return importDir(importJobId).resolve("source");
+    }
+
     private static Path expandHome(String value, Path userHome) {
         String expanded;
         if (value.equals("~")) {

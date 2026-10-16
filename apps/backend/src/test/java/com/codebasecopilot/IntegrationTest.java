@@ -23,7 +23,8 @@ import org.springframework.test.context.ContextConfiguration;
             TestProperties.WORK_ROOT_LABEL,
             TestProperties.WORK_ROOT_PATH,
             TestProperties.MAX_BROWSE_DIRECTORIES,
-            TestProperties.MAX_ZIP_BYTES
+            TestProperties.MAX_ZIP_BYTES,
+            TestProperties.MAX_INVENTORY_FILE_BYTES
         })
 @AutoConfigureMockMvc
 @ContextConfiguration(initializers = TestFileSystemInitializer.class)
