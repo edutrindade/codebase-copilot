@@ -70,6 +70,16 @@ O `verify` executa:
 - verificação de formatação com Spotless (google-java-format, estilo AOSP). Para corrigir a formatação: `./mvnw spotless:apply`;
 - comparação do contrato OpenAPI gerado com o arquivo versionado `apps/backend/openapi.json` (D-023). Após uma mudança intencional na API, regenere com `./mvnw verify -Dopenapi.update=true` e commite o `openapi.json` junto com o código.
 
+### Formatação no VS Code
+
+O `.vscode/settings.json` formata Java ao salvar com a extensão recomendada `serikb.google-java-format`, usando as mesmas regras do Spotless (`--aosp --skip-sorting-imports --skip-reflowing-long-strings`). A extensão procura o executável no `PATH`; instale-o com:
+
+```bash
+brew install google-java-format
+```
+
+O formatador padrão do VS Code (Eclipse) não segue o estilo AOSP e faz o `spotless:check` falhar.
+
 ## Executar o backend
 
 ```bash

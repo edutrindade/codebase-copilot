@@ -358,6 +358,8 @@ Retorna mensagens e respostas com evidências.
 ## 11. Contratos e implementação
 
 - Publicar OpenAPI; o contrato versionado (`apps/backend/openapi.json`) é verificado por teste (D-023).
+- O contrato publica as respostas de erro como `application/problem+json` com o schema `Problem` (enum com todos os `code`) e `FieldError`. Por operação: `500 INTERNAL_ERROR` sempre; `400 VALIDATION_FAILED` quando há parâmetros ou corpo; `400 MALFORMED_REQUEST` e `415 UNSUPPORTED_MEDIA_TYPE` quando há corpo; códigos de domínio declarados no endpoint com `@ApiErrors`.
+- Todos os campos dos schemas de resposta (`*Response`) são marcados como obrigatórios, já que são sempre serializados (valores ausentes vêm como `null`).
 - Gerar tipos do frontend a partir do contrato.
 - Versionar mudanças incompatíveis.
 - Testar validação, erros, limites e respostas com evidências.

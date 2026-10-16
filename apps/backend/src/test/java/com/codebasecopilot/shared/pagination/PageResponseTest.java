@@ -28,4 +28,13 @@ class PageResponseTest {
         assertThat(response.size()).isEqualTo(5);
         assertThat(response.totalPages()).isEqualTo(1);
     }
+
+    @Test
+    void mapsItemsKeepingPagination() {
+        PageResponse<Integer> response =
+                PageResponse.of(List.of("a", "bb"), new PageRequestParams(1, 2), 4)
+                        .map(String::length);
+
+        assertThat(response).isEqualTo(new PageResponse<>(List.of(1, 2), 1, 2, 4, 2));
+    }
 }

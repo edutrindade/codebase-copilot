@@ -33,4 +33,13 @@ class ArchitectureTest {
                     .should()
                     .dependOnClassesThat()
                     .resideInAnyPackage(DOMAIN_MODULES);
+
+    @ArchTest
+    static final ArchRule workspaceDoesNotDependOnProject =
+            noClasses()
+                    .that()
+                    .resideInAPackage("com.codebasecopilot.workspace..")
+                    .should()
+                    .dependOnClassesThat()
+                    .resideInAPackage("com.codebasecopilot.project..");
 }

@@ -1,3 +1,8 @@
 {
-    "java.configuration.updateBuildConfiguration": "automatic"
+    "java.configuration.updateBuildConfiguration": "automatic",
+    "editor.formatOnSave": true,
+    "[java]": {
+        "editor.defaultFormatter": "serikb.google-java-format"
+    },
+    "google-java-format.extra-args": "--aosp --skip-sorting-imports --skip-reflowing-long-strings"
 }

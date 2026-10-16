@@ -71,7 +71,9 @@ class ErrorHandlingTest {
                                         "message",
                                         "Deve ter no máximo 5 caracteres."),
                                 Map.of("field", "name", "message", "O campo é obrigatório.")));
-        assertThat(body(result)).doesNotContain(SECRET).doesNotContain("-5");
+        assertThat(body(result).replace(requestId(result), ""))
+                .doesNotContain(SECRET)
+                .doesNotContain("-5");
     }
 
     @Test
