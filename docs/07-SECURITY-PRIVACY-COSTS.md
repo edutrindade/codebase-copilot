@@ -37,6 +37,15 @@ O mecanismo de acesso à pasta deve:
 
 A seleção de pasta segue a D-018: o backend expõe apenas raízes permitidas configuradas, a UI navega dentro delas e o cliente envia somente caminhos relativos, que o backend canonicaliza e valida. Links simbólicos não são seguidos. O browser nunca envia caminhos locais arbitrários ao backend.
 
+Política implementada na Etapa 2 (D-037):
+- cada segmento do caminho é verificado sem seguir links; um caminho que passa por link é recusado (navegação: `404 DIRECTORY_NOT_FOUND`; inventário: `409 SOURCE_IS_SYMLINK`);
+- na varredura, links aparecem como `SYMLINK` e nunca são seguidos, nem para dentro da raiz;
+- FIFOs, sockets e dispositivos aparecem como `SPECIAL_FILE` e nunca são abertos;
+- arquivos são lidos apenas como bytes (amostra de 8 KB aberta com `NOFOLLOW_LINKS`), com limites de entradas, profundidade e tamanho;
+- o `DATA_DIR` não pode estar dentro de uma raiz nem contê-la, para que arquivos extraídos nunca apareçam na navegação (D-028).
+
+**Limitações conhecidas:** links físicos e pontos de montagem dentro da raiz não são detectados, e uma troca concorrente de diretório por link durante a varredura (TOCTOU) não é totalmente evitável sem `openat`. O modelo de ameaça é conteúdo malicioso, não um atacante concorrente no disco local.
+
 ## 4. Importação ZIP
 
 Mitigações obrigatórias:
@@ -47,7 +56,15 @@ Mitigações obrigatórias:
 - limitar razão de expansão;
 - tratar links simbólicos com cautela;
 - impedir escrita fora da pasta do job (`DATA_DIR/imports/<importJobId>`, D-028);
-- apagar a pasta do job quando ele concluir ou falhar (D-028).
+- apagar a pasta do job quando ele falhar ou for substituído; a do import atual é retida como origem do projeto (D-033).
+
+Implementação da Etapa 2:
+- os limites são contados pelos bytes realmente gravados, nunca pelos tamanhos declarados no arquivo, o que também cobre entradas sobrepostas;
+- o nome de cada entrada é validado (sem `/` inicial, letra de unidade, `..`, `\` ou caracteres de controle, com profundidade e comprimento máximos), e o destino resolvido precisa ficar dentro da pasta do job;
+- arquivos são criados com `CREATE_NEW`: entradas repetidas, ou que colidem por maiúsculas em sistemas sem distinção de caixa, recusam o ZIP;
+- o extrator nunca cria links: uma entrada de link vira arquivo comum;
+- ZIPs inválidos, truncados ou criptografados são recusados;
+- mensagens de erro e logs nunca contêm nomes de entradas.
 
 ## 5. Segredos e arquivos excluídos
 
@@ -61,6 +78,8 @@ Padrões padrão devem considerar, entre outros:
 - binários e arquivos de mídia.
 
 Os padrões precisam ser configuráveis e exibidos ao usuário. A detecção de segredos é defesa adicional, não garantia perfeita. Nunca prometer que todos os segredos serão detectados.
+
+No MVP, segredos são excluídos apenas por padrões de nome, em regras que o usuário não pode desativar (`SENSITIVE`, D-036). A detecção por conteúdo fica para a Etapa 8.
 
 ## 6. Prompt injection
 

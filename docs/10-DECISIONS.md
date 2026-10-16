@@ -2,7 +2,7 @@
 
 Este documento registra decisões aceitas e itens que ainda precisam de validação. Atualizar sempre que uma escolha técnica mudar.
 
-**Última atualização:** 15/10/2026.
+**Última atualização:** 16/10/2026.
 
 **Legenda de status**
 - **Aceita:** decisão tomada; só muda com novo registro.
@@ -337,6 +337,15 @@ Projetos ZIP não têm caminho; guardam uma referência ao import correspondente
 
 **O que levaria à revisão:** necessidade de reindexar projetos ZIP sem novo upload, o que exigiria reter o conteúdo extraído.
 
+#### Atualização de 16/10/2026 — retenção e fronteira com a indexação
+**Contexto:** a Etapa 2 precisava definir a fronteira entre o import e a indexação, que só existe na Etapa 3.
+**Decisão:** ver D-033. Em resumo:
+- a pasta do **import atual** de um projeto ZIP é retida (`DATA_DIR/imports/<id>/source/`) e serve de origem para o inventário e a indexação;
+- a pasta é apagada quando o job termina `REJECTED`/`FAILED`, quando um import mais novo conclui e na remoção do projeto;
+- a coluna `error_message_sanitized` não existe: o job guarda só `error_code`, e a mensagem pt-BR vem do `MessageSource` (`import.error.<CODE>`), nunca do conteúdo importado.
+
+**Consequência:** o gatilho de revisão acima (reindexar ZIP sem novo upload) passa a ser atendido.
+
 ### D-029 — Configuração das raízes permitidas (complementa D-018)
 **Status:** Aceita  
 **Contexto:** a D-018 define raízes permitidas, mas não como configurá-las; a API (`GET /local-roots`) precisa de `key` e `label`, e a criação de projeto `LOCAL_FOLDER` na Etapa 1 depende delas.  
@@ -399,7 +408,8 @@ E, para as raízes: no módulo `project`, no `importjob` ou em `shared`.
 - Regras de arquitetura com **ArchUnit** (dependência de teste nova): `shared` não depende de nenhum módulo de domínio (`workspace`, `project`, `importjob`, `indexing`, `codeanalysis`, `retrieval`, `answering`, `providers`, `history`), e `workspace` não depende de `project`.
 
 **Motivo:** mantém cada tabela sob a responsabilidade de um módulo e torna as fronteiras verificáveis por teste, e não só por convenção.  
-**Consequências:** a contagem de projetos na listagem de workspaces usa uma consulta em lote pela porta (sem N+1). Novos módulos entram na lista da regra do ArchUnit.  
+**Consequências:** a contagem de projetos na listagem de workspaces usa uma consulta em lote pela porta (sem N+1). Novos módulos entram na lista da regra do ArchUnit.
+- **Etapa 2 (16/10/2026):** o mesmo padrão vale entre `project` e `importjob`. `project` define a porta `ProjectImports` (import atual, job ativo para `PROJECT_BUSY` e limpeza das pastas na remoção), implementada por `importjob`. Regras novas no ArchUnit: `project` não depende de `importjob`, e `codeanalysis` não depende de `importjob`.  
 **O que levaria à revisão:** adoção do Spring Modulith ou necessidade de consultas que cruzem módulos com frequência.
 
 ### D-032 — Regras de nome e precedência de erros na criação de projeto
@@ -427,6 +437,93 @@ E, para as raízes: no módulo `project`, no `importjob` ou em `shared`.
 **Motivo:** respostas determinísticas facilitam testes e o tratamento no frontend. Rejeitar `\` evita ambiguidade entre sistemas operacionais (no Windows, `\` é separador), e o padrão de nome do workspace permite criá-lo com um clique na UI.  
 **Consequências:** `05-DATA-MODEL.md` e `06-API-CONTRACTS.md` (§3 e §5) atualizados em 15/10/2026; a migração aplica o limite de nome também por `CHECK`.  
 **O que levaria à revisão:** necessidade de nomes mais longos ou de unicidade de nomes por workspace.
+
+### D-033 — Retenção do conteúdo extraído e fronteira import/indexação (revisa D-028)
+**Status:** Aceita (16/10/2026)  
+**Contexto:** a D-028 apagava a pasta do job ao concluir, mas a indexação (Etapa 3) precisa ler o conteúdo, e a fronteira entre os dois jobs estava pendente.  
+**Opções consideradas:**
+1. O import só conclui depois da indexação (inviável antes da Etapa 3).
+2. O import conclui após extração e validação, e a árvore extraída do import atual é retida.
+
+**Decisão:** opção 2.
+- `DATA_DIR/imports/<id>/source/` é a origem do projeto ZIP enquanto `<id>` for o `current_import_job_id`; inventário e indexação a leem como leem uma pasta local.
+- O `upload.zip` é apagado depois da extração.
+- A pasta é apagada quando o job termina `REJECTED` ou `FAILED`, quando um import mais novo conclui (a do anterior) e na remoção do projeto, sempre depois do commit.
+- Na inicialização, pastas em `DATA_DIR/imports` que não pertencem a um import atual são removidas.
+
+**Motivo:** permite inventário e reindexação sem novo upload, com isolamento e limpeza previsíveis.  
+**Consequências:** o disco usado é limitado por `app.import.max-uncompressed-bytes` por projeto ZIP; `05-DATA-MODEL.md` §6 atualizado.  
+**O que levaria à revisão:** volume em disco que torne inviável reter uma cópia por projeto ZIP.
+
+### D-034 — Execução do import na Etapa 2 (não resolve a O-009)
+**Status:** Aceita (16/10/2026)  
+**Contexto:** o upload responde `202` e a extração roda depois; a O-009 (fila de jobs) só precisa ser decidida para a indexação.  
+**Opções consideradas:**
+1. Antecipar a fila em tabela da O-009.
+2. Executor em processo, com recuperação na inicialização.
+
+**Decisão:** opção 2.
+- Pool fixo de `app.import.max-concurrent` threads (padrão 2), criado pelo módulo `importjob`; o job é submetido **depois do commit** da transação que o cria.
+- Na inicialização, antes de o servidor web aceitar requisições, jobs `PENDING`/`EXTRACTING` viram `FAILED` com `IMPORT_INTERRUPTED`, e suas pastas são apagadas. Não há retomada: basta reenviar o arquivo.
+- Transições de estado são `UPDATE` condicionados ao estado atual, para que um job termine uma única vez.
+
+**Motivo:** a extração é curta e recomeçar é barato; não há infraestrutura nova.  
+**Consequências:** a O-009 continua aberta para os jobs de indexação da Etapa 3.  
+**O que levaria à revisão:** imports longos o bastante para justificar retomada, ou a fila da O-009 cobrir também os imports.
+
+### D-035 — Inventário calculado sob demanda
+**Status:** Aceita (16/10/2026)  
+**Contexto:** a pré-análise (F-02) e o inventário (F-04) precisam de contagens antes da tabela `files`, que depende da O-008.  
+**Opções consideradas:**
+1. Persistir o inventário já na Etapa 2.
+2. Calcular a cada chamada, sem persistir.
+
+**Decisão:** opção 2. `GET /projects/{projectId}/inventory` faz a varredura segura a cada chamada e devolve agregados (por linguagem, por diretório de primeiro nível, por motivo de exclusão, com até 20 exemplos) e avisos.
+- Limites `app.inventory.max-entries` (padrão 200.000) e `max-depth` (64); ao atingir o de entradas, a resposta traz `truncated: true` e o aviso `SCAN_LIMIT_REACHED`.
+- Diretórios excluídos não são percorridos; seus arquivos não entram nas contagens.
+
+**Motivo:** não antecipa o modelo de snapshots.  
+**Consequências:** a persistência vem com os snapshots na Etapa 3; o custo da varredura deve ser medido na Etapa 8.  
+**O que levaria à revisão:** latência inaceitável em repositórios grandes.
+
+### D-036 — Regras de exclusão (resolve O-012)
+**Status:** Aceita (16/10/2026)  
+**Contexto:** a Etapa 2 exige exclusões padrão e customizadas, e a O-012 pedia decidir a detecção de segredos antes dela.  
+**Opções consideradas (segredos):** biblioteca de detecção por conteúdo ou apenas padrões de nome no MVP.  
+**Decisão:**
+- **Segredos:** apenas padrões de nome no MVP (regras `SENSITIVE`). Detecção por conteúdo fica para a Etapa 8, com segredos sintéticos no corpus. A API e a UI dizem que arquivos foram excluídos por padrão, nunca que segredos foram detectados.
+- **Regras padrão** com `id` estável e categoria (`SENSITIVE`, `VCS`, `DEPENDENCIES`, `BUILD_OUTPUT`, `IDE_CACHE`, `GENERATED`, `MEDIA_BINARY`). `SENSITIVE`, `VCS` e `MEDIA_BINARY` não podem ser desativadas; as demais podem, por `id`.
+- **Customização por projeto** (`project_settings`): `excludePatterns` (até 100, somados às regras padrão), `disabledDefaultRules`, `maxFileBytes` e `maxProjectBytes`. Sem padrões de inclusão: desativar uma regra cobre o caso comum.
+- **Sintaxe de padrões, independente do SO:** relativos à raiz do projeto, separador `/`; `*` (sem `/`), `**` (zero ou mais segmentos) e `?`; sem `/` (exceto o final) casa o nome em qualquer profundidade; com `/` é ancorado na raiz; `/` final restringe a diretórios, que não são percorridos; sensível a maiúsculas. `!` inicial, `[`, `]`, `\`, caracteres de controle e `..` são inválidos.
+- Cada `PUT` incrementa `settings_version`, exibida no inventário.
+
+**Motivo:** padrões de nome são previsíveis e explicáveis ao usuário; a detecção por conteúdo é defesa adicional, nunca garantia (O-012).  
+**Consequências:** `05-DATA-MODEL.md` (`project_settings`) e `06-API-CONTRACTS.md` (§5) atualizados.  
+**O que levaria à revisão:** a avaliação mostrar segredos indexados que padrões de nome não cobrem, ou demanda por whitelist.
+
+### D-037 — Links, arquivos especiais e limites de varredura
+**Status:** Aceita (16/10/2026)  
+**Contexto:** a D-018 diz que links não são seguidos, mas não definia como tratá-los na navegação, na varredura e no ZIP.  
+**Decisão:**
+- **Links simbólicos** nunca são seguidos: não aparecem na navegação (um caminho que passa por link responde `404 DIRECTORY_NOT_FOUND`), aparecem na varredura como `SYMLINK`, e um projeto cujo caminho passa por link responde `409 SOURCE_IS_SYMLINK` no inventário.
+- **Arquivos especiais** (FIFO, socket, dispositivo) são `SPECIAL_FILE` e nunca são abertos.
+- Atributos são lidos sem seguir links, a amostra é aberta com `NOFOLLOW_LINKS`, e o caminho real resolvido precisa começar pelo caminho real da raiz.
+- O extrator de ZIP nunca cria links: entradas de link são gravadas como arquivo comum.
+- **Limitações conhecidas:** links físicos e pontos de montagem dentro da raiz não são detectados, e uma troca concorrente de diretório por link (TOCTOU) não é totalmente evitável sem `openat`. O modelo de ameaça é conteúdo malicioso, não um atacante concorrente no disco local.
+
+**Consequências:** `07-SECURITY-PRIVACY-COSTS.md` §3 e §4 atualizados.  
+**O que levaria à revisão:** execução do backend em ambiente compartilhado, onde outro usuário possa alterar a raiz durante a varredura.
+
+### D-038 — Ajustes de contrato da Etapa 2
+**Status:** Aceita (16/10/2026)  
+**Decisão:**
+- `GET /local-roots/{rootKey}/directories` devolve um objeto `{ path, directories, truncated }`, para não cortar a lista em silêncio (`app.browse.max-directories`, padrão 1000). Nomes vêm em NFC; diretórios cujo nome teria `\` ou caracteres de controle são omitidos.
+- Configurações por `GET` e `PUT /projects/{projectId}/settings` (substituição completa), em vez de `PATCH`.
+- `GET /projects/{projectId}/imports` (paginado) permite à UI reencontrar um import em andamento.
+- Códigos novos: `DIRECTORY_NOT_FOUND`, `DIRECTORY_NOT_READABLE`, `PROJECT_BUSY`, `PROJECT_SOURCE_MISMATCH`, `UPLOAD_TOO_LARGE`, `IMPORT_NOT_FOUND`, `SOURCE_ROOT_NOT_CONFIGURED`, `SOURCE_DIRECTORY_NOT_FOUND`, `SOURCE_IS_SYMLINK`, `SOURCE_NOT_READABLE` e `SOURCE_NOT_IMPORTED`.
+
+**Motivo:** respostas sem truncamento silencioso e um código por situação, para o frontend não interpretar texto (D-022).  
+**Consequências:** `06-API-CONTRACTS.md` §4, §5 e §6 atualizados.
 
 ---
 
@@ -464,7 +561,8 @@ E, para o conteúdo: guardar o conteúdo completo deduplicado por hash (`file_co
 **Status:** A decidir antes da Etapa 3  
 **Contexto:** `@Async` simples perde jobs se a aplicação cair, o que conflita com o requisito de recuperação após falhas.  
 **Recomendação:** fila em tabela (`index_jobs`) com `SELECT … FOR UPDATE SKIP LOCKED`, retomada de jobs interrompidos na inicialização e etapas idempotentes. Sem infraestrutura nova.  
-**Revisão:** separar um worker apenas se medições de recurso ou confiabilidade justificarem (D-005).
+**Revisão:** separar um worker apenas se medições de recurso ou confiabilidade justificarem (D-005).  
+**Etapa 2 (16/10/2026):** os imports ZIP usam executor em processo com recuperação na inicialização (D-034), o que não decide a O-009 para a indexação.
 
 ### O-010 — Parâmetros iniciais de chunking
 **Status:** A validar  
@@ -475,11 +573,6 @@ E, para o conteúdo: guardar o conteúdo completo deduplicado por hash (`file_co
 **Status:** A decidir antes da Etapa 5  
 **Questões:** quais repositórios (licença permissiva, tamanhos e linguagens variados), quem anota arquivos/linhas esperados e perguntas sem resposta, e como versionar o corpus.  
 **Sugestão:** projetos próprios mais um ou dois repositórios open source conhecidos.
-
-### O-012 — Detecção de segredos
-**Status:** A decidir antes da Etapa 2  
-**Questão:** usar biblioteca existente de detecção de segredos ou apenas padrões de exclusão no MVP.  
-**Restrição:** a detecção é defesa adicional, nunca garantia; a interface não deve prometer que todos os segredos serão detectados.
 
 ---
 

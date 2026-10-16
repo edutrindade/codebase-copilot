@@ -37,6 +37,8 @@
 
 ## Etapa 2 — Importação e inventário seguro
 
+**Status:** concluída em 16/10/2026 (plano, testes e desvios em `docs/plans/etapa-2.md`; decisões D-033 a D-038).
+
 - Implementar a navegação nas raízes permitidas (`GET /local-roots`, D-018, D-029).
 - Implementar `DATA_DIR` com validação na inicialização (D-028).
 - Implementar upload ZIP com limites e concorrência (D-028).

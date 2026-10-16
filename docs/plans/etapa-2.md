@@ -1,6 +1,6 @@
 # Plano — Etapa 2: Importação e inventário seguro
 
-**Status:** em implementação (branch `etapa-2`). Propostas P1 a P6 aprovadas em 15/10/2026.
+**Status:** concluído em 16/10/2026 (branch `etapa-2`). Propostas P1 a P6 aprovadas em 15/10/2026 e registradas como D-033 a D-038. Ver "Resultado e desvios" ao final.
 **Referências:** `09-IMPLEMENTATION-ROADMAP.md` (Etapa 2), `docs/plans/etapa-1.md` (pendências), D-012, D-018, D-020, D-021, D-028, D-029, D-031, O-009, O-012.
 
 ## Escopo
@@ -558,7 +558,20 @@ CREATE TABLE project_settings (
 
 ## Resultado e desvios
 
-Preenchido ao longo da implementação e fechado na F6.
+**Aceite:** testes de segurança demonstram que arquivos não escapam da raiz e que ZIPs maliciosos são rejeitados:
+- `ConfinedPathsTest` e `LocalRootsApiIT` (F0, F1): links no caminho, dentro ou fora da raiz, nunca são seguidos;
+- `ZipExtractorTest` (F3): ZIP Slip, caminhos absolutos e com letra de unidade, `\`, NUL, duplicatas, colisões por maiúsculas, bombas, tamanho declarado falso, total acima do limite, profundidade, ZIPs inválidos, truncados e criptografados; em todos os casos, nada é gravado fora da pasta do job;
+- `SafeScannerTest` (F4): links para arquivo, diretório, dentro da raiz e em laço não são seguidos, e FIFOs não são abertos, nem diretamente nem por link.
+
+**Commits:** F0 `3c7257c`, F1 `67b0fd9`, F2 `2311af1`, F3 `882a117`, F4 `e267d48`, F5 `0d41abb`, F6 (documentação de fechamento).
+
+**Pendências para a Etapa 3:**
+- `PROJECT_BUSY` também para jobs de indexação (a porta `ProjectImports` é o ponto de extensão);
+- persistência do inventário na tabela `files` e decisões O-008 e O-009;
+- uso de `settings_version` para decidir a reindexação;
+- recusar a indexação quando o aviso `PROJECT_SIZE_LIMIT_EXCEEDED` estiver presente.
+
+**Para a Etapa 8:** medir os limites de import e de varredura; detecção de segredos por conteúdo; links físicos e pontos de montagem; diretórios em NFD no Linux (aparecem na navegação, mas não abrem).
 
 **Desvios e acréscimos em relação ao plano:**
 - **Árvore de teste (F0):** o initializer cria apenas `target/test-roots/{default,work}` vazios. Links, arquivo ilegível e FIFO entram na F1 e na F4, junto com os testes que os usam.
