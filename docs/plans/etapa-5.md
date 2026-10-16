@@ -308,6 +308,23 @@ Consequências para a P1:
 - Baseline lexical (sem custo); vetorial e híbrido com o provedor real quando houver saldo, junto com o teste de fumaça da Etapa 4.
 - **Testes:** métricas com rankings conhecidos (Recall@k, MRR, Precision@k, cobertura, sobreposição de intervalo, `otherPaths` contando como o mesmo arquivo); duas execuções com o cache geram o mesmo resultado.
 
+**Como foi entregue (16/10/2026)**
+- `RetrievalEvaluationIT` (tag `eval`, em `retrieval`, para usar os canais diretamente) e, em `com.codebasecopilot.eval`, `RetrievalMetrics` (pura), `EmbeddingCache` (decorador da porta, aplicado por um `BeanPostProcessor` só no contexto do harness) e `EvaluationReport` (JSON e Markdown). Registrado na D-062. Como rodar: `eval/README.md`.
+- Variantes medidas sobre as mesmas listas: `LEXICAL`, `VECTOR`, `LEXICAL_PATH`, `LEXICAL_VECTOR` e `HYBRID`. A `LEXICAL_PATH` e a `LEXICAL_VECTOR` respondem à P4 (o canal de caminhos ajuda?) sem rodar nada de novo.
+- `eval` entrou em `test.excluded-groups`; a guarda do provedor real libera as tags `smoke` e `eval`. `TestProperties` e `TestcontainersConfiguration` ficaram públicas, para o harness montar o próprio contexto (o `@IntegrationTest` limita o tamanho de arquivo do inventário a 4 KB, o que tiraria arquivos do corpus).
+- **Testes:** `RetrievalMetricsTest` (sobreposição nas bordas, outro arquivo, `otherPaths`, Recall@5/10/20, dois chunks do mesmo intervalo, MRR e corte em 10, Precision@10 com menos resultados, ranking vazio, cobertura só em `CROSS_FILE_FLOW`, `mustAbstain` recusado, resumo); `EmbeddingCacheTest` (segunda rodada sem chamar o provedor e com os mesmos vetores, só os textos faltantes vão ao provedor e na ordem, modelos separados, texto nunca gravado, arquivo corrompido buscado de novo); `EvaluationReportTest` (nomes, métricas e agrupamentos do JSON, mesmo resultado com latências diferentes, Markdown, p95); `RealEmbeddingProviderGuardTest` com a tag `eval`.
+- **Baseline lexical** (`eval/results/2026-10-16-lexical.json` e `.md`), 36 perguntas (40 menos as 4 com `mustAbstain`):
+
+| Variante | Recall@5 | Recall@10 | Recall@20 | MRR@10 | Precision@10 | Cobertura@10 (4) |
+|---|---|---|---|---|---|---|
+| `LEXICAL` | 0,380 | 0,472 | 0,519 | 0,341 | 0,069 | 0,583 |
+| `LEXICAL_PATH` | 0,407 | 0,472 | 0,519 | 0,362 | 0,072 | 0,583 |
+
+  - Por idioma, o lexical cai à metade em pt-BR (Recall@10 0,296 contra 0,648 em en), como a P7 previa. Por corpus: fixture 0,750, Copilot 0,397, click 0,258 (Recall@10).
+  - O canal de caminhos melhora só o MRR e o Recall@5 (na fixture, de 0,681 para 0,750 de MRR); a decisão de mantê-lo espera o híbrido com vetores reais (F7).
+- **Reprodutibilidade:** a segunda rodada com `EVAL_COMPARE_WITH` apontando para a primeira passou (lexical). Com o provedor `fake` e cache novo, a primeira rodada gravou 1.648 vetores e a segunda teve 1.648 acertos, nenhuma chamada e o mesmo resultado; essa rodada só testa o harness e não foi versionada (o fake não mede semântica, D-047).
+- **Pendente:** baseline vetorial e híbrido com `EVAL_PROVIDER=openai` e o teste de fumaça da Etapa 4, quando houver saldo (pré-requisito externo). Custo estimado: a F0 (~US$ 0,02 a 0,07); o fake contou ~330 mil "tokens" pela sua regra, o que não vale para a OpenAI.
+
 ### F7 — Fechamento
 - Aceite: resultados reprodutíveis e híbrido comparado com os baselines individuais.
 - Bake-off, se aprovado na P8.

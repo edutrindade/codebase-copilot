@@ -2,6 +2,7 @@ package com.codebasecopilot;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Tag;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -13,21 +14,22 @@ import org.springframework.test.context.MergedContextConfiguration;
 
 // Registered in META-INF/spring.factories, so it also covers test contexts created later: a
 // context that forgets TestProperties.EMBEDDING_PROVIDER would pick the provider from .env.
-// Only the manual smoke test, excluded from ./mvnw verify by its tag, may call the real provider.
+// Only the manual smoke test and the evaluation harness, excluded from ./mvnw verify by their
+// tags, may call the real provider.
 class RealEmbeddingProviderGuard implements ContextCustomizerFactory {
 
     static final String PROPERTY = "app.embeddings.provider";
-    static final String SMOKE_TAG = "smoke";
+    static final Set<String> REAL_PROVIDER_TAGS = Set.of("smoke", "eval");
 
     @Override
     public @Nullable ContextCustomizer createContextCustomizer(
             Class<?> testClass, List<ContextConfigurationAttributes> configAttributes) {
-        return isSmokeTest(testClass) ? null : new Customizer();
+        return mayUseRealProvider(testClass) ? null : new Customizer();
     }
 
-    static boolean isSmokeTest(Class<?> testClass) {
+    static boolean mayUseRealProvider(Class<?> testClass) {
         return AnnotatedElementUtils.findMergedRepeatableAnnotations(testClass, Tag.class).stream()
-                .anyMatch(tag -> tag.value().equals(SMOKE_TAG));
+                .anyMatch(tag -> REAL_PROVIDER_TAGS.contains(tag.value()));
     }
 
     static void check(ConfigurableApplicationContext context) {

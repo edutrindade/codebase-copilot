@@ -7,6 +7,7 @@ Corpus e anotações da avaliação de recuperação (D-061, `docs/08-EVALUATION
 | `corpus/fixture/` | Fixture sintética versionada (Java, TypeScript, Python, SQL, Markdown) |
 | `corpus/<corpus>.sha256` | Manifesto: SHA-256, quantidade de linhas (`-` se não for texto) e caminho de cada arquivo |
 | `questions/<corpus>.yaml` | Perguntas e intervalos de linhas esperados |
+| `results/` | Resultados versionados de cada rodada do harness |
 
 A fixture tem de propósito um arquivo com instrução injetada (`docs/CONTRIBUTING.md`) e um `.npmrc` com um token sintético, que a varredura exclui. Nada do corpus é executado.
 
@@ -28,6 +29,24 @@ export EVAL_CORPUS_CLICK=<pasta-click>
 ```
 
 O harness confere a pasta contra o manifesto e para se houver arquivo alterado, faltando ou a mais (inclusive `.DS_Store`).
+
+## Rodar a avaliação
+
+O harness (`RetrievalEvaluationIT`, D-062) fica fora do `./mvnw verify`. Com as variáveis dos corpora externos definidas, em `apps/backend`:
+
+```bash
+./mvnw verify -Dtest.excluded-groups= -Dgroups=eval -Dtest=none \
+  -Dsurefire.failIfNoSpecifiedTests=false -Dit.test=RetrievalEvaluationIT
+```
+
+| Variável | Efeito |
+|---|---|
+| `EVAL_PROVIDER` | `none` (padrão): só os canais lexical e de caminhos, nada sai da máquina. `openai`: envia corpora e perguntas ao provedor, com a chave de `EMBEDDING_API_KEY` (custo estimado de centavos de dólar). `fake`: só para testar o harness; não mede semântica |
+| `EVAL_CACHE_DIR` | Pasta do cache de vetores; padrão `DATA_DIR/eval-cache`. Guarda só hashes e vetores. Com o cache, uma nova rodada não chama o provedor |
+| `EVAL_CORPORA` | Lista de corpora separados por vírgula (ex.: `fixture`); padrão: todos |
+| `EVAL_COMPARE_WITH` | JSON de uma rodada anterior: a rodada falha se o resultado, fora data e latências, for diferente |
+
+O resultado vai para `results/<data>-<config>.json` (métricas por pergunta e os 10 primeiros chunks de cada variante) e `results/<data>-<config>.md` (resumo), com `config` igual a `lexical` sem provedor ou `<provedor>-<modelo>` com.
 
 ## Gerar um manifesto
 

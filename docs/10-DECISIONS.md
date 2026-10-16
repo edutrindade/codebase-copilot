@@ -960,6 +960,21 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Consequências:** alterar um arquivo da fixture exige gerar de novo o manifesto (`eval/README.md`) e revisar as anotações que apontam para ele.  
 **O que levaria à revisão:** corpus pequeno demais para separar as variantes na avaliação, ou anotações que se mostrem ambíguas na revisão.
 
+### D-062 — Harness de avaliação de recuperação (P8 da Etapa 5)
+**Status:** Aceita (16/10/2026; F6 da Etapa 5 entregue; baseline vetorial e híbrido pendente de saldo no provedor)  
+**Contexto:** o aceite da Etapa 5 pede resultados reprodutíveis e o híbrido comparado com os canais individuais, no corpus da D-061.  
+**Decisão:**
+- **`RetrievalEvaluationIT`**, tag `eval`, fora do `verify` (como `performance` e `smoke`). Indexa cada corpus pelo pipeline real (Testcontainers, pasta local copiada para uma raiz de teste), consulta cada canal uma vez por pergunta (`candidates` = 50) e calcula as variantes em memória com a `RrfFusion` (D-059): `LEXICAL`, `VECTOR`, `LEXICAL_PATH`, `LEXICAL_VECTOR` e `HYBRID` (os três canais, como o modo `HYBRID` da D-060). Sem provedor, só as variantes sem vetor.
+- **Provedor:** `EVAL_PROVIDER` (`none` por padrão, que não envia nada; `fake` para testar o harness; `openai` para o baseline real, com a chave de `EMBEDDING_API_KEY`). A guarda dos testes (D-047) libera o provedor real só para as tags `smoke` e `eval`.
+- **Cache de vetores:** todo vetor devolvido pelo provedor fica em `DATA_DIR/eval-cache/<provedor>-<modelo>-<dimensões>/<sha256 do texto>.f32` (ou em `EVAL_CACHE_DIR`), para chunks e perguntas. Guarda só hash e vetor, nunca o texto. Uma segunda rodada não chama o provedor nem sofre a variação dele.
+- **Métricas** (`RetrievalMetrics`, pura, com testes no `verify`): Recall@5/10/20 por intervalo esperado, MRR@10, Precision@10 (dividido por 10 mesmo com menos resultados) e cobertura de arquivos@10 nas perguntas `CROSS_FILE_FLOW` (qualquer chunk do arquivo conta; `otherPaths` é o mesmo arquivo). Perguntas com `mustAbstain` ficam de fora. Resumo por variante, corpus, categoria e idioma; latência média e p95 por canal (inclusive a chamada de embedding da pergunta).
+- **Resultados** em `eval/results/<data>-<config>.json` (`lexical` sem provedor, `<provedor>-<modelo>` com) e um resumo `.md` em pt-BR, versionados. O JSON registra corpus (commit, SHA-256 do manifesto, arquivos e chunks), versões de chunking e lexical, modelo, parâmetros da fusão, as métricas de cada pergunta e os 10 primeiros chunks de cada variante (caminho e linhas, sem conteúdo).
+- **Reprodutibilidade:** ordem determinística em todos os canais (D-057 a D-059) e vetores em cache. `EVAL_COMPARE_WITH=<json>` faz a rodada falhar se o resultado, fora data e latências, diferir de um anterior.
+
+**Motivo:** buscar as listas uma vez e fundir em memória permite variar k, pesos e canais sem consultar o banco de novo; o cache torna o baseline pago reprodutível e barato de repetir.  
+**Consequências:** o baseline lexical (sem custo) está em `eval/results/2026-10-16-lexical.*`; o vetorial e o híbrido saem do mesmo harness com `EVAL_PROVIDER=openai`, quando houver saldo, junto com o teste de fumaça da Etapa 4. A comparação e as decisões que dependem dela (D-017, O-005) ficam para a F7.  
+**O que levaria à revisão:** corpus maior, bake-off de embeddings (O-004) ou variantes novas da fusão.
+
 ---
 
 ## Decisões em aberto

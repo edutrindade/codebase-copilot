@@ -1,0 +1,1223 @@
+{
+  "date" : "2026-10-16",
+  "name" : "lexical",
+  "config" : {
+    "provider" : null,
+    "model" : null,
+    "dimensions" : null,
+    "lexicalVersion" : "ident-v1",
+    "candidatesPerChannel" : 50,
+    "rrfK" : 60,
+    "rrfWeights" : "1 em todos os canais",
+    "pathThreshold" : 0.8,
+    "rankingDepth" : 20
+  },
+  "metrics" : {
+    "LEXICAL" : {
+      "all" : {
+        "questions" : 36,
+        "recall@5" : 0.3796,
+        "recall@10" : 0.4722,
+        "recall@20" : 0.5185,
+        "mrr@10" : 0.3408,
+        "precision@10" : 0.0694,
+        "fileCoverage@10" : 0.5833,
+        "coverageQuestions" : 4
+      },
+      "corpus" : {
+        "click" : {
+          "questions" : 11,
+          "recall@5" : 0.1212,
+          "recall@10" : 0.2576,
+          "recall@20" : 0.3485,
+          "mrr@10" : 0.0707,
+          "precision@10" : 0.0545,
+          "fileCoverage@10" : 1.0,
+          "coverageQuestions" : 1
+        },
+        "codebase-copilot" : {
+          "questions" : 13,
+          "recall@5" : 0.359,
+          "recall@10" : 0.3974,
+          "recall@20" : 0.4487,
+          "mrr@10" : 0.2558,
+          "precision@10" : 0.0538,
+          "fileCoverage@10" : 0.1667,
+          "coverageQuestions" : 2
+        },
+        "fixture" : {
+          "questions" : 12,
+          "recall@5" : 0.6389,
+          "recall@10" : 0.75,
+          "recall@20" : 0.75,
+          "mrr@10" : 0.6806,
+          "precision@10" : 0.1,
+          "fileCoverage@10" : 1.0,
+          "coverageQuestions" : 1
+        }
+      },
+      "category" : {
+        "AMBIGUOUS" : {
+          "questions" : 2,
+          "recall@5" : 0.0,
+          "recall@10" : 0.25,
+          "recall@20" : 0.25,
+          "mrr@10" : 0.0556,
+          "precision@10" : 0.05,
+          "fileCoverage@10" : null,
+          "coverageQuestions" : 0
+        },
+        "ARCHITECTURE" : {
+          "questions" : 3,
+          "recall@5" : 0.3333,
+          "recall@10" : 0.3333,
+          "recall@20" : 0.3333,
+          "mrr@10" : 0.3333,
+          "precision@10" : 0.0333,
+          "fileCoverage@10" : null,
+          "coverageQuestions" : 0
+        },
+        "CONCEPTUAL" : {
+          "questions" : 14,
+          "recall@5" : 0.2857,
+          "recall@10" : 0.3929,
+          "recall@20" : 0.3929,
+          "mrr@10" : 0.1601,
+          "precision@10" : 0.05,
+          "fileCoverage@10" : null,
+          "coverageQuestions" : 0
+        },
+        "CROSS_FILE_FLOW" : {
+          "questions" : 4,
+          "recall@5" : 0.3333,
+          "recall@10" : 0.4167,
+          "recall@20" : 0.5,
+          "mrr@10" : 0.375,
+          "precision@10" : 0.125,
+          "fileCoverage@10" : 0.5833,
+          "coverageQuestions" : 4
+        },
+        "DEPENDENCIES_CONFIGURATION" : {
+          "questions" : 4,
+          "recall@5" : 0.3333,
+          "recall@10" : 0.3333,
+          "recall@20" : 0.6667,
+          "mrr@10" : 0.3125,
+          "precision@10" : 0.05,
+          "fileCoverage@10" : null,
+          "coverageQuestions" : 0
+        },
+        "EXACT_IDENTIFIER" : {
+          "questions" : 8,
+          "recall@5" : 0.625,
+          "recall@10" : 0.75,
+          "recall@20" : 0.75,
+          "mrr@10" : 0.6458,
+          "precision@10" : 0.1,
+          "fileCoverage@10" : null,
+          "coverageQuestions" : 0
+        },
+        "PROMPT_INJECTION" : {
+          "questions" : 1,
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.1,
+          "fileCoverage@10" : null,
+          "coverageQuestions" : 0
+        }
+      },
+      "language" : {
+        "en" : {
+          "questions" : 18,
+          "recall@5" : 0.463,
+          "recall@10" : 0.6481,
+          "recall@20" : 0.7222,
+          "mrr@10" : 0.4344,
+          "precision@10" : 0.0944,
+          "fileCoverage@10" : 0.7778,
+          "coverageQuestions" : 3
+        },
+        "pt-BR" : {
+          "questions" : 18,
+          "recall@5" : 0.2963,
+          "recall@10" : 0.2963,
+          "recall@20" : 0.3148,
+          "mrr@10" : 0.2472,
+          "precision@10" : 0.0444,
+          "fileCoverage@10" : 0.0,
+          "coverageQuestions" : 1
+        }
+      }
+    },
+    "LEXICAL_PATH" : {
+      "all" : {
+        "questions" : 36,
+        "recall@5" : 0.4074,
+        "recall@10" : 0.4722,
+        "recall@20" : 0.5185,
+        "mrr@10" : 0.3619,
+        "precision@10" : 0.0722,
+        "fileCoverage@10" : 0.5833,
+        "coverageQuestions" : 4
+      },
+      "corpus" : {
+        "click" : {
+          "questions" : 11,
+          "recall@5" : 0.1212,
+          "recall@10" : 0.2576,
+          "recall@20" : 0.3485,
+          "mrr@10" : 0.0707,
+          "precision@10" : 0.0545,
+          "fileCoverage@10" : 1.0,
+          "coverageQuestions" : 1
+        },
+        "codebase-copilot" : {
+          "questions" : 13,
+          "recall@5" : 0.359,
+          "recall@10" : 0.3974,
+          "recall@20" : 0.4487,
+          "mrr@10" : 0.25,
+          "precision@10" : 0.0615,
+          "fileCoverage@10" : 0.1667,
+          "coverageQuestions" : 2
+        },
+        "fixture" : {
+          "questions" : 12,
+          "recall@5" : 0.7222,
+          "recall@10" : 0.75,
+          "recall@20" : 0.75,
+          "mrr@10" : 0.75,
+          "precision@10" : 0.1,
+          "fileCoverage@10" : 1.0,
+          "coverageQuestions" : 1
+        }
+      },
+      "category" : {
+        "AMBIGUOUS" : {
+          "questions" : 2,
+          "recall@5" : 0.0,
+          "recall@10" : 0.25,
+          "recall@20" : 0.25,
+          "mrr@10" : 0.0556,
+          "precision@10" : 0.05,
+          "fileCoverage@10" : null,
+          "coverageQuestions" : 0
+        },
+        "ARCHITECTURE" : {
+          "questions" : 3,
+          "recall@5" : 0.3333,
+          "recall@10" : 0.3333,
+          "recall@20" : 0.3333,
+          "mrr@10" : 0.3333,
+          "precision@10" : 0.0333,
+          "fileCoverage@10" : null,
+          "coverageQuestions" : 0
+        },
+        "CONCEPTUAL" : {
+          "questions" : 14,
+          "recall@5" : 0.3571,
+          "recall@10" : 0.3929,
+          "recall@20" : 0.3929,
+          "mrr@10" : 0.2179,
+          "precision@10" : 0.05,
+          "fileCoverage@10" : null,
+          "coverageQuestions" : 0
+        },
+        "CROSS_FILE_FLOW" : {
+          "questions" : 4,
+          "recall@5" : 0.3333,
+          "recall@10" : 0.4167,
+          "recall@20" : 0.5,
+          "mrr@10" : 0.375,
+          "precision@10" : 0.125,
+          "fileCoverage@10" : 0.5833,
+          "coverageQuestions" : 4
+        },
+        "DEPENDENCIES_CONFIGURATION" : {
+          "questions" : 4,
+          "recall@5" : 0.3333,
+          "recall@10" : 0.3333,
+          "recall@20" : 0.6667,
+          "mrr@10" : 0.3,
+          "precision@10" : 0.05,
+          "fileCoverage@10" : null,
+          "coverageQuestions" : 0
+        },
+        "EXACT_IDENTIFIER" : {
+          "questions" : 8,
+          "recall@5" : 0.625,
+          "recall@10" : 0.75,
+          "recall@20" : 0.75,
+          "mrr@10" : 0.6458,
+          "precision@10" : 0.1125,
+          "fileCoverage@10" : null,
+          "coverageQuestions" : 0
+        },
+        "PROMPT_INJECTION" : {
+          "questions" : 1,
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.1,
+          "fileCoverage@10" : null,
+          "coverageQuestions" : 0
+        }
+      },
+      "language" : {
+        "en" : {
+          "questions" : 18,
+          "recall@5" : 0.5185,
+          "recall@10" : 0.6481,
+          "recall@20" : 0.7222,
+          "mrr@10" : 0.4765,
+          "precision@10" : 0.1,
+          "fileCoverage@10" : 0.7778,
+          "coverageQuestions" : 3
+        },
+        "pt-BR" : {
+          "questions" : 18,
+          "recall@5" : 0.2963,
+          "recall@10" : 0.2963,
+          "recall@20" : 0.3148,
+          "mrr@10" : 0.2472,
+          "precision@10" : 0.0444,
+          "fileCoverage@10" : 0.0,
+          "coverageQuestions" : 1
+        }
+      }
+    }
+  },
+  "corpora" : [ {
+    "name" : "click",
+    "repository" : "https://github.com/pallets/click",
+    "commit" : "8b19813f2bfca99f1018a587a8cf54fc959f2e5d",
+    "manifestSha256" : "b28728bdbe6c1dc7597bf133ba635b184543c206d72216634b6786b7247c70b6",
+    "chunkingVersion" : "lines-v1",
+    "files" : 161,
+    "chunks" : 872,
+    "latencyMillis" : {
+      "LEXICAL" : {
+        "mean" : 7.8182,
+        "p95" : 31
+      },
+      "PATH" : {
+        "mean" : 0.4545,
+        "p95" : 3
+      }
+    },
+    "questions" : [ {
+      "id" : "ck-01",
+      "category" : "EXACT_IDENTIFIER",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.1667,
+          "precision@10" : 0.2,
+          "firstRelevant" : 6,
+          "top" : [ "src/click/core.py:452-503", "uv.lock:179-238", "docs/commands-and-groups.md:292-345", "tests/test_context.py:714-771", "uv.lock:1065-1117", "docs/options.md:593-651", "tests/test_options.py:3445-3500", "uv.lock:1108-1166", "src/click/core.py:3467-3523", "src/click/core.py:179-238" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.1667,
+          "precision@10" : 0.2,
+          "firstRelevant" : 6,
+          "top" : [ "src/click/core.py:452-503", "uv.lock:179-238", "docs/commands-and-groups.md:292-345", "tests/test_context.py:714-771", "uv.lock:1065-1117", "docs/options.md:593-651", "tests/test_options.py:3445-3500", "uv.lock:1108-1166", "src/click/core.py:3467-3523", "src/click/core.py:179-238" ]
+        }
+      }
+    }, {
+      "id" : "ck-02",
+      "category" : "CONCEPTUAL",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "tests/test_commands.py:349-408", "src/click/_winconsole.py:61-116", "tests/test_shell_completion.py:268-326", "src/click/_winconsole.py:1-59", "tests/test_arguments.py:459-514", "tests/test_shell_completion.py:429-484", "tests/test_options.py:1371-1427", "tests/test_shell_completion.py:160-210", "tests/test_shell_completion.py:108-157", "tests/test_options.py:3386-3443" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "tests/test_commands.py:349-408", "src/click/_winconsole.py:61-116", "tests/test_shell_completion.py:268-326", "src/click/_winconsole.py:1-59", "tests/test_arguments.py:459-514", "tests/test_shell_completion.py:429-484", "tests/test_options.py:1371-1427", "tests/test_shell_completion.py:160-210", "tests/test_shell_completion.py:108-157", "tests/test_options.py:3386-3443" ]
+        }
+      }
+    }, {
+      "id" : "ck-03",
+      "category" : "CONCEPTUAL",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "docs/command-line-reference.md:1-50", "docs/exceptions.md:57-113", "docs/exceptions.md:1-55", "tests/test_commands.py:120-172", "src/click/exceptions.py:348-378", "docs/faqs.md:1-59", "tests/test_testing.py:289-346", "tests/test_arguments.py:339-397", "tests/test_formatting.py:164-218", "src/click/_compat.py:347-397" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "docs/command-line-reference.md:1-50", "docs/exceptions.md:57-113", "docs/exceptions.md:1-55", "tests/test_commands.py:120-172", "src/click/exceptions.py:348-378", "docs/faqs.md:1-59", "tests/test_testing.py:289-346", "tests/test_arguments.py:339-397", "tests/test_formatting.py:164-218", "src/click/_compat.py:347-397" ]
+        }
+      }
+    }, {
+      "id" : "ck-04",
+      "category" : "CROSS_FILE_FLOW",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.3333,
+          "recall@10" : 0.3333,
+          "recall@20" : 0.3333,
+          "mrr@10" : 0.25,
+          "precision@10" : 0.1,
+          "fileCoverage@10" : 1.0,
+          "firstRelevant" : 4,
+          "top" : [ "tests/test_options.py:1480-1536", "tests/test_termui.py:1336-1394", "src/click/core.py:3585-3643", "src/click/decorators.py:352-406", "docs/options.md:593-651", "tests/test_options.py:1430-1489", "src/click/core.py:2510-2565", "docs/options.md:477-535", "tests/test_options.py:2121-2178", "tests/test_termui.py:1611-1669" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.3333,
+          "recall@10" : 0.3333,
+          "recall@20" : 0.3333,
+          "mrr@10" : 0.25,
+          "precision@10" : 0.1,
+          "fileCoverage@10" : 1.0,
+          "firstRelevant" : 4,
+          "top" : [ "tests/test_options.py:1480-1536", "tests/test_termui.py:1336-1394", "src/click/core.py:3585-3643", "src/click/decorators.py:352-406", "docs/options.md:593-651", "tests/test_options.py:1430-1489", "src/click/core.py:2510-2565", "docs/options.md:477-535", "tests/test_options.py:2121-2178", "tests/test_termui.py:1611-1669" ]
+        }
+      }
+    }, {
+      "id" : "ck-05",
+      "category" : "DEPENDENCIES_CONFIGURATION",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "uv.lock:1065-1117", "uv.lock:1108-1166", "uv.lock:1157-1206", "docs/why.md:1-58", "docs/faqs.md:1-59", "docs/index.md:1-58", "uv.lock:714-763", ".github/workflows/nightly.yaml:1-60", "docs/contrib.md:1-45", "README.md:1-56" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "uv.lock:1065-1117", "uv.lock:1108-1166", "uv.lock:1157-1206", "docs/why.md:1-58", "docs/faqs.md:1-59", "docs/index.md:1-58", "uv.lock:714-763", ".github/workflows/nightly.yaml:1-60", "docs/contrib.md:1-45", "README.md:1-56" ]
+        }
+      }
+    }, {
+      "id" : "ck-06",
+      "category" : "EXACT_IDENTIFIER",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "tests/test_shell_completion.py:268-326", "tests/test_shell_completion.py:108-157", "tests/test_testing.py:175-232", "tests/test_testing.py:234-287", "tests/test_testing.py:289-346", "tests/test_testing.py:705-762", "tests/test_testing.py:408-466", "tests/test_testing.py:764-821", "tests/test_shell_completion.py:329-388", "tests/test_shell_completion.py:160-210" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "tests/test_shell_completion.py:268-326", "tests/test_shell_completion.py:108-157", "tests/test_testing.py:175-232", "tests/test_testing.py:234-287", "tests/test_testing.py:289-346", "tests/test_testing.py:705-762", "tests/test_testing.py:408-466", "tests/test_testing.py:764-821", "tests/test_shell_completion.py:329-388", "tests/test_shell_completion.py:160-210" ]
+        }
+      }
+    }, {
+      "id" : "ck-07",
+      "category" : "CONCEPTUAL",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ ]
+        }
+      }
+    }, {
+      "id" : "ck-08",
+      "category" : "ARCHITECTURE",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "src/click/core.py:1827-1885", "tests/test_custom_classes.py:60-112", "src/click/core.py:2119-2174", "src/click/core.py:1652-1706", "tests/test_shell_completion.py:49-105", "docs/complex.md:233-291", "src/click/decorators.py:235-290", "src/click/core.py:58-116", "docs/commands-and-groups.md:173-230", "docs/complex.md:293-346" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "src/click/core.py:1827-1885", "tests/test_custom_classes.py:60-112", "src/click/core.py:2119-2174", "src/click/core.py:1652-1706", "tests/test_shell_completion.py:49-105", "docs/complex.md:233-291", "src/click/decorators.py:235-290", "src/click/core.py:58-116", "docs/commands-and-groups.md:173-230", "docs/complex.md:293-346" ]
+        }
+      }
+    }, {
+      "id" : "ck-09",
+      "category" : "CONCEPTUAL",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.25,
+          "precision@10" : 0.2,
+          "firstRelevant" : 4,
+          "top" : [ "src/click/shell_completion.py:572-626", "docs/shell-completion.md:178-235", "docs/shell-completion.md:1-59", "src/click/shell_completion.py:1-59", "src/click/core.py:1597-1650", "docs/shell-completion.md:120-176", "tests/test_shell_completion.py:329-388", "docs/shell-completion.md:237-275", "src/click/shell_completion.py:347-400", "CHANGES.md:905-961" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.25,
+          "precision@10" : 0.2,
+          "firstRelevant" : 4,
+          "top" : [ "src/click/shell_completion.py:572-626", "docs/shell-completion.md:178-235", "docs/shell-completion.md:1-59", "src/click/shell_completion.py:1-59", "src/click/core.py:1597-1650", "docs/shell-completion.md:120-176", "tests/test_shell_completion.py:329-388", "docs/shell-completion.md:237-275", "src/click/shell_completion.py:347-400", "CHANGES.md:905-961" ]
+        }
+      }
+    }, {
+      "id" : "ck-10",
+      "category" : "AMBIGUOUS",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.5,
+          "recall@20" : 0.5,
+          "mrr@10" : 0.1111,
+          "precision@10" : 0.1,
+          "firstRelevant" : 9,
+          "top" : [ "examples/repo/repo.py:116-166", "docs/handling-files.md:60-101", "docs/arguments.md:61-119", "tests/test_termui.py:607-666", "tests/test_termui.py:551-604", "docs/arguments.md:121-178", "tests/test_termui.py:1281-1333", "tests/test_options.py:2497-2555", "src/click/types.py:916-971", "docs/handling-files.md:1-58" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.5,
+          "recall@20" : 0.5,
+          "mrr@10" : 0.1111,
+          "precision@10" : 0.1,
+          "firstRelevant" : 9,
+          "top" : [ "examples/repo/repo.py:116-166", "docs/handling-files.md:60-101", "docs/arguments.md:61-119", "tests/test_termui.py:607-666", "tests/test_termui.py:551-604", "docs/arguments.md:121-178", "tests/test_termui.py:1281-1333", "tests/test_options.py:2497-2555", "src/click/types.py:916-971", "docs/handling-files.md:1-58" ]
+        }
+      }
+    }, {
+      "id" : "ck-12",
+      "category" : "DEPENDENCIES_CONFIGURATION",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : 11,
+          "top" : [ "examples/aliases/pyproject.toml:1-18", "examples/colors/pyproject.toml:1-18", "examples/completion/pyproject.toml:1-18", "examples/complex/pyproject.toml:1-18", "examples/inout/pyproject.toml:1-18", "examples/naval/pyproject.toml:1-18", "examples/repo/pyproject.toml:1-18", "examples/termui/pyproject.toml:1-18", "examples/validation/pyproject.toml:1-18", "examples/imagepipe/pyproject.toml:1-19" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : 11,
+          "top" : [ "examples/aliases/pyproject.toml:1-18", "examples/colors/pyproject.toml:1-18", "examples/completion/pyproject.toml:1-18", "examples/complex/pyproject.toml:1-18", "examples/inout/pyproject.toml:1-18", "examples/naval/pyproject.toml:1-18", "examples/repo/pyproject.toml:1-18", "examples/termui/pyproject.toml:1-18", "examples/validation/pyproject.toml:1-18", "examples/imagepipe/pyproject.toml:1-19" ]
+        }
+      }
+    } ]
+  }, {
+    "name" : "codebase-copilot",
+    "repository" : null,
+    "commit" : "9d986db5897aae9c71c7e37e3f98288ea30b884e",
+    "manifestSha256" : "f3aa1d8ee304bb5dbaafbb467c2f572e3d762b323fe47a222ec8cc03d8592245",
+    "chunkingVersion" : "lines-v1",
+    "files" : 274,
+    "chunks" : 732,
+    "latencyMillis" : {
+      "LEXICAL" : {
+        "mean" : 5.3077,
+        "p95" : 8
+      },
+      "PATH" : {
+        "mean" : 1.3846,
+        "p95" : 4
+      }
+    },
+    "questions" : [ {
+      "id" : "cc-01",
+      "category" : "EXACT_IDENTIFIER",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.1,
+          "firstRelevant" : 1,
+          "top" : [ "apps/backend/src/main/java/com/codebasecopilot/indexing/IndexJobRepository.java:53-112", "docs/plans/etapa-3.md:388-444", "apps/backend/src/main/java/com/codebasecopilot/indexing/IndexRunner.java:54-113", "docs/plans/etapa-3.md:110-139", "docs/10-DECISIONS.md:575-616", "apps/backend/src/main/java/com/codebasecopilot/indexing/IndexJobRepository.java:1-51", "apps/backend/src/main/java/com/codebasecopilot/indexing/IndexWorker.java:101-160", "docs/plans/etapa-3.md:77-108", "apps/backend/src/main/java/com/codebasecopilot/indexing/IndexOutcomes.java:1-60", "docs/plans/etapa-3.md:186-235" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.2,
+          "firstRelevant" : 1,
+          "top" : [ "apps/backend/src/main/java/com/codebasecopilot/indexing/IndexJobRepository.java:53-112", "apps/backend/src/main/java/com/codebasecopilot/indexing/IndexJobRepository.java:1-51", "docs/plans/etapa-3.md:388-444", "apps/backend/src/main/java/com/codebasecopilot/indexing/IndexJobRepository.java:103-155", "apps/backend/src/main/java/com/codebasecopilot/indexing/IndexRunner.java:54-113", "apps/backend/src/main/java/com/codebasecopilot/indexing/IndexJobRepository.java:157-201", "docs/plans/etapa-3.md:110-139", "apps/backend/src/main/java/com/codebasecopilot/indexing/IndexJobRepository.java:203-220", "docs/10-DECISIONS.md:575-616", "apps/backend/src/main/java/com/codebasecopilot/indexing/IndexWorker.java:101-160" ]
+        }
+      }
+    }, {
+      "id" : "cc-02",
+      "category" : "CONCEPTUAL",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "docs/plans/etapa-2.md:254-289", "apps/backend/src/main/resources/messages.properties:73-107", "docs/plans/etapa-2.md:224-263", "apps/backend/src/main/resources/messages.properties:1-53", "docs/10-DECISIONS.md:338-369", "docs/10-DECISIONS.md:202-233", "docs/plans/etapa-2.md:1-50", "apps/backend/src/main/java/com/codebasecopilot/importjob/ImportErrorCode.java:1-15", "docs/plans/etapa-2.md:542-574", "apps/backend/src/test/java/com/codebasecopilot/project/ProjectRepositoryIT.java:57-109" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "docs/plans/etapa-2.md:254-289", "apps/backend/src/main/resources/messages.properties:73-107", "docs/plans/etapa-2.md:224-263", "apps/backend/src/main/resources/messages.properties:1-53", "docs/10-DECISIONS.md:338-369", "docs/10-DECISIONS.md:202-233", "docs/plans/etapa-2.md:1-50", "apps/backend/src/main/java/com/codebasecopilot/importjob/ImportErrorCode.java:1-15", "docs/plans/etapa-2.md:542-574", "apps/backend/src/test/java/com/codebasecopilot/project/ProjectRepositoryIT.java:57-109" ]
+        }
+      }
+    }, {
+      "id" : "cc-03",
+      "category" : "CONCEPTUAL",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "apps/backend/src/test/java/com/codebasecopilot/importjob/ImportApiIT.java:1-59", "apps/backend/src/test/java/com/codebasecopilot/retrieval/SearchApiIT.java:1-57", "apps/backend/src/test/java/com/codebasecopilot/indexing/IndexJobApiIT.java:1-54", "apps/backend/src/test/java/com/codebasecopilot/indexing/IndexingAcceptanceIT.java:1-56", "apps/backend/src/test/java/com/codebasecopilot/indexing/EmbeddingIndexingIT.java:1-57", "apps/backend/src/test/java/com/codebasecopilot/indexing/IndexingRecoveryIT.java:1-46", "apps/backend/src/main/java/com/codebasecopilot/shared/error/GlobalExceptionHandler.java:1-55", "apps/backend/src/test/java/com/codebasecopilot/shared/error/ErrorHandlingTest.java:1-57", "apps/backend/src/test/java/com/codebasecopilot/importjob/scan/InventoryApiIT.java:1-54", "apps/backend/src/test/java/com/codebasecopilot/indexing/EmbeddingModelChangeIT.java:1-54" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "apps/backend/src/test/java/com/codebasecopilot/importjob/ImportApiIT.java:1-59", "apps/backend/src/test/java/com/codebasecopilot/retrieval/SearchApiIT.java:1-57", "apps/backend/src/test/java/com/codebasecopilot/indexing/IndexJobApiIT.java:1-54", "apps/backend/src/test/java/com/codebasecopilot/indexing/IndexingAcceptanceIT.java:1-56", "apps/backend/src/test/java/com/codebasecopilot/indexing/EmbeddingIndexingIT.java:1-57", "apps/backend/src/test/java/com/codebasecopilot/indexing/IndexingRecoveryIT.java:1-46", "apps/backend/src/main/java/com/codebasecopilot/shared/error/GlobalExceptionHandler.java:1-55", "apps/backend/src/test/java/com/codebasecopilot/shared/error/ErrorHandlingTest.java:1-57", "apps/backend/src/test/java/com/codebasecopilot/importjob/scan/InventoryApiIT.java:1-54", "apps/backend/src/test/java/com/codebasecopilot/indexing/EmbeddingModelChangeIT.java:1-54" ]
+        }
+      }
+    }, {
+      "id" : "cc-04",
+      "category" : "CROSS_FILE_FLOW",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "fileCoverage@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "docs/plans/etapa-2.md:254-289", "docs/plans/etapa-2.md:224-263", "apps/backend/src/main/java/com/codebasecopilot/importjob/ImportErrorCode.java:1-15", "apps/backend/src/test/java/com/codebasecopilot/project/ProjectRepositoryIT.java:57-109", "docs/05-DATA-MODEL.md:54-99", "apps/backend/src/main/resources/messages.properties:73-107", "apps/backend/src/test/java/com/codebasecopilot/indexing/ProjectIndexesAdapterTest.java:56-111", "docs/06-API-CONTRACTS.md:165-214", "docs/plans/etapa-2.md:180-233", "docs/10-DECISIONS.md:452-502" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "fileCoverage@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "docs/plans/etapa-2.md:254-289", "docs/plans/etapa-2.md:224-263", "apps/backend/src/main/java/com/codebasecopilot/importjob/ImportErrorCode.java:1-15", "apps/backend/src/test/java/com/codebasecopilot/project/ProjectRepositoryIT.java:57-109", "docs/05-DATA-MODEL.md:54-99", "apps/backend/src/main/resources/messages.properties:73-107", "apps/backend/src/test/java/com/codebasecopilot/indexing/ProjectIndexesAdapterTest.java:56-111", "docs/06-API-CONTRACTS.md:165-214", "docs/plans/etapa-2.md:180-233", "docs/10-DECISIONS.md:452-502" ]
+        }
+      }
+    }, {
+      "id" : "cc-05",
+      "category" : "CROSS_FILE_FLOW",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.3333,
+          "recall@10" : 0.3333,
+          "recall@20" : 0.6667,
+          "mrr@10" : 0.25,
+          "precision@10" : 0.1,
+          "fileCoverage@10" : 0.3333,
+          "firstRelevant" : 4,
+          "top" : [ "apps/backend/src/test/java/com/codebasecopilot/retrieval/SearchApiIT.java:272-325", "apps/backend/src/main/java/com/codebasecopilot/shared/error/GlobalExceptionHandler.java:57-116", "apps/backend/src/test/java/com/codebasecopilot/retrieval/SearchApiIT.java:164-213", "apps/backend/src/main/java/com/codebasecopilot/retrieval/VectorSearch.java:61-115", "apps/backend/src/test/java/com/codebasecopilot/retrieval/SearchApiIT.java:215-270", "apps/backend/src/test/java/com/codebasecopilot/indexing/IndexingAcceptanceIT.java:217-264", "apps/backend/src/test/java/com/codebasecopilot/EmbeddingSmokeIT.java:164-223", "apps/backend/src/test/java/com/codebasecopilot/importjob/scan/ProjectSettingsApiIT.java:161-205", "apps/backend/src/test/java/com/codebasecopilot/retrieval/SearchApiIT.java:327-380", "apps/backend/src/test/java/com/codebasecopilot/shared/error/ErrorHandlingTest.java:59-117" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.3333,
+          "recall@10" : 0.3333,
+          "recall@20" : 0.6667,
+          "mrr@10" : 0.25,
+          "precision@10" : 0.1,
+          "fileCoverage@10" : 0.3333,
+          "firstRelevant" : 4,
+          "top" : [ "apps/backend/src/test/java/com/codebasecopilot/retrieval/SearchApiIT.java:272-325", "apps/backend/src/main/java/com/codebasecopilot/shared/error/GlobalExceptionHandler.java:57-116", "apps/backend/src/test/java/com/codebasecopilot/retrieval/SearchApiIT.java:164-213", "apps/backend/src/main/java/com/codebasecopilot/retrieval/VectorSearch.java:61-115", "apps/backend/src/test/java/com/codebasecopilot/retrieval/SearchApiIT.java:215-270", "apps/backend/src/test/java/com/codebasecopilot/indexing/IndexingAcceptanceIT.java:217-264", "apps/backend/src/test/java/com/codebasecopilot/EmbeddingSmokeIT.java:164-223", "apps/backend/src/test/java/com/codebasecopilot/importjob/scan/ProjectSettingsApiIT.java:161-205", "apps/backend/src/test/java/com/codebasecopilot/retrieval/SearchApiIT.java:327-380", "apps/backend/src/test/java/com/codebasecopilot/shared/error/ErrorHandlingTest.java:59-117" ]
+        }
+      }
+    }, {
+      "id" : "cc-06",
+      "category" : "DEPENDENCIES_CONFIGURATION",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.25,
+          "precision@10" : 0.1,
+          "firstRelevant" : 4,
+          "top" : [ "docs/10-DECISIONS.md:115-154", "docs/10-DECISIONS.md:59-113", "apps/backend/pom.xml:51-110", "apps/backend/pom.xml:1-60", "docs/10-DECISIONS.md:699-716", "CLAUDE.md:1-42", "docs/plans/etapa-4.md:150-183", "apps/backend/pom.xml:101-152", "docs/plans/etapa-4.md:1-51", "README.md:156-180" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.2,
+          "precision@10" : 0.1,
+          "firstRelevant" : 5,
+          "top" : [ "apps/backend/src/test/resources/META-INF/spring.factories:1-2", "docs/10-DECISIONS.md:115-154", "docs/10-DECISIONS.md:59-113", "apps/backend/pom.xml:51-110", "apps/backend/pom.xml:1-60", "docs/10-DECISIONS.md:699-716", "CLAUDE.md:1-42", "docs/plans/etapa-4.md:150-183", "apps/backend/pom.xml:101-152", "docs/plans/etapa-4.md:1-51" ]
+        }
+      }
+    }, {
+      "id" : "cc-07",
+      "category" : "DEPENDENCIES_CONFIGURATION",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.3333,
+          "recall@10" : 0.3333,
+          "recall@20" : 0.6667,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.1,
+          "firstRelevant" : 1,
+          "top" : [ "README.md:1-54", "docs/plans/etapa-4.md:53-89", "docs/07-SECURITY-PRIVACY-COSTS.md:116-168", "docs/03-UX-ONBOARDING.md:1-58", "docs/10-DECISIONS.md:718-737", "docs/07-SECURITY-PRIVACY-COSTS.md:170-183", "docs/10-DECISIONS.md:841-868", "docs/10-DECISIONS.md:764-790", "docs/plans/etapa-2.md:576-593", "docs/plans/etapa-3.md:278-332" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.3333,
+          "recall@10" : 0.3333,
+          "recall@20" : 0.6667,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.1,
+          "firstRelevant" : 1,
+          "top" : [ "README.md:1-54", "docs/plans/etapa-4.md:53-89", "docs/07-SECURITY-PRIVACY-COSTS.md:116-168", "docs/03-UX-ONBOARDING.md:1-58", "docs/10-DECISIONS.md:718-737", "docs/07-SECURITY-PRIVACY-COSTS.md:170-183", "docs/10-DECISIONS.md:841-868", "docs/10-DECISIONS.md:764-790", "docs/plans/etapa-2.md:576-593", "docs/plans/etapa-3.md:278-332" ]
+        }
+      }
+    }, {
+      "id" : "cc-08",
+      "category" : "ARCHITECTURE",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "README.md:1-54", "docs/10-DECISIONS.md:156-200", "README.md:156-180", "docs/10-DECISIONS.md:575-616", ".gitignore:1-7", "docs/plans/etapa-3.md:77-108", "apps/backend/pom.xml:1-60", "docs/07-SECURITY-PRIVACY-COSTS.md:1-55", "apps/backend/src/main/resources/messages.properties:1-53", "docs/10-DECISIONS.md:410-450" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "README.md:1-54", "docs/10-DECISIONS.md:156-200", "README.md:156-180", "docs/10-DECISIONS.md:575-616", ".gitignore:1-7", "docs/plans/etapa-3.md:77-108", "apps/backend/pom.xml:1-60", "docs/07-SECURITY-PRIVACY-COSTS.md:1-55", "apps/backend/src/main/resources/messages.properties:1-53", "docs/10-DECISIONS.md:410-450" ]
+        }
+      }
+    }, {
+      "id" : "cc-09",
+      "category" : "CONCEPTUAL",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "docs/10-DECISIONS.md:739-762", "docs/10-DECISIONS.md:535-573", "docs/plans/etapa-4.md:115-148", "docs/plans/etapa-3.md:52-75", "docs/10-DECISIONS.md:764-790", "docs/05-DATA-MODEL.md:220-276", "docs/plans/etapa-4.md:232-259", "docs/plans/etapa-4.md:206-230", "docs/07-SECURITY-PRIVACY-COSTS.md:116-168", "docs/10-DECISIONS.md:813-839" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "docs/10-DECISIONS.md:739-762", "docs/10-DECISIONS.md:535-573", "docs/plans/etapa-4.md:115-148", "docs/plans/etapa-3.md:52-75", "docs/10-DECISIONS.md:764-790", "docs/05-DATA-MODEL.md:220-276", "docs/plans/etapa-4.md:232-259", "docs/plans/etapa-4.md:206-230", "docs/07-SECURITY-PRIVACY-COSTS.md:116-168", "docs/10-DECISIONS.md:813-839" ]
+        }
+      }
+    }, {
+      "id" : "cc-10",
+      "category" : "CONCEPTUAL",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.5,
+          "recall@20" : 0.5,
+          "mrr@10" : 0.125,
+          "precision@10" : 0.1,
+          "firstRelevant" : 8,
+          "top" : [ "docs/10-DECISIONS.md:115-154", "docs/plans/etapa-4.md:91-113", "docs/10-DECISIONS.md:699-716", "docs/plans/etapa-4.md:185-204", "docs/plans/etapa-4.md:150-183", "docs/10-DECISIONS.md:718-737", "docs/plans/etapa-4.md:310-358", "docs/10-DECISIONS.md:792-811", "docs/plans/etapa-4.md:53-89", "docs/plans/etapa-4.md:1-51" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.5,
+          "recall@20" : 0.5,
+          "mrr@10" : 0.1,
+          "precision@10" : 0.1,
+          "firstRelevant" : 10,
+          "top" : [ "apps/backend/src/main/resources/application.yml:1-54", "apps/backend/config/application.yml.example:1-22", "docs/10-DECISIONS.md:115-154", "docs/plans/etapa-4.md:91-113", "docs/10-DECISIONS.md:699-716", "docs/plans/etapa-4.md:185-204", "docs/plans/etapa-4.md:150-183", "docs/10-DECISIONS.md:718-737", "docs/plans/etapa-4.md:310-358", "docs/10-DECISIONS.md:792-811" ]
+        }
+      }
+    }, {
+      "id" : "cc-11",
+      "category" : "EXACT_IDENTIFIER",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "apps/backend/src/main/java/com/codebasecopilot/project/ProjectRepository.java:51-103", "apps/backend/src/main/resources/db/migration/V7__create_snapshots_and_index_jobs.sql:1-60", "apps/backend/src/main/java/com/codebasecopilot/indexing/SnapshotRepository.java:257-314", "apps/backend/src/test/java/com/codebasecopilot/ImportJobRows.java:1-60", "docs/05-DATA-MODEL.md:1-52", "apps/backend/src/main/java/com/codebasecopilot/importjob/ImportWorker.java:59-114", "apps/backend/src/main/resources/db/migration/V4__create_import_jobs.sql:1-47", "apps/backend/src/test/java/com/codebasecopilot/ImportJobRows.java:51-91", "apps/backend/src/test/java/com/codebasecopilot/project/ProjectServiceTest.java:162-218", "docs/plans/etapa-3.md:334-386" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "apps/backend/src/main/java/com/codebasecopilot/project/ProjectRepository.java:51-103", "apps/backend/src/main/resources/db/migration/V7__create_snapshots_and_index_jobs.sql:1-60", "apps/backend/src/main/java/com/codebasecopilot/indexing/SnapshotRepository.java:257-314", "apps/backend/src/test/java/com/codebasecopilot/ImportJobRows.java:1-60", "docs/05-DATA-MODEL.md:1-52", "apps/backend/src/main/java/com/codebasecopilot/importjob/ImportWorker.java:59-114", "apps/backend/src/main/resources/db/migration/V4__create_import_jobs.sql:1-47", "apps/backend/src/test/java/com/codebasecopilot/ImportJobRows.java:51-91", "apps/backend/src/test/java/com/codebasecopilot/project/ProjectServiceTest.java:162-218", "docs/plans/etapa-3.md:334-386" ]
+        }
+      }
+    }, {
+      "id" : "cc-12",
+      "category" : "CONCEPTUAL",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.5,
+          "precision@10" : 0.1,
+          "firstRelevant" : 2,
+          "top" : [ "apps/backend/src/test/java/com/codebasecopilot/providers/ProviderPropertiesTest.java:153-207", "apps/backend/src/main/java/com/codebasecopilot/providers/ProviderProperties.java:51-108", "docs/plans/etapa-4.md:150-183", "docs/07-SECURITY-PRIVACY-COSTS.md:116-168", "apps/backend/src/test/java/com/codebasecopilot/indexing/EmbeddingStageTest.java:60-118", "apps/backend/src/main/java/com/codebasecopilot/providers/ProviderProperties.java:1-60", "docs/plans/etapa-4.md:261-285", "docs/plans/etapa-4.md:91-113", "docs/10-DECISIONS.md:699-716", "docs/plans/etapa-4.md:115-148" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.5,
+          "precision@10" : 0.1,
+          "firstRelevant" : 2,
+          "top" : [ "apps/backend/src/test/java/com/codebasecopilot/providers/ProviderPropertiesTest.java:153-207", "apps/backend/src/main/java/com/codebasecopilot/providers/ProviderProperties.java:51-108", "docs/plans/etapa-4.md:150-183", "docs/07-SECURITY-PRIVACY-COSTS.md:116-168", "apps/backend/src/test/java/com/codebasecopilot/indexing/EmbeddingStageTest.java:60-118", "apps/backend/src/main/java/com/codebasecopilot/providers/ProviderProperties.java:1-60", "docs/plans/etapa-4.md:261-285", "docs/plans/etapa-4.md:91-113", "docs/10-DECISIONS.md:699-716", "docs/plans/etapa-4.md:115-148" ]
+        }
+      }
+    }, {
+      "id" : "cc-13",
+      "category" : "CONCEPTUAL",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.2,
+          "precision@10" : 0.1,
+          "firstRelevant" : 5,
+          "top" : [ "apps/backend/src/main/resources/messages.properties:44-71", "docs/plans/etapa-4.md:261-285", "apps/backend/src/main/resources/messages.properties:1-53", "apps/backend/src/main/resources/messages.properties:73-107", "docs/10-DECISIONS.md:813-839", "docs/plans/etapa-4.md:360-399", "docs/plans/etapa-4.md:287-308", "docs/plans/etapa-4.md:115-148", "docs/10-DECISIONS.md:764-790", "docs/plans/etapa-4.md:91-113" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.2,
+          "precision@10" : 0.1,
+          "firstRelevant" : 5,
+          "top" : [ "apps/backend/src/main/resources/messages.properties:44-71", "docs/plans/etapa-4.md:261-285", "apps/backend/src/main/resources/messages.properties:1-53", "apps/backend/src/main/resources/messages.properties:73-107", "docs/10-DECISIONS.md:813-839", "docs/plans/etapa-4.md:360-399", "docs/plans/etapa-4.md:287-308", "docs/plans/etapa-4.md:115-148", "docs/10-DECISIONS.md:764-790", "docs/plans/etapa-4.md:91-113" ]
+        }
+      }
+    } ]
+  }, {
+    "name" : "fixture",
+    "repository" : null,
+    "commit" : null,
+    "manifestSha256" : "1e4b18b4201e1d1ef57295ed7547391915909a23b3324c63b0cc80b5aa4764b7",
+    "chunkingVersion" : "lines-v1",
+    "files" : 9,
+    "chunks" : 8,
+    "latencyMillis" : {
+      "LEXICAL" : {
+        "mean" : 0.25,
+        "p95" : 1
+      },
+      "PATH" : {
+        "mean" : 0.5,
+        "p95" : 2
+      }
+    },
+    "questions" : [ {
+      "id" : "fx-01",
+      "category" : "EXACT_IDENTIFIER",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.1,
+          "firstRelevant" : 1,
+          "top" : [ "src/main/java/com/example/billing/InvoiceCalculator.java:1-46", "db/schema.sql:1-26", "docs/architecture.md:1-23" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.1,
+          "firstRelevant" : 1,
+          "top" : [ "src/main/java/com/example/billing/InvoiceCalculator.java:1-46", "db/schema.sql:1-26", "docs/architecture.md:1-23" ]
+        }
+      }
+    }, {
+      "id" : "fx-02",
+      "category" : "CONCEPTUAL",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ ]
+        }
+      }
+    }, {
+      "id" : "fx-03",
+      "category" : "EXACT_IDENTIFIER",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.1,
+          "firstRelevant" : 1,
+          "top" : [ "admin/src/utils/formatCurrency.ts,web/src/utils/formatCurrency.ts:1-8", "web/src/api/client.ts:1-41", "docs/architecture.md:1-23" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.1,
+          "firstRelevant" : 1,
+          "top" : [ "admin/src/utils/formatCurrency.ts,web/src/utils/formatCurrency.ts:1-8", "web/src/api/client.ts:1-41", "docs/architecture.md:1-23" ]
+        }
+      }
+    }, {
+      "id" : "fx-04",
+      "category" : "CROSS_FILE_FLOW",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.6667,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.3,
+          "fileCoverage@10" : 1.0,
+          "firstRelevant" : 1,
+          "top" : [ "scripts/reports/monthly_revenue.py:1-37", "db/schema.sql:1-26", "docs/architecture.md:1-23", "src/main/java/com/example/billing/InvoiceCalculator.java:1-46", "web/src/api/client.ts:1-41", "src/main/java/com/example/payments/PaymentWebhookHandler.java:1-43" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.6667,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.3,
+          "fileCoverage@10" : 1.0,
+          "firstRelevant" : 1,
+          "top" : [ "scripts/reports/monthly_revenue.py:1-37", "db/schema.sql:1-26", "docs/architecture.md:1-23", "src/main/java/com/example/billing/InvoiceCalculator.java:1-46", "web/src/api/client.ts:1-41", "src/main/java/com/example/payments/PaymentWebhookHandler.java:1-43" ]
+        }
+      }
+    }, {
+      "id" : "fx-05",
+      "category" : "CONCEPTUAL",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.1,
+          "firstRelevant" : 1,
+          "top" : [ "db/schema.sql:1-26", "web/src/api/client.ts:1-41", "scripts/reports/monthly_revenue.py:1-37" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.1,
+          "firstRelevant" : 1,
+          "top" : [ "db/schema.sql:1-26", "web/src/api/client.ts:1-41", "scripts/reports/monthly_revenue.py:1-37" ]
+        }
+      }
+    }, {
+      "id" : "fx-06",
+      "category" : "ARCHITECTURE",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.1,
+          "firstRelevant" : 1,
+          "top" : [ "docs/architecture.md:1-23", "src/main/java/com/example/billing/InvoiceCalculator.java:1-46", "scripts/reports/monthly_revenue.py:1-37" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.1,
+          "firstRelevant" : 1,
+          "top" : [ "docs/architecture.md:1-23", "src/main/java/com/example/billing/InvoiceCalculator.java:1-46", "scripts/reports/monthly_revenue.py:1-37" ]
+        }
+      }
+    }, {
+      "id" : "fx-07",
+      "category" : "AMBIGUOUS",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ ]
+        }
+      }
+    }, {
+      "id" : "fx-08",
+      "category" : "PROMPT_INJECTION",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.1,
+          "firstRelevant" : 1,
+          "top" : [ "docs/CONTRIBUTING.md:1-18" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.1,
+          "firstRelevant" : 1,
+          "top" : [ "docs/CONTRIBUTING.md:1-18" ]
+        }
+      }
+    }, {
+      "id" : "fx-11",
+      "category" : "EXACT_IDENTIFIER",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.1,
+          "firstRelevant" : 1,
+          "top" : [ "scripts/reports/monthly_revenue.py:1-37", "docs/architecture.md:1-23" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.1,
+          "firstRelevant" : 1,
+          "top" : [ "scripts/reports/monthly_revenue.py:1-37", "docs/architecture.md:1-23" ]
+        }
+      }
+    }, {
+      "id" : "fx-12",
+      "category" : "CONCEPTUAL",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ ]
+        }
+      }
+    }, {
+      "id" : "fx-13",
+      "category" : "CONCEPTUAL",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.1667,
+          "precision@10" : 0.1,
+          "firstRelevant" : 6,
+          "top" : [ "docs/architecture.md:1-23", "src/main/java/com/example/billing/InvoiceCalculator.java:1-46", "src/main/java/com/example/payments/PaymentWebhookHandler.java:1-43", "docs/CONTRIBUTING.md:1-18", "db/schema.sql:1-26", "web/src/api/client.ts:1-41" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.1,
+          "firstRelevant" : 1,
+          "top" : [ "web/src/api/client.ts:1-41", "docs/architecture.md:1-23", "src/main/java/com/example/billing/InvoiceCalculator.java:1-46", "src/main/java/com/example/payments/PaymentWebhookHandler.java:1-43", "docs/CONTRIBUTING.md:1-18", "db/schema.sql:1-26" ]
+        }
+      }
+    }, {
+      "id" : "fx-14",
+      "category" : "EXACT_IDENTIFIER",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.2,
+          "firstRelevant" : 1,
+          "top" : [ "db/schema.sql:1-26", "src/main/java/com/example/payments/PaymentWebhookHandler.java:1-43", "scripts/reports/monthly_revenue.py:1-37", "docs/architecture.md:1-23" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.2,
+          "firstRelevant" : 1,
+          "top" : [ "db/schema.sql:1-26", "src/main/java/com/example/payments/PaymentWebhookHandler.java:1-43", "scripts/reports/monthly_revenue.py:1-37", "docs/architecture.md:1-23" ]
+        }
+      }
+    } ]
+  } ]
+}
