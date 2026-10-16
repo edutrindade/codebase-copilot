@@ -359,7 +359,7 @@ Projetos ZIP não têm caminho; guardam uma referência ao import correspondente
 
 **Motivo:** mantém o caso comum em uma variável e permite várias raízes sem inventar formato próprio; validar na inicialização evita falhas tardias em uso.  
 **Consequências:**
-- Na Etapa 1: mapear `PROJECTS_ROOT`/`PROJECTS_ROOT_LABEL` em `application.yml` e implementar a validação.
+- Na Etapa 1: mapear `PROJECTS_ROOT`/`PROJECTS_ROOT_LABEL` em `application.yml` e implementar a validação. **Implementado (15/10/2026):** o atalho vira as propriedades `app.projects-root` e `app.projects-root-label`, separadas da lista. Se `app.local-roots` tiver itens, ela substitui o atalho por inteiro; assim, qualquer item da lista com `path` vazio impede a inicialização, sem ambiguidade sobre a origem. Os testes fixam `spring.config.location=optional:classpath:/` e `app.projects-root=` vazio, além das próprias raízes (`src/test/resources/local-roots`).
 - O arquivo local `apps/backend/config/application.yml` é ignorado pelo Git; o formato é documentado no arquivo versionado `apps/backend/config/application.yml.example`, que o Spring não carrega.
 - **Testes declaram suas próprias raízes** em `app.local-roots` (por exemplo, diretórios temporários registrados como propriedades do teste). Como o Spring carrega `config/application.yml` a partir do diretório de execução (`apps/backend`), a configuração local de quem roda os testes, ou a ausência dela, não pode influenciar o resultado.
 - `DATA_DIR` não pode estar dentro de nenhuma raiz (D-028).

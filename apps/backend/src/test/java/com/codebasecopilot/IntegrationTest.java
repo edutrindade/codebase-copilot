@@ -11,7 +11,17 @@ import org.springframework.context.annotation.Import;
 // One shared configuration so Spring caches a single context and PostgreSQL container.
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
-@SpringBootTest
+@SpringBootTest(
+        properties = {
+            TestProperties.CONFIG_LOCATION,
+            TestProperties.NO_PROJECTS_ROOT,
+            TestProperties.DEFAULT_ROOT_KEY,
+            TestProperties.DEFAULT_ROOT_LABEL,
+            TestProperties.DEFAULT_ROOT_PATH,
+            TestProperties.WORK_ROOT_KEY,
+            TestProperties.WORK_ROOT_LABEL,
+            TestProperties.WORK_ROOT_PATH
+        })
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
 public @interface IntegrationTest {}
