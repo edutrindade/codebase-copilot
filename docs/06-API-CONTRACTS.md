@@ -27,7 +27,7 @@ Listagens paginadas aceitam `page` (base 0, padrão 0) e `size` (padrão 20, má
 }
 ```
 
-Workspaces e projetos são ordenados por `createdAt` decrescente (desempate por `id` decrescente). Listagens grandes (arquivos, chunks) serão reavaliadas na Etapa 2 ou 3.
+Workspaces e projetos são ordenados por `createdAt` decrescente (desempate por `id` decrescente). A lista de arquivos de um snapshot também usa offset, ordenada por `relativePath` (D-045); cursor fica para quando a medição justificar.
 
 ## 2. Formato de erro
 
@@ -211,7 +211,7 @@ Lista os projetos do workspace. Paginada (§1, D-030).
 Erros: `404 WORKSPACE_NOT_FOUND`.
 
 ### `GET /projects/{projectId}`
-Retorna metadados, origem, snapshot ativo e estado de indexação. Os campos de snapshot e de indexação entram na Etapa 3; até lá, a resposta traz apenas metadados e origem:
+Retorna metadados, origem, snapshot ativo e estado de indexação. Os campos `activeSnapshot`, `indexing` e `outdatedReasons` entram na Etapa 3 (F6); até lá, a resposta traz apenas metadados e origem:
 
 ```json
 {
@@ -223,11 +223,21 @@ Retorna metadados, origem, snapshot ativo e estado de indexação. Os campos de 
     "rootKey": "default",
     "relativePath": "codebase-copilot"
   },
+  "activeSnapshot": {
+    "id": "…", "status": "READY", "completedAt": "2026-10-16T12:00:05Z",
+    "counts": { "files": 980, "indexedFiles": 975, "unsupportedFiles": 4, "failedFiles": 1, "chunks": 4120, "bytes": 7340032 }
+  },
+  "indexing": null,
+  "outdatedReasons": ["SETTINGS_CHANGED"],
   "createdAt": "2026-10-15T12:00:00.123456Z"
 }
 ```
 
 `source` é polimórfico, com discriminador `type`. Para projetos `ZIP`, traz `type` e `currentImport` (`id` e `status`), `null` até o primeiro upload concluído. O import atual só muda quando um novo upload conclui com sucesso; um import em andamento aparece em `GET /projects/{projectId}/imports` (§6).
+
+- `activeSnapshot`: snapshot usado nas consultas (`READY` ou `PARTIAL`), `null` antes da primeira indexação concluída (D-044).
+- `indexing`: job de indexação ativo `{ id, status, stage, progress: { total, completed } }`, ou `null`.
+- `outdatedReasons`: por que o snapshot ativo pode não refletir a origem: `SETTINGS_CHANGED` (configurações alteradas depois dele), `SOURCE_REIMPORTED` (projeto ZIP com outro import atual) e `CHUNKING_CHANGED` (estratégia de chunking nova). Lista vazia quando está em dia ou sem snapshot. Mudanças no disco de uma pasta local não são detectadas; o usuário reindexa.
 
 Erros: `404 PROJECT_NOT_FOUND`.
 
@@ -303,7 +313,7 @@ Validação (todos os erros numa única resposta, com `field` indexado, ex.: `ex
 - `disabledDefaultRules`: ids existentes e desativáveis (regras `SENSITIVE`, `VCS` e `MEDIA_BINARY` não podem ser desativadas);
 - limites entre 1 KB e os tetos `app.inventory.max-file-bytes-limit` (10 MB) e `max-project-bytes-limit` (2 GB).
 
-Erros, nesta ordem: `400 VALIDATION_FAILED`, `404 PROJECT_NOT_FOUND`. A mudança vale para o próximo inventário e, a partir da Etapa 3, pode exigir reindexação.
+Erros, nesta ordem: `400 VALIDATION_FAILED`, `404 PROJECT_NOT_FOUND`. A mudança vale para o próximo inventário e para a próxima indexação; o projeto passa a informar `SETTINGS_CHANGED` em `outdatedReasons`.
 
 ### `DELETE /projects/{projectId}`
 Remove projeto, imports, índices, snapshots e histórico em cascata (D-021).
@@ -311,9 +321,9 @@ Remove projeto, imports, índices, snapshots e histórico em cascata (D-021).
 Responses:
 - `204 No Content`;
 - `404 PROJECT_NOT_FOUND`;
-- `409 PROJECT_BUSY` se houver job de importação em execução (os de indexação entram na Etapa 3). Cancelamento de job é evolução futura.
+- `409 PROJECT_BUSY` se houver job ativo no projeto, de importação ou de indexação (D-041). Cancelamento de job é evolução futura.
 
-A remoção trava a linha do projeto antes de verificar os jobs, o que a serializa com uploads concorrentes. As pastas dos imports são apagadas depois do commit.
+A remoção trava a linha do projeto antes de verificar os jobs, o que a serializa com a criação concorrente de jobs. As pastas dos imports são apagadas depois do commit.
 
 ## 6. Importação ZIP
 
@@ -327,7 +337,7 @@ Response: `202 Accepted` com o import no formato de `GET /imports/{importJobId}`
 Regras:
 - válido apenas para projetos com `sourceType` `ZIP`;
 - tamanho máximo do arquivo em `app.import.max-zip-bytes` (padrão 100 MB, hipótese a ajustar); os limites do multipart do Spring derivam dele, e a aplicação não inicia se forem menores (D-028);
-- no máximo um import em andamento por projeto, garantido por índice único (seguro sob concorrência);
+- no máximo um job ativo por projeto, de importação ou de indexação, garantido por índice único (seguro sob concorrência, D-041);
 - cada upload cria um novo import em `DATA_DIR/imports/<importJobId>` (D-028);
 - `current_import_job_id` do projeto só é substituído quando o novo import conclui com sucesso; a pasta do anterior é então apagada (D-033);
 - o nome original do arquivo não é persistido nem logado.
@@ -337,7 +347,7 @@ Erros, nesta ordem:
 2. `413 UPLOAD_TOO_LARGE`: arquivo acima de `app.import.max-zip-bytes` (o limite do multipart responde o mesmo código antes de a requisição chegar ao serviço);
 3. `404 PROJECT_NOT_FOUND`;
 4. `409 PROJECT_SOURCE_MISMATCH`: o projeto é `LOCAL_FOLDER` (D-020);
-5. `409 PROJECT_BUSY`: já existe import em andamento no projeto.
+5. `409 PROJECT_BUSY`: já existe job ativo no projeto (import ou indexação).
 
 **Extração segura** (`07-SECURITY-PRIVACY-COSTS.md` §4): limites contados pelos bytes realmente gravados (`max-entries` 50.000, `max-uncompressed-bytes` 1 GB, `max-entry-bytes` 100 MB, `max-compression-ratio` 100 a partir de `compression-ratio-min-bytes` 1 MB, `max-depth` 64, `max-path-length` 1.024); nomes absolutos, com `..`, `\`, letra de unidade ou caracteres de controle são recusados; entradas repetidas (inclusive por maiúsculas em FS sem distinção de caixa) são recusadas; links nunca são criados. Violações terminam o job como `REJECTED`; falhas de E/S, como `FAILED`.
 
@@ -367,32 +377,79 @@ Erros: `404 PROJECT_NOT_FOUND`.
 
 ## 7. Indexação
 
+A indexação é sempre incremental por conteúdo (D-039, D-045): todo arquivo incluído é lido e tem o hash calculado; só conteúdos novos geram conteúdo e chunks. Mudanças de configuração ou de estratégia de chunking são cobertas pelo mesmo mecanismo. Um novo job reprocessa os arquivos que estavam `FAILED` no snapshot anterior.
+
 ### `POST /projects/{projectId}/index-jobs`
-Cria snapshot e inicia indexação.
+Cria um snapshot (`BUILDING`) e um job de indexação. Sem corpo.
 
-Request:
-```json
-{
-  "mode": "INCREMENTAL"
-}
-```
+Response: `202 Accepted` com o job no formato de `GET /index-jobs/{jobId}` (estado `PENDING`) e cabeçalho `Location`. O processamento roda em segundo plano, por uma fila em tabela (D-040).
 
-Valores: `INCREMENTAL`, `FULL`.
-
-Response: `202 Accepted`:
-```json
-{
-  "jobId": "uuid",
-  "snapshotId": "uuid",
-  "status": "PENDING"
-}
-```
+Erros, nesta ordem:
+1. `404 PROJECT_NOT_FOUND`;
+2. `409 SOURCE_ROOT_NOT_CONFIGURED`, `SOURCE_DIRECTORY_NOT_FOUND`, `SOURCE_IS_SYMLINK`, `SOURCE_NOT_READABLE` ou `SOURCE_NOT_IMPORTED`: os mesmos do inventário (§5), verificados sem varrer;
+3. `409 PROJECT_BUSY`: já existe job ativo no projeto, de importação ou de indexação (D-041).
 
 ### `GET /index-jobs/{jobId}`
-Retorna estado, etapa, progresso, erros sanitizados e timestamps.
+```json
+{
+  "id": "…",
+  "projectId": "…",
+  "snapshotId": "…",
+  "status": "RUNNING",
+  "stage": "PROCESSING_FILES",
+  "progress": { "total": 980, "completed": 400 },
+  "attempts": 1,
+  "error": null,
+  "createdAt": "2026-10-16T12:00:00Z",
+  "startedAt": "2026-10-16T12:00:01Z",
+  "completedAt": null
+}
+```
 
-### `POST /index-jobs/{jobId}/retry`
-Tenta novamente etapas recuperáveis de um job falho/parcial.
+- `status`: `PENDING`, `RUNNING`, `COMPLETED` ou `FAILED`.
+- `stage`: `SCANNING`, `PROCESSING_FILES` ou `FINALIZING` (`null` antes de começar). `progress` conta arquivos.
+- `attempts`: quantas vezes o job foi retirado da fila. Um job interrompido (queda da aplicação, por exemplo) volta à fila quando o heartbeat vence e é retomado automaticamente, até `app.indexing.max-attempts` (padrão 3).
+- `error.code` (D-044): `SOURCE_ROOT_NOT_CONFIGURED`, `SOURCE_DIRECTORY_NOT_FOUND`, `SOURCE_IS_SYMLINK`, `SOURCE_NOT_READABLE`, `SOURCE_NOT_IMPORTED`, `SCAN_LIMIT_REACHED`, `PROJECT_SIZE_LIMIT_EXCEEDED`, `NO_INCLUDED_FILES`, `INDEX_IO_ERROR` ou `INDEX_ATTEMPTS_EXHAUSTED`; `error.message` em pt-BR, sem caminhos.
+
+Não há `retry`: um job `FAILED` é refeito criando outro, que reaproveita o conteúdo já gravado (D-045).
+
+Erros: `404 INDEX_JOB_NOT_FOUND`.
+
+### `GET /projects/{projectId}/index-jobs`
+Lista os jobs de indexação do projeto, do mais novo para o mais antigo, no formato acima. Paginada (§1, D-030).
+
+Erros: `404 PROJECT_NOT_FOUND`.
+
+### `GET /projects/{projectId}/snapshots`
+Lista os snapshots do projeto, do mais novo para o mais antigo, no formato de `GET /snapshots/{snapshotId}` sem `inventory`. Paginada (§1, D-030).
+
+Erros: `404 PROJECT_NOT_FOUND`.
+
+### `GET /snapshots/{snapshotId}`
+```json
+{
+  "id": "…",
+  "projectId": "…",
+  "status": "PARTIAL",
+  "active": true,
+  "settingsVersion": 2,
+  "chunkingVersion": "lines-v1",
+  "sourceImportId": null,
+  "counts": { "files": 980, "indexedFiles": 975, "unsupportedFiles": 4, "failedFiles": 1, "chunks": 4120, "bytes": 7340032 },
+  "changes": { "added": 3, "modified": 12, "removed": 1, "unchanged": 959 },
+  "inventory": { "…": "formato de GET /projects/{projectId}/inventory" },
+  "createdAt": "2026-10-16T12:00:00Z",
+  "completedAt": "2026-10-16T12:00:05Z",
+  "prunedAt": null
+}
+```
+
+- `status`: `BUILDING`, `READY`, `PARTIAL` (com arquivos `FAILED`, ainda assim ativado) ou `FAILED` (não ativado).
+- `changes`: comparação dos arquivos `INDEXED` com o snapshot ativo anterior; `null` enquanto `BUILDING`, em `FAILED` e no primeiro snapshot.
+- `inventory`: agregado da varredura que originou o snapshot, sem os avisos que dependem do momento da consulta.
+- `prunedAt`: preenchido quando a poda removeu os arquivos do snapshot (D-044); a lista de arquivos fica vazia.
+
+Erros: `404 SNAPSHOT_NOT_FOUND`.
 
 ## 8. Perguntas e respostas
 
@@ -446,14 +503,34 @@ Busca resposta e evidências persistidas.
 
 ## 9. Arquivos e evidências
 
-### `GET /projects/{projectId}/files`
-Lista arquivos indexados com paginação e filtros.
+### `GET /snapshots/{snapshotId}/files?status=&pathPrefix=`
+Lista os arquivos incluídos pela varredura do snapshot (substitui `GET /projects/{projectId}/files`, para o snapshot ser explícito, D-045). Paginada (§1, D-030), ordenada por `relativePath`. Arquivos excluídos pelas regras não aparecem; estão no `inventory` do snapshot.
 
-### `GET /projects/{projectId}/files/content?path=...&snapshotId=...`
-Retorna conteúdo permitido para visualização, respeitando raiz e snapshot. Preferir identificadores internos em vez de confiar em caminhos arbitrários. A origem do conteúdo depende da O-008.
+```json
+{
+  "items": [
+    { "relativePath": "src/App.java", "status": "INDEXED", "reason": null, "language": "java",
+      "sizeBytes": 2048, "lineCount": 80, "contentHash": "9f86d0…", "chunkCount": 2 },
+    { "relativePath": "data/dump.sql", "status": "UNSUPPORTED", "reason": "LINE_TOO_LONG", "language": "sql",
+      "sizeBytes": 524288, "lineCount": null, "contentHash": null, "chunkCount": 0 }
+  ],
+  "page": 0, "size": 20, "totalItems": 2, "totalPages": 1
+}
+```
 
-### `GET /projects/{projectId}/evidence/{chunkId}`
-Retorna trecho e metadados da evidência.
+- `status`: `INDEXED`, `UNSUPPORTED` ou `FAILED`, com `reason` (D-042):
+  - `UNSUPPORTED`: `BINARY`, `INVALID_ENCODING` ou `LINE_TOO_LONG`;
+  - `FAILED`: `READ_ERROR` ou `CHANGED_DURING_READ`.
+- Filtros: `status` (ex.: `FAILED` ou `UNSUPPORTED`, para listar os arquivos não indexados, D-044) e `pathPrefix` (prefixo de diretório, na mesma normalização de `relativePath`).
+- Snapshot podado: lista vazia (`prunedAt` no snapshot).
+
+Erros: `400 VALIDATION_FAILED` (filtros), `404 SNAPSHOT_NOT_FOUND`.
+
+### `GET /snapshots/{snapshotId}/files/content?path=...`
+Retorna o conteúdo do arquivo como estava no snapshot, a partir de `file_contents` (D-039). Implementação na Etapa 6/7. Só arquivos `INDEXED` têm conteúdo; nada é lido do disco nesta chamada.
+
+### `GET /projects/{projectId}/evidence/{evidenceId}`
+Retorna a evidência como foi citada (Etapa 6, D-046): caminho (`path`) e demais caminhos com o mesmo conteúdo (`otherPaths`), linhas, hash do conteúdo, trecho copiado no momento da resposta e `snapshotStatus`. Se o snapshot foi podado, a resposta continua `200` com a cópia e `snapshotStatus: "PRUNED"` ("snapshot removido"); o visualizador então não abre o arquivo inteiro.
 
 ## 10. Histórico
 

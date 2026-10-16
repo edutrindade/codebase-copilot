@@ -31,13 +31,11 @@ A ausência de adaptador não deve impedir indexação textual.
 
 ## 4. Chunking
 
-> ⚠️ Pendente O-008 (antes da Etapa 3): a ligação do chunk com snapshot e arquivo (`project_id`, `snapshot_id` e a versão do arquivo) depende do modelo de snapshots. O hash do arquivo fica em `files.content_hash`; o chunk guarda o próprio `chunk_hash`. Ver `05-DATA-MODEL.md`.
+> Modelo decidido na D-039: o chunk pertence à versão do conteúdo (`content_hash`), e o snapshot liga caminhos a hashes em `snapshot_files`. Parâmetros iniciais na D-043. Ver `05-DATA-MODEL.md`.
 
 Cada chunk deve conter:
 - `project_id`;
-- `snapshot_id`;
-- caminho relativo;
-- referência à versão do arquivo (hash em `files`; pendente O-008);
+- referência à versão do arquivo (`content_hash`); snapshot e caminho vêm de `snapshot_files` (D-039);
 - hash do chunk (texto + versão de chunking), usado como chave do cache de embeddings;
 - `start_line` e `end_line`;
 - conteúdo;

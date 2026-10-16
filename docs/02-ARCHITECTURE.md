@@ -90,7 +90,7 @@ Persiste perguntas, respostas, evidências, latência, tokens e custo estimado.
 - **Sem execução do repositório:** o importador lê texto; não roda scripts, build tools nem hooks.
 - **Spring AI atrás de portas:** permite mudar provedor ou adicionar modelos locais sem reescrever o domínio.
 - **SQL especializado na recuperação:** o ranking híbrido precisa ser observável e testável; abstrações genéricas não devem esconder o comportamento.
-- **Processamento assíncrono:** começar com jobs persistidos e execução assíncrona no backend; o mecanismo está em definição na O-009 (antes da Etapa 3). Separar worker apenas se consumo de recursos, escalabilidade ou confiabilidade justificarem.
+- **Processamento assíncrono:** começar com jobs persistidos e execução assíncrona no backend; imports em executor em processo (D-034) e indexação por fila em tabela com `SKIP LOCKED`, heartbeat e limite de tentativas (D-040). Separar worker apenas se consumo de recursos, escalabilidade ou confiabilidade justificarem.
 - **Versionamento por snapshot:** respostas devem estar ligadas ao snapshot que forneceu as evidências.
 
 ## 6. Estrutura de repositório sugerida
