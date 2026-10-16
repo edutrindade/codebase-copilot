@@ -396,13 +396,18 @@ A chave vem de `EMBEDDING_API_KEY`. Padrões em `ProviderProperties`, sem entrad
 - F3: a validação do limite de entrada conta um token por caractere, que não é um limite rigoroso fora do ASCII (D-054); varredura de órfãos na inicialização acrescentada (D-052).
 - F4: `model` na resposta virou objeto; `502 EMBEDDING_REQUEST_REJECTED` acrescentado na busca (D-051, D-053).
 - F5: o snapshot "indexado com `provider=none`" dos testes é um snapshot do fake com os metadados apagados por SQL.
-- F6: repositório de exemplo escrito pelo teste de fumaça, não versionado.
+- F6: repositório de exemplo escrito pelo teste de fumaça, não versionado; a fumaça completa com a chave real ficou pendente por falta de saldo no provedor (abaixo).
 
 **Para as próximas etapas:** bake-off de embeddings (Voyage como candidata) e decisão sobre manter o `spring-ai-openai` ou só o SDK (Etapa 5); comparação com HNSW parcial e varredura iterativa (Etapa 5 ou 8); `Retry-After` na resposta da busca; isolamento do lote recusado e tokenizador exato, se o uso real pedir; revisão de `max-chunks-per-job` (Etapa 8).
 
 ### Teste de fumaça com chave real (F6)
 
-Pendente: execução com a chave real.
+**Pendente: sem saldo na conta do provedor.** Execução de 16/10/2026 com `provider=openai` e `text-embedding-3-small`:
+- a chave foi aceita (sem `EMBEDDING_PROVIDER_UNAUTHORIZED`);
+- a primeira chamada da etapa `EMBEDDING` (4 chunks) recebeu o 429 de cobrança, e o job terminou `FAILED` com `EMBEDDING_QUOTA_EXCEEDED`, sem repetição, com a mensagem pt-BR da P7 e só o código no log (D-051);
+- nenhum embedding foi gerado, sem custo.
+
+O resto da fumaça (metadados e tokens no snapshot, busca e latências) fica para quando houver saldo na conta da OpenAI, ou para a Etapa 5, junto do bake-off (a Voyage oferece 200M de tokens grátis para `voyage-code-3`). O comando está no README. `max-chunks-per-job` continua com a hipótese de 50.000, a revisar na Etapa 8.
 
 ### Medição da busca exata (F4, 16/10/2026)
 

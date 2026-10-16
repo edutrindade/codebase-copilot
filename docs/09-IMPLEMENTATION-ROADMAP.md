@@ -66,7 +66,7 @@
 
 ## Etapa 4 — Embeddings e busca vetorial
 
-**Status:** concluída em 16/10/2026 (plano, testes e desvios em `docs/plans/etapa-4.md`; decisões D-047 a D-054).
+**Status:** concluída em 16/10/2026 (plano, testes e desvios em `docs/plans/etapa-4.md`; decisões D-047 a D-054). Teste de fumaça com o provedor real pendente por falta de saldo na conta.
 
 - Definir porta de embeddings.
 - Integrar provedor inicial por meio de adaptador.
