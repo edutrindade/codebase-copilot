@@ -551,3 +551,9 @@ A preencher no fechamento (F7). Desvios registrados durante as fatias:
 - A fachada pública `ProjectSources.scan(projectId)` devolve a lista de arquivos incluídos já ordenada por `relativePath`, em vez de expor um ouvinte; o ouvinte fica interno ao pacote (`SafeScanner.Listener`) e o inventário não coleta arquivos.
 - `ScanResult` passou a ser público, para a indexação persistir o agregado (F3).
 - O preenchimento de `project_jobs` com os imports existentes, na V6, não tem teste automatizado: exigiria dados anteriores à migração.
+
+**F1**
+- O texto do chunk junta as linhas com `\n`, qualquer que seja a quebra original; `file_contents` guarda o texto como decodificado (D-042).
+- Comprimento de linha e de chunk contado em unidades UTF-16 (`String.length()`), nos dois limites.
+- Detalhes do `lines-v1` fixados na implementação: chunks nunca começam nem terminam em linha em branco; depois de um corte em linha em branco não há sobreposição (a fronteira já é natural); depois de um corte pelo limite, a sobreposição é de até 10 linhas, mas o chunk seguinte começa pelo menos na metade do anterior, para não gerar chunks redundantes quando o corte é por caracteres.
+- As propriedades do `LineChunker` são verificadas sobre 200 textos gerados com sementes fixas.
