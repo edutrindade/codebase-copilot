@@ -10,6 +10,11 @@ spring:
   flyway:
     enabled: true
 
+springdoc:
+  # Deterministic output so the versioned openapi.json diffs cleanly (D-023).
+  writer-with-default-pretty-printer: true
+  writer-with-order-by-keys: true
+
 management:
   endpoints:
     web:
