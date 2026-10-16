@@ -13,16 +13,16 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 @SpringBootTest
 class DatabaseExtensionsIT {
 
-    @Autowired
-    private JdbcClient jdbcClient;
+    @Autowired private JdbcClient jdbcClient;
 
     @Test
     void requiredExtensionsAreInstalled() {
-        List<String> extensions = jdbcClient
-                .sql(
-                        "SELECT extname FROM pg_extension WHERE extname IN ('vector', 'pg_trgm')")
-                .query(String.class)
-                .list();
+        List<String> extensions =
+                jdbcClient
+                        .sql(
+                                "SELECT extname FROM pg_extension WHERE extname IN ('vector', 'pg_trgm')")
+                        .query(String.class)
+                        .list();
 
         assertThat(extensions).containsExactlyInAnyOrder("vector", "pg_trgm");
     }

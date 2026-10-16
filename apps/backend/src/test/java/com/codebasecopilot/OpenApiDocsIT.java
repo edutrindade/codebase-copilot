@@ -18,43 +18,43 @@ import org.springframework.test.web.servlet.assertj.MockMvcTester;
 @AutoConfigureMockMvc
 class OpenApiDocsIT {
 
-        private static final Path CONTRACT = Path.of("openapi.json");
+    private static final Path CONTRACT = Path.of("openapi.json");
 
-        @Autowired
-        private MockMvcTester mvc;
+    @Autowired private MockMvcTester mvc;
 
-        @Test
-        void apiDocsAreServed() {
-                assertThat(mvc.get().uri("/v3/api-docs")).hasStatus(HttpStatus.OK);
+    @Test
+    void apiDocsAreServed() {
+        assertThat(mvc.get().uri("/v3/api-docs")).hasStatus(HttpStatus.OK);
+    }
+
+    @Test
+    void apiDocsMatchVersionedContract() throws IOException {
+        String generated =
+                normalize(
+                        mvc.get()
+                                .uri("/v3/api-docs")
+                                .exchange()
+                                .getResponse()
+                                .getContentAsString());
+
+        if (Boolean.getBoolean("openapi.update")) {
+            Files.writeString(CONTRACT, generated);
+            return;
         }
 
-        @Test
-        void apiDocsMatchVersionedContract() throws IOException {
-                String generated = normalize(
-                                mvc.get()
-                                                .uri("/v3/api-docs")
-                                                .exchange()
-                                                .getResponse()
-                                                .getContentAsString());
+        assertThat(CONTRACT)
+                .as(
+                        "Missing %s; run ./mvnw verify -Dopenapi.update=true",
+                        CONTRACT.toAbsolutePath())
+                .exists();
+        assertThat(generated)
+                .as(
+                        "OpenAPI contract changed; run ./mvnw verify -Dopenapi.update=true and"
+                                + " commit openapi.json")
+                .isEqualTo(normalize(Files.readString(CONTRACT)));
+    }
 
-                if (Boolean.getBoolean("openapi.update")) {
-                        Files.writeString(CONTRACT, generated);
-                        return;
-                }
-
-                assertThat(CONTRACT)
-                                .as(
-                                                "Missing %s; run ./mvnw verify -Dopenapi.update=true",
-                                                CONTRACT.toAbsolutePath())
-                                .exists();
-                assertThat(generated)
-                                .as(
-                                                "OpenAPI contract changed; run ./mvnw verify -Dopenapi.update=true and"
-                                                                + " commit openapi.json")
-                                .isEqualTo(normalize(Files.readString(CONTRACT)));
-        }
-
-        private static String normalize(String json) {
-                return json.replace("\r\n", "\n").strip() + "\n";
-        }
+    private static String normalize(String json) {
+        return json.replace("\r\n", "\n").strip() + "\n";
+    }
 }
