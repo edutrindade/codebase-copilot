@@ -945,6 +945,21 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Consequências:** o padrão mudou de vetorial para híbrido; quem quiser só a vetorial passa `mode: VECTOR`. `06-API-CONTRACTS.md` é atualizado no fechamento da etapa (F7).  
 **O que levaria à revisão:** a Etapa 6 (evidências da resposta) ou a avaliação (por exemplo, tirar o canal de caminhos).
 
+### D-061 — Corpus de avaliação (P7 da Etapa 5)
+**Status:** Aceita (16/10/2026; F5 da Etapa 5 entregue; anotações aprovadas)  
+**Contexto:** a O-011 pedia repositórios, quem anota e como versionar o corpus. A avaliação da Etapa 5 precisa dele para comparar lexical, vetorial e híbrido.  
+**Decisão:**
+- **Três corpora:** fixture sintética versionada (`eval/corpus/fixture/`); o próprio Codebase Copilot no commit `9d986db` (merge da Etapa 4); `pallets/click` 8.5.0 (`8b19813`, BSD-3-Clause). Os dois externos ficam fora do repositório: você os extrai e informa a pasta em `EVAL_CORPUS_CODEBASE_COPILOT` e `EVAL_CORPUS_CLICK`. Nada do corpus é executado.
+- **Manifesto** por corpus (`eval/corpus/<corpus>.sha256`): uma linha por arquivo, com SHA-256, quantidade de linhas (`-` quando não é texto) e caminho. Pasta diferente do manifesto (arquivo alterado, faltando ou a mais) faz o harness parar. As linhas são contadas com as regras do `TextClassifier`, o que permite validar as anotações dos corpora externos sem a pasta.
+- **Anotações** em `eval/questions/<corpus>.yaml`: `id`, `question`, `language` (`pt-BR`, `en`), `category` (`08` §2), `difficulty`, `expected` (`path`, `startLine`, `endLine`, `otherPaths`), `mustAbstain`, `notes`. Chave desconhecida é erro. Relevância por intervalo de linhas: um chunk é relevante se sobrepõe um intervalo, em `path` ou em um dos `otherPaths` (mesmo conteúdo em outro caminho).
+- **40 perguntas** (14 na fixture, 14 no Copilot, 12 no click), metade em pt-BR e metade em en, com 4 que exigem abstenção (fora das métricas de recuperação).
+- Rascunho das anotações feito pelo assistente lendo o código; revisão e aprovação por você (`08` §4), em 16/10/2026.
+- O `verify` valida as anotações dos três corpora contra os manifestos e confere a fixture contra o seu manifesto. O código fica nas fontes de teste (`com.codebasecopilot.eval`), sem nada na aplicação.
+
+**Motivo:** a relevância por linha mantém o corpus válido quando o chunking muda (O-010), e o manifesto garante que todos medem o mesmo conteúdo.  
+**Consequências:** alterar um arquivo da fixture exige gerar de novo o manifesto (`eval/README.md`) e revisar as anotações que apontam para ele.  
+**O que levaria à revisão:** corpus pequeno demais para separar as variantes na avaliação, ou anotações que se mostrem ambíguas na revisão.
+
 ---
 
 ## Decisões em aberto

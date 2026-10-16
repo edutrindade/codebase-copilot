@@ -292,6 +292,17 @@ Consequências para a P1:
 - Fixture, manifestos, formato YAML e anotações (rascunho meu, revisão sua). Esta fatia depende de você e pode começar em paralelo assim que o plano for aprovado.
 - **Testes:** validador das anotações (arquivo existe, linhas dentro do arquivo, categoria e idioma conhecidos) no `verify` para a fixture; manifesto divergente faz o harness parar.
 
+**Como foi entregue (16/10/2026)**
+- `eval/corpus/fixture/`: serviço de cobrança sintético com 10 arquivos (Java, TypeScript, Python, SQL, Markdown), com identificador exato, sinônimo sem termo em comum, o mesmo arquivo em dois caminhos (`formatCurrency.ts`), instrução injetada (`docs/CONTRIBUTING.md`) e `.npmrc` com token sintético, excluído pela regra `SENSITIVE`. `eval/.gitattributes` impede conversão de fim de linha na fixture.
+- Manifestos em `eval/corpus/*.sha256` (fixture com 10 arquivos, Copilot com 274, click com 166) e anotações em `eval/questions/*.yaml`: 40 perguntas (14, 14 e 12), 20 em pt-BR e 20 em en, 4 com `mustAbstain`. `eval/README.md` explica a extração dos corpora externos, o formato e como gerar um manifesto. Registrado na D-061.
+- Fontes de teste em `com.codebasecopilot.eval`: `CorpusManifest` (gera, lê e confere; só depende do JDK, para rodar com `java CorpusManifest.java <pasta>`), `QuestionSet` (modelo e `verifiedDirectory`, que resolve a pasta pela variável de ambiente e confere o manifesto) e `QuestionSets` (leitura com SnakeYAML `SafeConstructor`, sem chave duplicada nem desconhecida, e validação). `org.yaml:snakeyaml` declarado no `pom.xml`, sem versão e em escopo `compile` (o `application.yml` também depende dele).
+- **Testes:** `CorpusManifestTest` (contagem de linhas igual à do `TextClassifier`, binário e UTF-8 inválido, ida e volta do formato, arquivo alterado, faltando e a mais, link simbólico, manifesto malformado); `QuestionSetsTest` (leitura, chave desconhecida ou duplicada, idioma, categoria e dificuldade desconhecidos, campo obrigatório, local do corpus, cada problema do validador, corpus divergente e variável de ambiente ausente); `EvalAnnotationsTest` (as anotações dos três corpora contra os manifestos e a fixture contra o seu manifesto, no `verify`).
+- **Desvios:**
+  - O manifesto guarda a quantidade de linhas de cada arquivo. Com isso, o `verify` valida também as anotações do Copilot e do click sem as pastas, e não só as da fixture.
+  - `otherPaths` entrou no formato do intervalo esperado (a F6 já o previa nas métricas), para o caso do mesmo conteúdo em dois caminhos.
+  - A categoria `EXCLUDED_SECRET` exige abstenção na prática, mas o validador só obriga `mustAbstain` em `UNANSWERABLE`.
+- **Revisão:** as 40 perguntas foram aprovadas em 16/10/2026.
+
 ### F6 — Harness e baselines
 - `RetrievalEvaluationIT`, métricas, cache de vetores, relatório.
 - Baseline lexical (sem custo); vetorial e híbrido com o provedor real quando houver saldo, junto com o teste de fumaça da Etapa 4.
