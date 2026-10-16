@@ -856,6 +856,21 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Consequências:** modelos novos ou servidores compatíveis exigem acrescentar o limite oficial ao adaptador. `07-SECURITY-PRIVACY-COSTS.md` §7 e §9 e o README documentam o que é enviado, o custo e como desligar (`provider=none`).  
 **O que levaria à revisão:** chunks recusados por tamanho no teste de fumaça ou no uso real (pediria tokenizador exato), ou provedores locais na Etapa 9 (pediria limite configurável).
 
+### D-055 — Tokenização de identificadores (`ident-v1`)
+**Status:** Aceita (16/10/2026; F1 da Etapa 5 entregue)  
+**Contexto:** a D-017 manda separar identificadores na aplicação, porque o parser `simple` do PostgreSQL não quebra `getUserById`. A F0 da Etapa 5 mediu o parser (`ts_debug`, PostgreSQL 17.11): ele quebra em `_`, `$`, `::`, `->` e aspas; guarda como um lexema só caminhos (`src/foo/bar.java`), `a.b.c`, hosts (`my-file.ts`), URLs, e-mails e versões (`1.2.3`); e descarta como tag, sem lexema, tudo entre `<` e `>` que pareça tag (`<String>` em `List<String>`, `<T extends Number>`, `<b && c>` em `if (a<b && c>d)`, atributos HTML, `<!-- comentários -->`).  
+**Decisão:** `IdentifierTokenizer`, em `codeanalysis`, puro e determinístico, com versão `ident-v1` (tokenizador e stopwords juntos; mudar qualquer um cria uma versão nova).
+- **Palavra:** sequência de letras, dígitos e marcas combinantes (Unicode, `Character`). Todo o resto separa, inclusive `_` e `$`.
+- **Partes:** fronteira de caixa (`getUser` → `get User`), de sigla (`HTTPClient` → `HTTP Client`) e entre letra e dígito (`parseJSON2Xml` → `parse JSON 2 Xml`).
+- **`identifierTerms(texto)`** (o que o chunk acrescenta ao conteúdo, peso A): a palavra composta e suas partes; a palavra de uma parte encostada em outra sem espaço, com qualquer símbolo entre elas (`src/foo/Bar.java` → `src foo Bar java`, `user_id` → `user id`, `/api/v1?id=2` → `api v1 v 1 id 2`); e toda palavra entre `<` e o `>` seguinte. Palavras soltas de uma parte já estão no conteúdo e não entram.
+- **`queryTerms(texto)`** (a pergunta): todas as palavras, compostas e partes, menos as stopwords (lista curta pt-BR e en, no código).
+- Termos únicos sem diferenciar caixa, na ordem da primeira ocorrência, **com a grafia original**: quem põe em minúsculas é o PostgreSQL (`to_tsvector`/`to_tsquery`), porque as minúsculas do Java diferem das do banco (`İ`). O Java só compara em minúsculas (`Locale.ROOT`) para tirar repetidos e stopwords.
+- Um teste de integração confere, em textos com código, URLs, HTML e Unicode, que cada termo vira exatamente um lexema e que todo termo de pergunta tirado do chunk aparece como lexema de `to_tsvector(content) || to_tsvector(identifier_terms)`.
+
+**Motivo:** a pergunta que repete um termo do código casa com o chunk, qualquer que seja a forma como o parser leu esse trecho, e o peso A distingue identificadores da prosa.  
+**Consequências:** a regra de "encostada" e a de `<…>` emitem a mais (por exemplo, numa comparação `a < b` sem `>` depois, o resto do chunk entra em `identifier_terms`); é inofensivo para o casamento e só desloca peso. Nomes de entidades HTML (`&amp;`) não entram no índice.  
+**O que levaria à revisão:** resultados da avaliação (O-005), um caso em que o teste de alinhamento falhe, ou mudança do parser numa versão nova do PostgreSQL.
+
 ---
 
 ## Decisões em aberto

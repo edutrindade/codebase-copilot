@@ -228,6 +228,15 @@ Consequências para a P1:
 - `IdentifierTokenizer` e stopwords em `codeanalysis`; regra nova no ArchUnit.
 - **Testes:** camelCase, PascalCase, snake_case (só as partes), kebab-case, siglas (`HTTPClient`, `parseJSON`), dígitos, `$`, Unicode, termos repetidos, tokens de uma parte soltos (não entram) e colados por `.`, `/`, `@` ou `-` (entram), caminhos, e-mails e versões, pergunta só com stopwords, mesma saída para o mesmo texto; teste de integração de alinhamento com o parser (P1).
 
+**Como foi entregue (16/10/2026)**
+- `IdentifierTokenizer` (`identifierTerms`, `queryTerms`, `VERSION = "ident-v1"`) e `Stopwords` em `codeanalysis`; registrado na D-055.
+- ArchUnit: `codeanalysis` não depende de nenhum outro módulo de domínio (a regra antiga só barrava `importjob`).
+- Desvios da P1, todos apontados pelo teste de alinhamento ou pelo parser:
+  - **"Colada" vale para qualquer símbolo sem espaço**, não só `.`, `/`, `@` e `-`: o parser também junta o que vem depois de `?`, `=` e `&` numa URL (`/api/v1?id=2` vira um lexema só), e uma lista que imitasse o parser ficaria sempre incompleta.
+  - **Palavras entre `<` e `>` sempre entram:** o parser lê `<String>`, `<T extends Number>`, `<b && c>` (em `if (a<b && c>d)`), atributos HTML e `<!-- … -->` como tag e não gera lexema nenhum. A F0 não tinha testado esses casos.
+  - **Os termos guardam a grafia original**, não minúsculas: o PostgreSQL normaliza no `to_tsvector`/`to_tsquery`, e assim a normalização é uma só (P1, `İ`).
+- Correção à parte: o `ErrorHandlingTest` (`@WebMvcTest`) não fixava `app.embeddings.provider`, e a guarda da D-047 o derrubava quando o `.env` local tinha `openai`. Agora fixa `none`.
+
 ### F2 — Índice lexical (V9)
 - `chunk_lexical`, GIN em `tsv`, GIN trigram em `snapshot_files.relative_path`, `snapshots.lexical_version`, etapa `LEXICAL` em `index_jobs_stage_valid`.
 - Etapa `LEXICAL` no job; `lexical_version` na ativação; `outdatedReasons` com `LEXICAL_INDEX_MISSING`/`LEXICAL_INDEX_CHANGED`; `lexical` no detalhe do snapshot.
