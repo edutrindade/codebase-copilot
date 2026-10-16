@@ -266,6 +266,28 @@ Consequências para a P1:
 - Teste de desempenho (tag `performance`): latência lexical e híbrida com 50 mil chunks, e tamanho de `chunk_lexical`; resultado registrado aqui.
 - **Testes:** RRF com listas conhecidas (cálculo, desempate, item em um só canal, lista vazia); cada modo com o fake; `LEXICAL` com `provider=none` não chama o provedor; precedência dos erros por modo; `mode` inválido → `400`; padrão `HYBRID`; a pergunta não aparece nos logs.
 
+**Como foi entregue (16/10/2026)**
+- `RrfFusion` pura em `retrieval` (canais `LEXICAL`, `VECTOR`, `PATH`; `k`, pesos e `limit` como parâmetros); `SearchMode`; `RetrievalProperties` (`app.retrieval.candidates`, padrão 50); `SearchSnapshots` com o estado do snapshot (saiu da `VectorSearch`, agora com `lexical_version`). Registrado na D-059 e na D-060; D-053 marcada como revista.
+- `mode` no endpoint (padrão `HYBRID`), `mode`, `model | null` e `lexicalVersion | null` na resposta, `ranks` por resultado; `SNAPSHOT_LEXICAL_MISMATCH` com mensagem pt-BR; a mensagem de `EMBEDDINGS_NOT_AVAILABLE` sugere o modo `LEXICAL`; `openapi.json` regenerado.
+- **Testes:** `RrfFusionTest` (cálculo, item num só canal, empate por rank e por caminho, linha e id, pesos e `k`, listas vazias, `limit`, repetibilidade, parâmetros inválidos); `SearchServiceTest` (sem provedor: modos vetoriais recusados, padrão `HYBRID`, `LEXICAL` sem tocar nos canais vetorial e de caminhos, precedência); `SearchApiIT` (cada modo com o fake e seus `ranks`, arquivo citado entra pelo canal de caminhos, `mode` ausente ou `null`, `mode` inválido, matriz de precedência por modo, `LEXICAL` com o provedor quebrado, pergunta só com stopwords, log sem a pergunta); `SearchWithoutProviderIT` (`provider=none` de ponta a ponta).
+- **Desvios:**
+  - `mode` é texto no pedido, e não enum, para um valor desconhecido dar `400 VALIDATION_FAILED` no campo, como pede a P6 (com enum, o Jackson responderia `MALFORMED_REQUEST`). Só os nomes exatos valem (`lexical` é recusado).
+  - No `HYBRID`, cada canal busca `max(candidates, limit)`, para um `limit` acima de `candidates` não devolver menos resultados.
+  - O canal de caminhos roda só no `HYBRID`; os modos `LEXICAL` e `VECTOR` são um canal cada.
+  - Um teste da fusão pegou que `new EnumMap<>(map)` falha com mapa vazio; a fusão percorre os canais na ordem do enum.
+
+**Desempenho** (`HybridSearchPerformanceIT`, tag `performance`, 5.000 arquivos × 10 chunks = 50 mil chunks de ~300 palavras sintéticas, ~1,9 kB cada, vocabulário de 5.000 palavras com distribuição enviesada, 40 termos de identificador por chunk, 1.536 dimensões; 50 execuções, PostgreSQL do Testcontainers no Mac de desenvolvimento):
+
+| Medida | Média | p95 | Máx. |
+|---|---|---|---|
+| Lexical, só termos raros (`limit` 10) | 52 ms | 86 ms | 100 ms |
+| Lexical, com um termo presente em quase todo chunk (`limit` 10) | 471 ms | 674 ms | 742 ms |
+| Híbrido: 3 canais × 50 candidatos + RRF, sem a chamada ao provedor | 854 ms | 1.212 ms | 2.031 ms |
+
+- `chunk_lexical`: 50 mil linhas, **211 MB de tabela + 51 MB de índices**, contra 78 MB de `chunks`. O `tsv` com posições ocupa ~2,7× o chunk.
+- **Onde vai o tempo do lexical:** no pior caso, ~32 mil linhas casam com o `@@`; ler o `tsv` delas (TOAST) leva ~100 ms e calcular `ts_rank_cd` em todas antes do `LIMIT` leva ~300 ms (`EXPLAIN ANALYZE` no teste). Não é o plano (com um snapshot só no banco, a varredura sequencial é a escolha certa): é o custo de ranquear todos os casamentos de um termo comum, a falta de IDF da D-017. Opções para a Etapa 8, se a avaliação ou o uso real pedirem: descartar da consulta termos presentes em grande parte do snapshot, `ts_rank` no lugar de `ts_rank_cd`, ou índice RUM/BM25 (O-005). Nada mudou nesta fatia.
+- O híbrido soma os três canais (o vetorial exato mediu 213 ms de média com `limit` 10 na Etapa 4, D-049; não foi medido separado aqui) e ainda precisa da chamada ao provedor. O paralelismo entre canais (P5) também fica para quando a medição real pedir.
+
 ### F5 — Corpus
 - Fixture, manifestos, formato YAML e anotações (rascunho meu, revisão sua). Esta fatia depende de você e pode começar em paralelo assim que o plano for aprovado.
 - **Testes:** validador das anotações (arquivo existe, linhas dentro do arquivo, categoria e idioma conhecidos) no `verify` para a fixture; manifesto divergente faz o harness parar.

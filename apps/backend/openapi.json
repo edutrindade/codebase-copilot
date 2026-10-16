@@ -774,7 +774,7 @@
     },
     "/api/v1/projects/{projectId}/search" : {
       "post" : {
-        "description" : "Sem snapshotId, usa o snapshot ativo. A pergunta é enviada ao provedor de embeddings configurado.",
+        "description" : "Sem snapshotId, usa o snapshot ativo. LEXICAL busca por termos e não usa o provedor de embeddings; VECTOR e HYBRID enviam a pergunta ao provedor configurado. HYBRID funde as buscas lexical, vetorial e por caminhos citados na pergunta.",
         "operationId" : "searchProject",
         "parameters" : [ {
           "in" : "path",
@@ -834,7 +834,7 @@
                 }
               }
             },
-            "description" : "Erro (ProblemDetail). Códigos: SNAPSHOT_NOT_SEARCHABLE, EMBEDDINGS_NOT_AVAILABLE, SNAPSHOT_EMBEDDING_MISMATCH."
+            "description" : "Erro (ProblemDetail). Códigos: SNAPSHOT_NOT_SEARCHABLE, SNAPSHOT_LEXICAL_MISMATCH, EMBEDDINGS_NOT_AVAILABLE, SNAPSHOT_EMBEDDING_MISMATCH."
           },
           "415" : {
             "content" : {
@@ -877,7 +877,7 @@
             "description" : "Erro (ProblemDetail). Códigos: EMBEDDING_PROVIDER_UNAVAILABLE, EMBEDDING_PROVIDER_UNAUTHORIZED, EMBEDDING_QUOTA_EXCEEDED, EMBEDDING_REQUEST_REJECTED."
           }
         },
-        "summary" : "Busca trechos de um snapshot por similaridade com a pergunta",
+        "summary" : "Busca trechos de um snapshot pela pergunta",
         "tags" : [ "Busca" ]
       }
     },
@@ -2460,7 +2460,7 @@
         "properties" : {
           "code" : {
             "type" : "string",
-            "enum" : [ "VALIDATION_FAILED", "MALFORMED_REQUEST", "RESOURCE_NOT_FOUND", "METHOD_NOT_ALLOWED", "UNSUPPORTED_MEDIA_TYPE", "INTERNAL_ERROR", "WORKSPACE_NOT_FOUND", "WORKSPACE_NOT_EMPTY", "PROJECT_NOT_FOUND", "LOCAL_ROOTS_NOT_CONFIGURED", "ROOT_NOT_FOUND", "PATH_OUTSIDE_ROOT", "PROJECT_ALREADY_EXISTS", "DIRECTORY_NOT_FOUND", "DIRECTORY_NOT_READABLE", "PROJECT_BUSY", "PROJECT_SOURCE_MISMATCH", "UPLOAD_TOO_LARGE", "IMPORT_NOT_FOUND", "SOURCE_ROOT_NOT_CONFIGURED", "SOURCE_DIRECTORY_NOT_FOUND", "SOURCE_IS_SYMLINK", "SOURCE_NOT_READABLE", "SOURCE_NOT_IMPORTED", "INDEX_JOB_NOT_FOUND", "SNAPSHOT_NOT_FOUND", "SNAPSHOT_NOT_SEARCHABLE", "EMBEDDINGS_NOT_AVAILABLE", "SNAPSHOT_EMBEDDING_MISMATCH", "EMBEDDING_PROVIDER_UNAVAILABLE", "EMBEDDING_PROVIDER_UNAUTHORIZED", "EMBEDDING_QUOTA_EXCEEDED", "EMBEDDING_REQUEST_REJECTED", "EMBEDDING_RATE_LIMITED" ]
+            "enum" : [ "VALIDATION_FAILED", "MALFORMED_REQUEST", "RESOURCE_NOT_FOUND", "METHOD_NOT_ALLOWED", "UNSUPPORTED_MEDIA_TYPE", "INTERNAL_ERROR", "WORKSPACE_NOT_FOUND", "WORKSPACE_NOT_EMPTY", "PROJECT_NOT_FOUND", "LOCAL_ROOTS_NOT_CONFIGURED", "ROOT_NOT_FOUND", "PATH_OUTSIDE_ROOT", "PROJECT_ALREADY_EXISTS", "DIRECTORY_NOT_FOUND", "DIRECTORY_NOT_READABLE", "PROJECT_BUSY", "PROJECT_SOURCE_MISMATCH", "UPLOAD_TOO_LARGE", "IMPORT_NOT_FOUND", "SOURCE_ROOT_NOT_CONFIGURED", "SOURCE_DIRECTORY_NOT_FOUND", "SOURCE_IS_SYMLINK", "SOURCE_NOT_READABLE", "SOURCE_NOT_IMPORTED", "INDEX_JOB_NOT_FOUND", "SNAPSHOT_NOT_FOUND", "SNAPSHOT_NOT_SEARCHABLE", "SNAPSHOT_LEXICAL_MISMATCH", "EMBEDDINGS_NOT_AVAILABLE", "SNAPSHOT_EMBEDDING_MISMATCH", "EMBEDDING_PROVIDER_UNAVAILABLE", "EMBEDDING_PROVIDER_UNAUTHORIZED", "EMBEDDING_QUOTA_EXCEEDED", "EMBEDDING_REQUEST_REJECTED", "EMBEDDING_RATE_LIMITED" ]
           },
           "detail" : {
             "type" : "string"
@@ -2554,6 +2554,25 @@
         },
         "required" : [ "activeSnapshot", "createdAt", "id", "indexing", "name", "outdatedReasons", "source", "workspaceId" ]
       },
+      "RanksResponse" : {
+        "type" : "object",
+        "description" : "Posição do trecho em cada busca, a partir de 1; null quando ela não o trouxe.",
+        "properties" : {
+          "lexical" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          },
+          "path" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          },
+          "vector" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          }
+        },
+        "required" : [ "lexical", "path", "vector" ]
+      },
       "ResultResponse" : {
         "type" : "object",
         "properties" : {
@@ -2579,17 +2598,20 @@
             "type" : "string",
             "description" : "Primeiro caminho em ordem lexicográfica com este conteúdo."
           },
+          "ranks" : {
+            "$ref" : "#/components/schemas/RanksResponse"
+          },
           "score" : {
             "type" : "number",
             "format" : "double",
-            "description" : "1 − distância de cosseno; maior é mais parecido."
+            "description" : "Depende do modo: 1 − distância de cosseno (VECTOR), ts_rank_cd (LEXICAL) ou RRF (HYBRID). Maior é melhor; só serve para ordenar dentro de uma resposta."
           },
           "startLine" : {
             "type" : "integer",
             "format" : "int32"
           }
         },
-        "required" : [ "chunkId", "content", "endLine", "otherPaths", "path", "score", "startLine" ]
+        "required" : [ "chunkId", "content", "endLine", "otherPaths", "path", "ranks", "score", "startLine" ]
       },
       "ScanResult" : {
         "type" : "object",
@@ -2630,6 +2652,11 @@
             "maximum" : 50,
             "minimum" : 1
           },
+          "mode" : {
+            "type" : [ "string", "null" ],
+            "default" : "HYBRID",
+            "enum" : [ "LEXICAL", "VECTOR", "HYBRID" ]
+          },
           "query" : {
             "type" : "string",
             "maxLength" : 2000,
@@ -2645,8 +2672,20 @@
       "SearchResponse" : {
         "type" : "object",
         "properties" : {
+          "lexicalVersion" : {
+            "type" : [ "string", "null" ],
+            "description" : "Versão do índice lexical; null no modo VECTOR."
+          },
+          "mode" : {
+            "type" : "string",
+            "enum" : [ "LEXICAL", "VECTOR", "HYBRID" ]
+          },
           "model" : {
-            "$ref" : "#/components/schemas/ModelResponse"
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/ModelResponse"
+            }, {
+              "type" : "null"
+            } ]
           },
           "results" : {
             "type" : "array",
@@ -2659,7 +2698,7 @@
             "format" : "uuid"
           }
         },
-        "required" : [ "model", "results", "snapshotId" ]
+        "required" : [ "lexicalVersion", "mode", "model", "results", "snapshotId" ]
       },
       "SettingsResponse" : {
         "type" : "object",

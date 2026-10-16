@@ -825,7 +825,7 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **O que levaria à revisão:** limpeza lenta em bancos grandes (medição na Etapa 8) ou bake-off com vários modelos ao mesmo tempo.
 
 ### D-053 — Contrato da busca
-**Status:** Aceita (16/10/2026; F4 e F5 entregues)  
+**Status:** Aceita (16/10/2026; F4 e F5 entregues); revista pela D-060 (`mode`, `ranks`, F4 da Etapa 5)  
 **Decisão:**
 - **`POST /api/v1/projects/{projectId}/search`** com `{ "query": "…", "snapshotId": null, "limit": 10 }`. `snapshotId` ausente = snapshot ativo; informado, precisa ser do projeto, `READY`/`PARTIAL` e não podado. `query` de 1 a 2.000 caracteres e não em branco; `limit` de 1 a 50 (padrão 10).
 - Resposta: `{ snapshotId, model: { provider, name, dimensions }, results: [ { chunkId, path, otherPaths, startLine, endLine, content, score } ] }`, em ordem decrescente de `score` (D-049). O plano previa só `model`; virou objeto porque o provedor também identifica os vetores (D-048).
@@ -878,13 +878,14 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 - **Tabela `chunk_lexical`** `(chunk_id, lexical_version)` (V9), FK para `chunks` com `ON DELETE CASCADE`, com `identifier_terms` (termos do `IdentifierTokenizer` separados por espaço) e `tsv = setweight(to_tsvector('simple', identifier_terms), 'A') || setweight(to_tsvector('simple', content), 'B')`, calculado no `INSERT` a partir do chunk, na mesma instrução. Índice GIN em `tsv`. Sempre `to_tsvector`: `array_to_tsvector` gera lexemas sem posição, e aí o `setweight` e o `ts_rank_cd` não funcionam (F0).
 - **Etapa `LEXICAL` no job**, entre `PROCESSING_FILES` e `EMBEDDING`: lista os chunks do snapshot sem linha da versão atual, lê o texto por lote (`app.indexing.lexical-batch-chunks`, padrão 500) e grava com `ON CONFLICT DO NOTHING`; cada lote grava progresso e renova o heartbeat na mesma transação da inserção. O progresso conta chunks. Sem chamada externa, então sem política de falha nova: um erro segue a repetição do job (D-044), e a tentativa seguinte só grava o que falta.
 - **`snapshots.lexical_version`**, gravada na ativação. Snapshots anteriores à V9 ficam com `null`.
-- **`outdatedReasons`**: `LEXICAL_INDEX_MISSING` (snapshot sem versão lexical) e `LEXICAL_INDEX_CHANGED` (versão diferente da atual), independentes do provedor. Uma reindexação sem arquivo alterado resolve os dois. A recusa da busca lexical e híbrida nesses casos (`409 SNAPSHOT_LEXICAL_MISMATCH`) entra com o `mode` na F4.
+- **`outdatedReasons`**: `LEXICAL_INDEX_MISSING` (snapshot sem versão lexical) e `LEXICAL_INDEX_CHANGED` (versão diferente da atual), independentes do provedor. Uma reindexação sem arquivo alterado resolve os dois. A recusa da busca lexical e híbrida nesses casos (`409 SNAPSHOT_LEXICAL_MISMATCH`) entrou com o `mode` na F4 (D-060).
 - `GET /api/v1/snapshots/{id}` e a listagem trazem `lexical: { version }`, ou `null`.
 - Versões convivem (útil para a avaliação comparar tokenizações, O-005); a limpeza vem pela cascata quando os chunks somem (D-039).
 - Índice GIN `gin_trgm_ops` em `snapshot_files.relative_path` (V9), para a busca de caminhos da F3.
 
 **Motivo:** o mesmo desenho dos embeddings (D-048, D-050): o índice é derivado e versionado à parte, chunks continuam imutáveis, e mudar o tokenizador não exige migração.  
 **Consequências:** o texto do chunk fica três vezes no banco (conteúdo, chunk, `tsv`); o tamanho de `chunk_lexical` é medido no teste de desempenho da F4. Com `provider=none` a etapa roda normalmente.  
+**Medição (F4):** com 50 mil chunks sintéticos de ~1,9 kB, `chunk_lexical` ocupa 211 MB de tabela e 51 MB de índices (`chunks`: 78 MB).  
 **O que levaria à revisão:** tamanho ou tempo da etapa inaceitáveis na medição da F4, ou um índice lexical externo (O-005).
 
 ### D-057 — Consulta lexical
@@ -897,7 +898,7 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 - **Plano medido** (100 projetos × 2.000 chunks, `LexicalSearchPlanIT`): o PostgreSQL parte do snapshot (PK de `snapshot_files`), chega aos chunks pela chave natural e a `chunk_lexical` pela PK, e aplica o `@@` linha a linha; o GIN em `tsv` não é escolhido nesse volume. É o mesmo desenho exato por snapshot da vetorial (D-049): o custo cresce com o snapshot, não com o banco. O teste garante a ausência de varredura sequencial em `chunk_lexical`, `chunks` e `snapshot_files`.
 
 **Motivo:** OR com ranking por densidade devolve resultados mesmo quando só parte da pergunta aparece no código, e a montagem na aplicação mantém o tokenizador da consulta igual ao da indexação.  
-**Consequências:** sem IDF, termos comuns pesam tanto quanto raros; o peso A favorece identificadores (coberto por teste). A recusa por versão lexical (`409 SNAPSHOT_LEXICAL_MISMATCH`) entra na F4.  
+**Consequências:** sem IDF, termos comuns pesam tanto quanto raros; o peso A favorece identificadores (coberto por teste). A recusa por versão lexical (`409 SNAPSHOT_LEXICAL_MISMATCH`) entrou na F4 (D-060).  
 **O que levaria à revisão:** resultados da avaliação (O-005), em especial perguntas em pt-BR sobre código em inglês, ou latência alta em snapshots grandes (o GIN em `tsv` continua disponível para o planejador).
 
 ### D-058 — Canal de caminhos
@@ -913,6 +914,36 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Motivo:** `strict_word_similarity` separa o arquivo citado de vizinhos com nome parecido (F0: `IndexJobApiIT.java` 0,533 para `IndexJob`).  
 **Consequências:** caminhos longos que diferem num só trecho passam do limiar: `docs/plans/etapa-3.md` casa com `docs/plans/etapa-4.md`, abaixo do arquivo exato (1,0). Fica para a avaliação decidir o limiar ou se o canal permanece.  
 **O que levaria à revisão:** ganho nulo do canal na avaliação (sai antes do fechamento da etapa), ou limiar diferente medido no corpus.
+
+### D-059 — Fusão híbrida por RRF
+**Status:** Aceita (16/10/2026; F4 da Etapa 5 entregue)  
+**Contexto:** a D-017 escolheu RRF com k=60 para combinar a busca lexical e a vetorial; a F3 acrescentou o canal de caminhos (D-058).  
+**Decisão:**
+- `RrfFusion`, em `retrieval`, pura: recebe a lista de cada canal (`LEXICAL`, `VECTOR`, `PATH`) e devolve `limit` resultados com `score = Σ peso / (k + rank)`, rank a partir de 1, somado nos canais que trouxeram o chunk. Padrão: k=60 e peso 1 em todos os canais.
+- Um chunk é identificado pelo id; os caminhos e o conteúdo vêm de qualquer canal (são iguais em todos).
+- Desempate determinístico: maior score, melhor rank individual, primeiro caminho, linha inicial e id do chunk (como texto, a ordem do banco).
+- Canal com lista vazia não soma nada; o de caminhos só participa quando a pergunta cita um arquivo do snapshot (D-058).
+- No modo `HYBRID`, cada canal busca `max(app.retrieval.candidates, limit)` resultados (padrão **50**) antes de fundir. Os canais são consultados em sequência (vetorial, lexical, caminhos), sem paralelismo.
+- `k`, pesos e profundidade são parâmetros da função, para a avaliação (F6) variá-los sobre as mesmas listas, sem consultar o banco de novo.
+
+**Motivo:** RRF dispensa normalizar scores de naturezas diferentes (cosseno, `ts_rank_cd`, similaridade de trigramas) e premia o que aparece bem em mais de um canal.  
+**Consequências:** o `score` híbrido só serve para ordenar uma resposta (vai no máximo a 3/61 com pesos 1). A latência híbrida é a soma dos três canais mais a chamada ao provedor: com 50 mil chunks, 854 ms de média e 1,2 s de p95 sem o provedor, dominados pelo lexical quando a pergunta tem um termo presente em quase todo chunk (471 ms, contra 52 ms só com termos raros; detalhes em `docs/plans/etapa-5.md`, F4).  
+**O que levaria à revisão:** resultados da avaliação (k, pesos, profundidade, saída do canal de caminhos), ou latência que peça consultas em paralelo.
+
+### D-060 — Contrato da busca com `mode` (revisa a D-053)
+**Status:** Aceita (16/10/2026; F4 da Etapa 5 entregue)  
+**Decisão:**
+- **Pedido:** `{ "query", "snapshotId", "limit", "mode" }`, com `mode` `LEXICAL`, `VECTOR` ou `HYBRID` (nome exato); ausente ou `null` = **`HYBRID`**. Valor desconhecido → `400 VALIDATION_FAILED` no campo `mode` (o campo é texto no pedido, para não virar `MALFORMED_REQUEST`).
+- **Resposta:** `{ snapshotId, mode, model | null, lexicalVersion | null, results: [ { chunkId, path, otherPaths, startLine, endLine, content, score, ranks: { lexical, vector, path } } ] }`. `model` é `null` no `LEXICAL`; `lexicalVersion` é `null` no `VECTOR`. `score` depende do modo (cosseno no `VECTOR`, `ts_rank_cd` no `LEXICAL`, RRF no `HYBRID`). `ranks` traz a posição (a partir de 1) em cada canal consultado, ou `null`; nos modos de um canal só, só esse canal tem rank. O canal de caminhos só roda no `HYBRID`.
+- **`LEXICAL`** funciona com `provider=none` e nunca chama o provedor.
+- **`HYBRID` sem provedor ou sem vetores do modelo:** `409`, sem cair para lexical em silêncio (um resultado pior sem aviso é difícil de perceber). A mensagem de `EMBEDDINGS_NOT_AVAILABLE` sugere o modo `LEXICAL`.
+- **Erros, nesta ordem:** `400 VALIDATION_FAILED` (`query`, `limit`, `mode`); `404 PROJECT_NOT_FOUND`; `404 SNAPSHOT_NOT_FOUND`; `409 SNAPSHOT_NOT_SEARCHABLE`; `409 SNAPSHOT_LEXICAL_MISMATCH` (`LEXICAL` e `HYBRID`: snapshot sem `lexical_version` ou com outra versão, D-056); `409 EMBEDDINGS_NOT_AVAILABLE` e `409 SNAPSHOT_EMBEDDING_MISMATCH` (`VECTOR` e `HYBRID`); erros do provedor (D-051).
+- **Log:** modo, snapshot, quantidade total e por canal, e duração por canal; nunca a pergunta (D-054).
+- O estado do snapshot usado nessas verificações saiu da `VectorSearch` para `SearchSnapshots`.
+
+**Motivo:** a Etapa 6 usa o híbrido e precisa dos ranks por canal (`rank_lexical`/`rank_vector` de `answer_evidence`); a busca lexical continua disponível sem provedor.  
+**Consequências:** o padrão mudou de vetorial para híbrido; quem quiser só a vetorial passa `mode: VECTOR`. `06-API-CONTRACTS.md` é atualizado no fechamento da etapa (F7).  
+**O que levaria à revisão:** a Etapa 6 (evidências da resposta) ou a avaliação (por exemplo, tirar o canal de caminhos).
 
 ---
 

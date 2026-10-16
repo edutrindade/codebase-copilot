@@ -44,7 +44,8 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
 
-// Acceptance of Etapa 4: vector queries return chunks of the right snapshot (D-049, D-053).
+// Acceptance of Etapa 4: vector queries return chunks of the right snapshot (D-049, D-053);
+// modes and fusion of Etapa 5 (D-059, D-060). Without a mode, the search is HYBRID.
 @ExtendWith(OutputCaptureExtension.class)
 class SearchApiIT extends EmbeddingContext {
 
@@ -112,7 +113,10 @@ class SearchApiIT extends EmbeddingContext {
         index(projectId);
 
         DocumentContext result =
-                json(search(projectId, "{\"query\": \"payment charge\", \"limit\": 3}"));
+                json(
+                        search(
+                                projectId,
+                                "{\"query\": \"payment charge\", \"limit\": 3, \"mode\": \"VECTOR\"}"));
 
         assertThat((List<String>) result.read("$.results[*].path"))
                 .containsExactly("a-pay.txt", "b-pay.txt", "c-login.txt");
@@ -169,7 +173,8 @@ class SearchApiIT extends EmbeddingContext {
         String projectId = project(tree);
         index(projectId);
         List<String> before =
-                json(search(projectId, "{\"query\": \"payment\"}")).read("$.results[*].path");
+                json(search(projectId, "{\"query\": \"payment\", \"mode\": \"VECTOR\"}"))
+                        .read("$.results[*].path");
         float[] queryVector = provider.embed(List.of("payment")).vectors().getFirst();
         // Another model's vector of b.txt equal to the query would rank it first if mixed in.
         jdbc.sql(
@@ -185,7 +190,8 @@ class SearchApiIT extends EmbeddingContext {
                 .update();
 
         List<String> after =
-                json(search(projectId, "{\"query\": \"payment\"}")).read("$.results[*].path");
+                json(search(projectId, "{\"query\": \"payment\", \"mode\": \"VECTOR\"}"))
+                        .read("$.results[*].path");
 
         assertThat(after).isEqualTo(before).startsWith("a.txt");
     }
@@ -281,11 +287,12 @@ class SearchApiIT extends EmbeddingContext {
         MvcTestResult result =
                 search(
                         UUID.randomUUID().toString(),
-                        "{\"query\": \"%s\", \"limit\": 51}".formatted("x".repeat(2001)));
+                        "{\"query\": \"%s\", \"limit\": 51, \"mode\": \"FUZZY\"}"
+                                .formatted("x".repeat(2001)));
 
         assertError(result, "VALIDATION_FAILED");
         assertThat((List<String>) json(result).read("$.errors[*].field"))
-                .containsExactlyInAnyOrder("query", "limit");
+                .containsExactlyInAnyOrder("query", "limit", "mode");
     }
 
     @ParameterizedTest
@@ -298,6 +305,171 @@ class SearchApiIT extends EmbeddingContext {
 
         assertError(result, "VALIDATION_FAILED");
         assertThat((List<String>) json(result).read("$.errors[*].field")).containsExactly(field);
+    }
+
+    @Test
+    void eachModeReportsItsChannelsAndRanks() throws IOException {
+        Path tree = tree();
+        write(tree, "a.txt", "payment charge");
+        write(tree, "b.txt", "user login");
+        String projectId = project(tree);
+        index(projectId);
+        reset(provider);
+
+        DocumentContext lexical =
+                json(search(projectId, "{\"query\": \"payment\", \"mode\": \"LEXICAL\"}"));
+        verify(provider, never()).embed(any());
+        DocumentContext vector =
+                json(search(projectId, "{\"query\": \"payment\", \"mode\": \"VECTOR\"}"));
+        DocumentContext hybrid =
+                json(search(projectId, "{\"query\": \"payment\", \"mode\": \"HYBRID\"}"));
+
+        assertThat((String) lexical.read("$.mode")).isEqualTo("LEXICAL");
+        assertThat((Object) lexical.read("$.model")).isNull();
+        assertThat((String) lexical.read("$.lexicalVersion")).isEqualTo("ident-v1");
+        assertThat((List<String>) lexical.read("$.results[*].path")).containsExactly("a.txt");
+        assertThat((Integer) lexical.read("$.results[0].ranks.lexical")).isEqualTo(1);
+        assertThat((Object) lexical.read("$.results[0].ranks.vector")).isNull();
+
+        assertThat((String) vector.read("$.mode")).isEqualTo("VECTOR");
+        assertThat((String) vector.read("$.model.provider")).isEqualTo("fake");
+        assertThat((Object) vector.read("$.lexicalVersion")).isNull();
+        assertThat((List<String>) vector.read("$.results[*].path"))
+                .containsExactly("a.txt", "b.txt");
+        assertThat((List<Integer>) vector.read("$.results[*].ranks.vector")).containsExactly(1, 2);
+        assertThat((List<Object>) vector.read("$.results[*].ranks.lexical")).containsOnlyNulls();
+
+        assertThat((String) hybrid.read("$.mode")).isEqualTo("HYBRID");
+        assertThat((String) hybrid.read("$.model.provider")).isEqualTo("fake");
+        assertThat((String) hybrid.read("$.lexicalVersion")).isEqualTo("ident-v1");
+        assertThat((List<String>) hybrid.read("$.results[*].path"))
+                .containsExactly("a.txt", "b.txt");
+        assertThat((Integer) hybrid.read("$.results[0].ranks.lexical")).isEqualTo(1);
+        assertThat((Integer) hybrid.read("$.results[0].ranks.vector")).isEqualTo(1);
+        assertThat(hybrid.read("$.results[0].score", Double.class))
+                .isCloseTo(2.0 / 61, offset(1e-9));
+        assertThat((Object) hybrid.read("$.results[1].ranks.lexical")).isNull();
+        assertThat(hybrid.read("$.results[1].score", Double.class))
+                .isCloseTo(1.0 / 62, offset(1e-9));
+    }
+
+    @Test
+    void hybridAddsTheChunksOfACitedFile() throws IOException {
+        Path tree = tree();
+        write(tree, "src/UserRepository.java", "class UserRepository { find }");
+        write(tree, "src/Billing.java", "class Billing { charge refund }");
+        write(tree, "docs/notes.md", "refund policy");
+        String projectId = project(tree);
+        index(projectId);
+
+        DocumentContext result =
+                json(search(projectId, "{\"query\": \"refund in UserRepository.java\"}"));
+
+        assertThat((List<String>) result.read("$.results[*].path"))
+                .contains("src/UserRepository.java", "src/Billing.java", "docs/notes.md");
+        List<Integer> pathRanks =
+                result.read("$.results[?(@.path == 'src/UserRepository.java')].ranks.path");
+        assertThat(pathRanks).containsExactly(1);
+        assertThat(
+                        (List<Object>)
+                                result.read(
+                                        "$.results[?(@.path != 'src/UserRepository.java')].ranks.path"))
+                .containsOnlyNulls();
+    }
+
+    @Test
+    void missingModeAndNullModeAreHybrid() throws IOException {
+        String projectId = indexedProject();
+
+        assertThat((String) json(search(projectId, "{\"query\": \"alpha\"}")).read("$.mode"))
+                .isEqualTo("HYBRID");
+        assertThat(
+                        (String)
+                                json(search(projectId, "{\"query\": \"alpha\", \"mode\": null}"))
+                                        .read("$.mode"))
+                .isEqualTo("HYBRID");
+    }
+
+    @ParameterizedTest
+    @CsvSource({"lexical", "FUZZY", "''"})
+    void unknownModeIsAValidationError(String mode) {
+        MvcTestResult result =
+                search(
+                        UUID.randomUUID().toString(),
+                        "{\"query\": \"alpha\", \"mode\": \"%s\"}".formatted(mode));
+
+        assertError(result, "VALIDATION_FAILED");
+        assertThat((List<String>) json(result).read("$.errors[*].field")).containsExactly("mode");
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+        // mode, lexical index outdated, embeddings of another model, expected code (empty = 200)
+        "LEXICAL, true, false, SNAPSHOT_LEXICAL_MISMATCH",
+        "HYBRID, true, false, SNAPSHOT_LEXICAL_MISMATCH",
+        "VECTOR, true, false, ",
+        "LEXICAL, false, true, ",
+        "HYBRID, false, true, SNAPSHOT_EMBEDDING_MISMATCH",
+        "VECTOR, false, true, SNAPSHOT_EMBEDDING_MISMATCH",
+        "HYBRID, true, true, SNAPSHOT_LEXICAL_MISMATCH",
+        "VECTOR, true, true, SNAPSHOT_EMBEDDING_MISMATCH"
+    })
+    void snapshotChecksDependOnTheMode(
+            String mode, boolean lexicalOutdated, boolean otherModel, String code)
+            throws IOException {
+        String projectId = indexedProject();
+        if (lexicalOutdated) {
+            jdbc.sql("UPDATE snapshots SET lexical_version = 'ident-v0'").update();
+        }
+        if (otherModel) {
+            jdbc.sql("UPDATE snapshots SET embedding_model = 'other-model'").update();
+        }
+
+        MvcTestResult result =
+                search(projectId, "{\"query\": \"alpha\", \"mode\": \"%s\"}".formatted(mode));
+
+        if (code == null) {
+            assertThat(result).hasStatusOk();
+        } else {
+            assertThat(result).hasStatus(HttpStatus.CONFLICT);
+            assertError(result, code);
+            verify(provider, never()).embed(any());
+        }
+    }
+
+    @Test
+    void snapshotIndexedBeforeTheLexicalIndexIsAMismatch() throws IOException {
+        String projectId = indexedProject();
+        jdbc.sql("UPDATE snapshots SET lexical_version = NULL").update();
+
+        assertError(
+                search(projectId, "{\"query\": \"alpha\", \"mode\": \"LEXICAL\"}"),
+                "SNAPSHOT_LEXICAL_MISMATCH");
+    }
+
+    @Test
+    void lexicalModeNeverCallsTheProvider() throws IOException {
+        String projectId = indexedProject();
+        doThrow(new EmbeddingFailure(Type.UNAVAILABLE, "down")).when(provider).embed(any());
+
+        DocumentContext result =
+                json(search(projectId, "{\"query\": \"alpha\", \"mode\": \"LEXICAL\"}"));
+
+        assertThat((List<String>) result.read("$.results[*].content")).containsExactly("alpha");
+        verify(provider, never()).embed(any());
+    }
+
+    @Test
+    void lexicalModeWithoutTermsReturnsNothing() throws IOException {
+        String projectId = indexedProject();
+
+        assertThat(
+                        (List<?>)
+                                json(search(
+                                                projectId,
+                                                "{\"query\": \"o que é?\", \"mode\": \"LEXICAL\"}"))
+                                        .read("$.results"))
+                .isEmpty();
     }
 
     @Test
@@ -336,7 +508,10 @@ class SearchApiIT extends EmbeddingContext {
 
         assertThat(search(projectId, "{\"query\": \"secret-question-5d1e alpha\"}")).hasStatusOk();
 
-        assertThat(output).doesNotContain("secret-question-5d1e").contains("Vector search on");
+        assertThat(output)
+                .doesNotContain("secret-question-5d1e")
+                .doesNotContain("alpha")
+                .contains("Search in HYBRID mode on");
     }
 
     private String indexedProject() throws IOException {

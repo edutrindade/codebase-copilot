@@ -3,9 +3,7 @@ package com.codebasecopilot.retrieval;
 import com.codebasecopilot.providers.ModelInfo;
 import com.codebasecopilot.shared.persistence.VectorLiteral;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
-import org.jspecify.annotations.Nullable;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
@@ -18,32 +16,6 @@ class VectorSearch {
 
     VectorSearch(JdbcClient jdbc) {
         this.jdbc = jdbc;
-    }
-
-    record SnapshotState(
-            UUID projectId, String status, boolean pruned, @Nullable ModelInfo embedding) {}
-
-    Optional<SnapshotState> findSnapshot(UUID snapshotId) {
-        return jdbc.sql(
-                        """
-                        SELECT project_id, status, pruned_at IS NOT NULL AS pruned,
-                               embedding_provider, embedding_model, embedding_dimensions
-                        FROM snapshots WHERE id = :id
-                        """)
-                .param("id", snapshotId)
-                .query(
-                        (rs, rowNum) ->
-                                new SnapshotState(
-                                        rs.getObject("project_id", UUID.class),
-                                        rs.getString("status"),
-                                        rs.getBoolean("pruned"),
-                                        rs.getString("embedding_provider") == null
-                                                ? null
-                                                : new ModelInfo(
-                                                        rs.getString("embedding_provider"),
-                                                        rs.getString("embedding_model"),
-                                                        rs.getInt("embedding_dimensions"))))
-                .optional();
     }
 
     // Ties are broken by first path, start line and id. Only vectors of the given model count

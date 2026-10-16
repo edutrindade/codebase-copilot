@@ -1,78 +1,138 @@
 package com.codebasecopilot.retrieval;
 
+import com.codebasecopilot.codeanalysis.IdentifierTokenizer;
 import com.codebasecopilot.project.ProjectService;
 import com.codebasecopilot.providers.EmbeddingFailure;
 import com.codebasecopilot.providers.EmbeddingProvider;
 import com.codebasecopilot.providers.ModelInfo;
+import com.codebasecopilot.retrieval.RrfFusion.Channel;
+import com.codebasecopilot.retrieval.RrfFusion.RankedHit;
 import com.codebasecopilot.shared.error.ApiException;
 import com.codebasecopilot.shared.error.ErrorCode;
 import com.codebasecopilot.shared.error.FieldViolation;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.stereotype.Service;
 
-// Checks follow the precedence of D-053. The query is sent to the provider but never logged
+// Checks follow the precedence of D-060. The query is sent to the provider but never logged
 // (D-054); provider calls are not retried, since a person is waiting (D-051).
 @Service
+@EnableConfigurationProperties(RetrievalProperties.class)
 class SearchService {
 
     static final int MAX_QUERY_CHARS = 2000;
     static final int DEFAULT_LIMIT = 10;
     static final int MAX_LIMIT = 50;
+    static final SearchMode DEFAULT_MODE = SearchMode.HYBRID;
 
     private static final Set<String> SEARCHABLE = Set.of("READY", "PARTIAL");
 
     private static final Logger log = LoggerFactory.getLogger(SearchService.class);
 
     private final ProjectService projects;
-    private final VectorSearch search;
+    private final SearchSnapshots snapshots;
+    private final LexicalSearch lexical;
+    private final VectorSearch vector;
+    private final PathSearch path;
+    private final RetrievalProperties properties;
     private final @Nullable EmbeddingProvider provider;
 
     SearchService(
             ProjectService projects,
-            VectorSearch search,
+            SearchSnapshots snapshots,
+            LexicalSearch lexical,
+            VectorSearch vector,
+            PathSearch path,
+            RetrievalProperties properties,
             ObjectProvider<EmbeddingProvider> provider) {
         this.projects = projects;
-        this.search = search;
+        this.snapshots = snapshots;
+        this.lexical = lexical;
+        this.vector = vector;
+        this.path = path;
+        this.properties = properties;
         this.provider = provider.getIfAvailable();
     }
 
-    record Query(@Nullable String text, @Nullable UUID snapshotId, @Nullable Integer limit) {}
+    record Query(
+            @Nullable String text,
+            @Nullable UUID snapshotId,
+            @Nullable Integer limit,
+            @Nullable String mode) {}
 
-    record Result(UUID snapshotId, ModelInfo model, List<SearchHit> hits) {}
+    // model is null without the vector channel, lexicalVersion without the lexical one.
+    record Result(
+            UUID snapshotId,
+            SearchMode mode,
+            @Nullable ModelInfo model,
+            @Nullable String lexicalVersion,
+            List<RankedHit> hits) {}
 
     Result search(UUID projectId, Query query) {
         String text = query.text();
         int limit = query.limit() == null ? DEFAULT_LIMIT : query.limit();
-        validate(text, limit);
+        SearchMode mode = validate(text, limit, query.mode());
         UUID snapshotId = snapshotId(projectId, query.snapshotId());
-        VectorSearch.SnapshotState snapshot = searchable(projectId, snapshotId);
-        EmbeddingProvider provider = this.provider;
-        if (provider == null) {
-            throw new ApiException(ErrorCode.EMBEDDINGS_NOT_AVAILABLE);
+        SearchSnapshots.SnapshotState snapshot = searchable(projectId, snapshotId);
+        if (mode.usesLexical() && !IdentifierTokenizer.VERSION.equals(snapshot.lexicalVersion())) {
+            throw new ApiException(ErrorCode.SNAPSHOT_LEXICAL_MISMATCH);
         }
-        ModelInfo model = provider.model();
-        if (!model.equals(snapshot.embedding())) {
-            throw new ApiException(ErrorCode.SNAPSHOT_EMBEDDING_MISMATCH);
+        EmbeddingProvider provider = mode.usesVector() ? provider(snapshot) : null;
+
+        Map<Channel, List<SearchHit>> lists = new EnumMap<>(Channel.class);
+        Map<Channel, Long> millis = new EnumMap<>(Channel.class);
+        int depth = mode == SearchMode.HYBRID ? Math.max(properties.candidates(), limit) : limit;
+        if (provider != null) {
+            ModelInfo model = provider.model();
+            timed(
+                    Channel.VECTOR,
+                    lists,
+                    millis,
+                    () -> vector.search(snapshotId, model, embed(provider, text), depth));
         }
-        long start = System.nanoTime();
-        float[] vector = embed(provider, text);
-        List<SearchHit> hits = search.search(snapshotId, model, vector, limit);
+        if (mode.usesLexical()) {
+            timed(Channel.LEXICAL, lists, millis, () -> lexical.search(snapshotId, text, depth));
+        }
+        if (mode == SearchMode.HYBRID) {
+            timed(
+                    Channel.PATH,
+                    lists,
+                    millis,
+                    () -> path.search(snapshotId, text, PathSearch.DEFAULT_THRESHOLD, depth));
+        }
+
+        List<RankedHit> hits =
+                switch (mode) {
+                    case LEXICAL -> RrfFusion.single(Channel.LEXICAL, lists.get(Channel.LEXICAL));
+                    case VECTOR -> RrfFusion.single(Channel.VECTOR, lists.get(Channel.VECTOR));
+                    case HYBRID -> RrfFusion.fuse(lists, RrfFusion.Parameters.DEFAULT, limit);
+                };
         log.info(
-                "Vector search on snapshot {} returned {} results in {} ms",
+                "Search in {} mode on snapshot {} returned {} results (per channel: {} results, {} ms)",
+                mode,
                 snapshotId,
                 hits.size(),
-                (System.nanoTime() - start) / 1_000_000);
-        return new Result(snapshotId, model, hits);
+                sizes(lists),
+                millis);
+        return new Result(
+                snapshotId,
+                mode,
+                provider == null ? null : provider.model(),
+                mode.usesLexical() ? IdentifierTokenizer.VERSION : null,
+                hits);
     }
 
-    private static void validate(@Nullable String text, int limit) {
+    private static SearchMode validate(@Nullable String text, int limit, @Nullable String mode) {
         List<FieldViolation> violations = new ArrayList<>();
         if (text == null || text.isBlank()) {
             violations.add(new FieldViolation("query", "validation.search.query-required"));
@@ -82,9 +142,27 @@ class SearchService {
         if (limit < 1 || limit > MAX_LIMIT) {
             violations.add(new FieldViolation("limit", "validation.search.limit-out-of-range"));
         }
-        if (!violations.isEmpty()) {
+        SearchMode parsed = mode(mode);
+        if (parsed == null) {
+            violations.add(new FieldViolation("mode", "validation.search.mode-invalid"));
+        }
+        if (!violations.isEmpty() || parsed == null) {
             throw new ApiException(ErrorCode.VALIDATION_FAILED, violations);
         }
+        return parsed;
+    }
+
+    // Exact names only, so the accepted values are the ones in the contract.
+    private static @Nullable SearchMode mode(@Nullable String mode) {
+        if (mode == null) {
+            return DEFAULT_MODE;
+        }
+        for (SearchMode candidate : SearchMode.values()) {
+            if (candidate.name().equals(mode)) {
+                return candidate;
+            }
+        }
+        return null;
     }
 
     // An explicit snapshot of another project is reported as not found, like a missing one.
@@ -99,15 +177,43 @@ class SearchService {
         return requested;
     }
 
-    private VectorSearch.SnapshotState searchable(UUID projectId, UUID snapshotId) {
-        VectorSearch.SnapshotState snapshot =
-                search.findSnapshot(snapshotId)
+    private SearchSnapshots.SnapshotState searchable(UUID projectId, UUID snapshotId) {
+        SearchSnapshots.SnapshotState snapshot =
+                snapshots
+                        .find(snapshotId)
                         .filter(s -> s.projectId().equals(projectId))
                         .orElseThrow(() -> new ApiException(ErrorCode.SNAPSHOT_NOT_FOUND));
         if (!SEARCHABLE.contains(snapshot.status()) || snapshot.pruned()) {
             throw new ApiException(ErrorCode.SNAPSHOT_NOT_SEARCHABLE);
         }
         return snapshot;
+    }
+
+    private EmbeddingProvider provider(SearchSnapshots.SnapshotState snapshot) {
+        EmbeddingProvider provider = this.provider;
+        if (provider == null) {
+            throw new ApiException(ErrorCode.EMBEDDINGS_NOT_AVAILABLE);
+        }
+        if (!provider.model().equals(snapshot.embedding())) {
+            throw new ApiException(ErrorCode.SNAPSHOT_EMBEDDING_MISMATCH);
+        }
+        return provider;
+    }
+
+    private static void timed(
+            Channel channel,
+            Map<Channel, List<SearchHit>> lists,
+            Map<Channel, Long> millis,
+            Supplier<List<SearchHit>> search) {
+        long start = System.nanoTime();
+        lists.put(channel, search.get());
+        millis.put(channel, (System.nanoTime() - start) / 1_000_000);
+    }
+
+    private static Map<Channel, Integer> sizes(Map<Channel, List<SearchHit>> lists) {
+        Map<Channel, Integer> sizes = new EnumMap<>(Channel.class);
+        lists.forEach((channel, hits) -> sizes.put(channel, hits.size()));
+        return sizes;
     }
 
     private static float[] embed(EmbeddingProvider provider, String text) {
