@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.jdbc.core.JdbcAggregateTemplate;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -84,6 +85,21 @@ class ProjectRepository {
                 .param("importJobId", importJobId)
                 .param("now", OffsetDateTime.ofInstant(now, ZoneOffset.UTC))
                 .update();
+    }
+
+    Set<UUID> findCurrentImportIds(Collection<UUID> importJobIds) {
+        if (importJobIds.isEmpty()) {
+            return Set.of();
+        }
+        return Set.copyOf(
+                jdbc.sql(
+                                """
+                                SELECT current_import_job_id FROM projects
+                                WHERE current_import_job_id IN (:ids)
+                                """)
+                        .param("ids", importJobIds)
+                        .query(UUID.class)
+                        .list());
     }
 
     long countByWorkspace(UUID workspaceId) {

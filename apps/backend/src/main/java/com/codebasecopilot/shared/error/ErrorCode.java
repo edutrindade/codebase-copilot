@@ -18,7 +18,10 @@ public enum ErrorCode {
     PROJECT_ALREADY_EXISTS(HttpStatus.CONFLICT),
     DIRECTORY_NOT_FOUND(HttpStatus.NOT_FOUND),
     DIRECTORY_NOT_READABLE(HttpStatus.CONFLICT),
-    PROJECT_BUSY(HttpStatus.CONFLICT);
+    PROJECT_BUSY(HttpStatus.CONFLICT),
+    PROJECT_SOURCE_MISMATCH(HttpStatus.CONFLICT),
+    UPLOAD_TOO_LARGE(HttpStatus.CONTENT_TOO_LARGE),
+    IMPORT_NOT_FOUND(HttpStatus.NOT_FOUND);
 
     private final HttpStatus status;
 

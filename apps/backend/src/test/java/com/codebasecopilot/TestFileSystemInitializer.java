@@ -16,8 +16,9 @@ import org.springframework.context.ApplicationContextInitializer;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.env.MapPropertySource;
 
-// Rebuilds the test roots once per JVM, because Git keeps neither links nor permissions; the data
-// directory lives outside the repository, as the application requires (D-028).
+// Rebuilds the test roots once per JVM, because Git keeps neither links nor permissions. Each
+// context gets its own data directory outside the repository (D-028), so the import recovery of
+// one context never removes folders of another.
 //
 // Tree of the default root:
 //   alpha/inner/            listed, has children
@@ -34,26 +35,36 @@ public final class TestFileSystemInitializer
     public static final Path ROOTS_DIR =
             Path.of(System.getProperty("user.dir"), "target", "test-roots").toAbsolutePath();
 
-    private static final Path DATA_DIR = prepare();
+    static {
+        prepareRoots();
+    }
 
     @Override
     public void initialize(ConfigurableApplicationContext context) {
+        Path dataDir = createDataDir();
         context.getEnvironment()
                 .getPropertySources()
                 .addFirst(
                         new MapPropertySource(
                                 "testFileSystem",
                                 Map.of(
-                                        "app.data-dir", DATA_DIR.toString(),
+                                        "app.data-dir", dataDir.toString(),
                                         "test.roots-dir", ROOTS_DIR.toString())));
     }
 
-    private static Path prepare() {
+    private static void prepareRoots() {
         try {
             deleteRecursively(ROOTS_DIR);
             buildDefaultRoot(Files.createDirectories(ROOTS_DIR.resolve("default")));
             Files.createDirectories(ROOTS_DIR.resolve("work"));
             Files.createDirectories(ROOTS_DIR.resolve("outside/secret"));
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    private static Path createDataDir() {
+        try {
             Path dataDir = Files.createTempDirectory("codebase-copilot-it-");
             Runtime.getRuntime().addShutdownHook(new Thread(() -> deleteQuietly(dataDir)));
             return dataDir;

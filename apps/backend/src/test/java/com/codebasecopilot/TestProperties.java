@@ -18,5 +18,8 @@ final class TestProperties {
     // The default test root has one more directory than this inside many/.
     static final String MAX_BROWSE_DIRECTORIES = "app.browse.max-directories=5";
 
+    // Small enough for MockMvc tests to exceed without large files.
+    static final String MAX_ZIP_BYTES = "app.import.max-zip-bytes=64KB";
+
     private TestProperties() {}
 }

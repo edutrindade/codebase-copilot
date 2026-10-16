@@ -15,9 +15,11 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -131,6 +133,12 @@ public class ProjectService {
         repository.updateCurrentImport(
                 projectId, importJobId, clock.instant().truncatedTo(ChronoUnit.MICROS));
         return project.currentImportJobId();
+    }
+
+    // Which of the given imports are still the current import of some project.
+    @Transactional(readOnly = true)
+    public Set<UUID> currentImportsAmong(Collection<UUID> importJobIds) {
+        return repository.findCurrentImportIds(importJobIds);
     }
 
     // One batch lookup per page, never one per project.

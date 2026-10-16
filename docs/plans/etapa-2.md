@@ -570,3 +570,10 @@ Preenchido ao longo da implementação e fechado na F6.
 - **Porta `ProjectImports` (F2):** `CurrentImport.status` é `String`, porque `project` não pode ver o enum de `importjob` (D-031).
 - **Remoção de pastas (F2):** `shared.fs.Directories.deleteRecursively` (apaga links sem segui-los) e `ImportFiles`, que agenda a remoção para depois do commit e loga só o `importJobId` e a classe da exceção, porque a mensagem pode conter nomes vindos do conteúdo importado.
 - **Sem N+1 (F2):** coberto pela consulta em lote do serviço (uma chamada à porta por página); não há teste que conte consultas.
+- **Executor (F3):** um pool fixo criado no `ImportWorker` (`app.import.max-concurrent`), e não um bean `Executor`, que desligaria o `applicationTaskExecutor` do Spring Boot. É encerrado com `shutdownNow` no `@PreDestroy`.
+- **Recuperação (F3):** roda em `SmartInitializingSingleton`, antes de o servidor web aceitar requisições, e não em `ApplicationRunner`, que rodaria depois e poderia falhar um job recém-criado por um upload.
+- **Configuração (F3):** só `app.import.max-zip-bytes` fica no `application.yml`, porque o multipart deriva dele; os demais limites têm padrão em `ImportProperties`. Novo `app.import.compression-ratio-min-bytes` (1 MB), tamanho a partir do qual a razão de compressão é verificada.
+- **Persistência do job (F3):** insert e transições por `JdbcClient`, não por `JdbcAggregateTemplate`, porque todas as transições são `UPDATE` condicionados ao estado.
+- **Testes (F3):** cada contexto de teste ganhou seu próprio `DATA_DIR`, para a recuperação de um contexto não apagar pastas de outro. A limpeza de `DATA_DIR/imports` fica no `ImportApiIT`, não no `DatabaseCleaner`.
+- **Concorrência (F3):** em vez de N uploads paralelos (a extração é rápida, então um upload posterior pode legitimamente ser aceito), o teste segura uma transação com um job `PENDING` não commitado, espera o segundo upload bloquear no índice único (`pg_stat_activity`) e confirma o `409 PROJECT_BUSY` depois do commit.
+- **Não testado (F3):** a remoção da pasta quando o `transferTo` falha (rollback); o código registra a limpeza antes de gravar.
