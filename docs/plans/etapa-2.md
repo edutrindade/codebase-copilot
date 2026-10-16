@@ -582,3 +582,4 @@ Preenchido ao longo da implementação e fechado na F6.
 - **Varredura (F4):** o `SafeScanner` já aceita padrões customizados; a F5 só passa a ler as configurações do projeto. A amostra de 8 KB é lida por uma função injetável, usada no teste de arquivo removido durante a varredura.
 - **Configuração (F4):** os limites `app.inventory.*` têm padrão em `InventoryProperties`, sem entradas no `application.yml`.
 - **Origem ZIP (F4):** `DataDirectory.importSourceDir(id)` passou a ser o único lugar que conhece o nome `source/`.
+- **Configurações (F5):** `defaultRules` também traz `exceptions` (ex.: `.env.example` em `env-files`), para a UI mostrar o que a regra não exclui. Itens `null` nas listas respondem `validation.required` no índice; mais de 100 padrões geram um único erro em `excludePatterns`. A mensagem de limite fora da faixa é genérica, porque `FieldViolation` não carrega argumentos.

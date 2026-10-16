@@ -29,6 +29,7 @@ class InventoryService {
     private final LocalRoots roots;
     private final DataDirectory dataDirectory;
     private final InventoryProperties properties;
+    private final ProjectSettingsService settings;
     private final Clock clock;
     private final SafeScanner scanner = new SafeScanner();
 
@@ -37,31 +38,39 @@ class InventoryService {
             LocalRoots roots,
             DataDirectory dataDirectory,
             InventoryProperties properties,
+            ProjectSettingsService settings,
             Clock clock) {
         this.projects = projects;
         this.roots = roots;
         this.dataDirectory = dataDirectory;
         this.properties = properties;
+        this.settings = settings;
         this.clock = clock;
     }
 
     Inventory inventory(UUID projectId) {
         Project project = projects.get(projectId).project();
         Path source = source(project);
+        ProjectSettingsService.Effective effective = settings.effective(projectId);
         ScanResult scan;
         try {
             scan =
                     scanner.scan(
                             source,
-                            new SafeScanner.Rules(DefaultExclusionRules.ALL, List.of()),
+                            new SafeScanner.Rules(effective.rules(), effective.patterns()),
                             new SafeScanner.Limits(
                                     properties.maxEntries(),
                                     properties.maxDepth(),
-                                    properties.maxFileBytes().toBytes()));
+                                    effective.maxFileBytes()));
         } catch (IOException e) {
             throw new ApiException(ErrorCode.SOURCE_NOT_READABLE);
         }
-        return new Inventory(projectId, clock.instant(), 0, scan, warnings(project, source, scan));
+        return new Inventory(
+                projectId,
+                clock.instant(),
+                effective.settings().version(),
+                scan,
+                warnings(project, source, scan, effective.maxProjectBytes()));
     }
 
     private Path source(Project project) {
@@ -96,7 +105,8 @@ class InventoryService {
         };
     }
 
-    private List<Inventory.Warning> warnings(Project project, Path source, ScanResult scan) {
+    private List<Inventory.Warning> warnings(
+            Project project, Path source, ScanResult scan, long maxProjectBytes) {
         List<Inventory.Warning> warnings = new ArrayList<>();
         List<UUID> sameFolder = sameFolderProjects(project, source);
         if (!sameFolder.isEmpty()) {
@@ -105,7 +115,7 @@ class InventoryService {
         if (scan.truncated()) {
             warnings.add(new Inventory.Warning(InventoryWarning.SCAN_LIMIT_REACHED, List.of()));
         }
-        if (scan.totals().includedBytes() > properties.maxProjectBytes().toBytes()) {
+        if (scan.totals().includedBytes() > maxProjectBytes) {
             warnings.add(
                     new Inventory.Warning(InventoryWarning.PROJECT_SIZE_LIMIT_EXCEEDED, List.of()));
         }

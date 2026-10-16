@@ -10,4 +10,6 @@ record InventoryProperties(
         @DefaultValue("200000") int maxEntries,
         @DefaultValue("64") int maxDepth,
         @DefaultValue("1MB") DataSize maxFileBytes,
-        @DefaultValue("500MB") DataSize maxProjectBytes) {}
+        @DefaultValue("500MB") DataSize maxProjectBytes,
+        @DefaultValue("10MB") DataSize maxFileBytesLimit,
+        @DefaultValue("2GB") DataSize maxProjectBytesLimit) {}

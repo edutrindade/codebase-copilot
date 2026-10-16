@@ -11,7 +11,7 @@
   "paths" : {
     "/api/v1/imports/{importJobId}" : {
       "get" : {
-        "operationId" : "get_2",
+        "operationId" : "get_3",
         "parameters" : [ {
           "in" : "path",
           "name" : "importJobId",
@@ -230,7 +230,7 @@
         "tags" : [ "project-controller" ]
       },
       "get" : {
-        "operationId" : "get_1",
+        "operationId" : "get_2",
         "parameters" : [ {
           "in" : "path",
           "name" : "projectId",
@@ -532,6 +532,138 @@
         "tags" : [ "inventory-controller" ]
       }
     },
+    "/api/v1/projects/{projectId}/settings" : {
+      "get" : {
+        "operationId" : "get",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SettingsResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: VALIDATION_FAILED."
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: PROJECT_NOT_FOUND."
+          },
+          "500" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
+          }
+        },
+        "tags" : [ "project-settings-controller" ]
+      },
+      "put" : {
+        "operationId" : "update",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateSettingsRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SettingsResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: VALIDATION_FAILED, MALFORMED_REQUEST."
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: PROJECT_NOT_FOUND."
+          },
+          "415" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: UNSUPPORTED_MEDIA_TYPE."
+          },
+          "500" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
+          }
+        },
+        "tags" : [ "project-settings-controller" ]
+      }
+    },
     "/api/v1/workspaces" : {
       "get" : {
         "operationId" : "list",
@@ -708,7 +840,7 @@
         "tags" : [ "workspace-controller" ]
       },
       "get" : {
-        "operationId" : "get",
+        "operationId" : "get_1",
         "parameters" : [ {
           "in" : "path",
           "name" : "workspaceId",
@@ -967,6 +1099,37 @@
           }
         },
         "required" : [ "id", "status" ]
+      },
+      "DefaultRuleResponse" : {
+        "type" : "object",
+        "properties" : {
+          "category" : {
+            "type" : "string",
+            "enum" : [ "SENSITIVE", "VCS", "DEPENDENCIES", "BUILD_OUTPUT", "IDE_CACHE", "GENERATED", "MEDIA_BINARY" ]
+          },
+          "disabled" : {
+            "type" : "boolean"
+          },
+          "exceptions" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "overridable" : {
+            "type" : "boolean"
+          },
+          "patterns" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        },
+        "required" : [ "category", "disabled", "exceptions", "id", "overridable", "patterns" ]
       },
       "DirectoryCountResponse" : {
         "type" : "object",
@@ -1403,6 +1566,54 @@
         },
         "required" : [ "createdAt", "id", "name", "source", "workspaceId" ]
       },
+      "SettingsResponse" : {
+        "type" : "object",
+        "properties" : {
+          "defaultRules" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/DefaultRuleResponse"
+            }
+          },
+          "disabledDefaultRules" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "effectiveMaxFileBytes" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "effectiveMaxProjectBytes" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "excludePatterns" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "maxFileBytes" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "maxProjectBytes" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "updatedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "version" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "defaultRules", "disabledDefaultRules", "effectiveMaxFileBytes", "effectiveMaxProjectBytes", "excludePatterns", "maxFileBytes", "maxProjectBytes", "updatedAt", "version" ]
+      },
       "SourceResponse" : {
         "discriminator" : {
           "mapping" : {
@@ -1417,6 +1628,31 @@
           }
         },
         "required" : [ "type" ]
+      },
+      "UpdateSettingsRequest" : {
+        "type" : "object",
+        "properties" : {
+          "disabledDefaultRules" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "excludePatterns" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "maxFileBytes" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
+          },
+          "maxProjectBytes" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
+          }
+        }
       },
       "WarningResponse" : {
         "type" : "object",

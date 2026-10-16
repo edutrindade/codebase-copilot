@@ -227,6 +227,66 @@ class InventoryApiIT {
                 .isEqualTo(List.of("NO_INCLUDED_FILES"));
     }
 
+    @Test
+    void appliesProjectSettings() {
+        String projectId = localProject("work", "inventory-repo");
+        assertThat(
+                        settings(
+                                projectId,
+                                """
+                                {"excludePatterns": ["*.md", ".env"],
+                                 "disabledDefaultRules": ["node-modules"],
+                                 "maxFileBytes": 8192}
+                                """))
+                .hasStatusOk();
+
+        assertThat(inventory(projectId))
+                .hasStatusOk()
+                .bodyJson()
+                .isLenientlyEqualTo(
+                        """
+                        {
+                          "settingsVersion": 1,
+                          "totals": {"files": 9, "includedFiles": 5, "excludedFiles": 3,
+                                     "unsupportedFiles": 1, "excludedDirectories": 0},
+                          "exclusions": [
+                            {"reason": "DEFAULT_RULE", "ruleId": "env-files", "examples": [".env"]},
+                            {"reason": "CUSTOM_PATTERN", "pattern": "*.md",
+                             "examples": ["README.md"]},
+                            {"reason": "SYMLINK", "examples": ["link-out"]},
+                            {"reason": "BINARY", "examples": ["data.bin"]}
+                          ]
+                        }
+                        """);
+    }
+
+    @Test
+    void fileLimitFollowsSettings() {
+        String projectId = localProject("work", "inventory-repo");
+        assertThat(settings(projectId, "{\"maxFileBytes\": 8192}")).hasStatusOk();
+        assertThat(inventory(projectId))
+                .bodyJson()
+                .extractingPath("$.exclusions[*].reason")
+                .isEqualTo(List.of("DEFAULT_RULE", "DEFAULT_RULE", "SYMLINK", "BINARY"));
+
+        assertThat(settings(projectId, "{\"maxFileBytes\": 1024}")).hasStatusOk();
+        assertThat(inventory(projectId))
+                .bodyJson()
+                .isLenientlyEqualTo(
+                        """
+                        {"settingsVersion": 2,
+                         "exclusions": [{}, {}, {}, {"reason": "TOO_LARGE", "examples": ["big.txt"]}, {}]}
+                        """);
+    }
+
+    private MvcTestResult settings(String projectId, String body) {
+        return mvc.put()
+                .uri("/api/v1/projects/{id}/settings", projectId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body)
+                .exchange();
+    }
+
     private String localProject(String rootKey, String relativePath) {
         MvcTestResult result =
                 mvc.post()
