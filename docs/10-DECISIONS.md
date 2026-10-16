@@ -192,9 +192,9 @@ Projetos ZIP não têm caminho; guardam uma referência ao import correspondente
 - **Duplicidade (15/10/2026):** um workspace não pode ter dois projetos `LOCAL_FOLDER` com o mesmo `source_root_key` + `source_relative_path` normalizado; a criação responde `409 PROJECT_ALREADY_EXISTS`. Garantido por índice único parcial (`05-DATA-MODEL.md`). Nomes iguais são permitidos; projetos ZIP não são verificados.
 - **Normalização de `source_relative_path` (revisada em 15/10/2026):** puramente sintática; a criação do projeto **não acessa o sistema de arquivos** nem usa caminho canônico.
   - Unicode normalizado para **NFC**;
-  - `/` é o único separador (`\` não é tratado como separador); barras repetidas viram uma só;
-  - barras finais e segmentos `.` são removidos; string vazia representa a própria raiz;
-  - `/` inicial (caminho absoluto) ou qualquer segmento `..` é rejeitado com `400 PATH_OUTSIDE_ROOT`; caracteres de controle, com `400 VALIDATION_FAILED`;
+  - `/` é o único separador; barras repetidas viram uma só;
+  - barras finais e segmentos `.` são removidos; string vazia representa a própria raiz (`""` e `"."` são equivalentes, D-032);
+  - `/` inicial (caminho absoluto) ou qualquer segmento `..` é rejeitado com `400 PATH_OUTSIDE_ROOT`; NUL, barra invertida (`\`) e demais caracteres de controle, com `400 VALIDATION_FAILED` (**revisado pela D-032**: antes, `\` era aceito como caractere comum);
   - a comparação é **sensível a maiúsculas**.
 - A existência da pasta, o tipo (diretório) e os links simbólicos são verificados na pré-análise da Etapa 2 (D-018), não na criação. A pré-análise também poderá avisar sobre projetos que diferem apenas por maiúsculas/minúsculas e apontam para a mesma pasta em sistemas de arquivos que não diferenciam caixa.
 - **`PROJECT_SOURCE_MISMATCH` (409):** operação incompatível com o `source_type` do projeto. Uso atual: upload de ZIP (`POST /projects/{id}/imports/zip`) em projeto `LOCAL_FOLDER`. Não há hoje operação exclusiva de pasta local por projeto; se surgir uma (por exemplo, reindexar a partir da pasta), ela usa o mesmo código para projetos `ZIP`.
@@ -233,6 +233,22 @@ Projetos ZIP não têm caminho; guardam uma referência ao import correspondente
 **Motivo:** padrão aberto, suporte nativo no Spring e menos código de infraestrutura.  
 **Consequências:** `06-API-CONTRACTS.md` §2 atualizado; mantêm-se as regras de não expor stack traces, credenciais, conteúdo sensível ou caminhos internos.  
 **O que levaria à revisão:** limitação do `ProblemDetail` que impeça representar erros de validação ou a geração de tipos do frontend.
+
+#### Atualização de 15/10/2026 — códigos genéricos e `requestId`
+**Contexto:** o planejamento da Etapa 1 mostrou erros do próprio framework (JSON ilegível, rota inexistente etc.) sem `code` definido.  
+**Opções consideradas:**
+1. Agrupar tudo em `VALIDATION_FAILED` e `INTERNAL_ERROR`.
+2. Um código genérico por categoria de erro do framework.
+
+**Decisão:** opção 2.
+- Códigos genéricos: `MALFORMED_REQUEST` (400), `RESOURCE_NOT_FOUND` (404), `METHOD_NOT_ALLOWED` (405), `UNSUPPORTED_MEDIA_TYPE` (415) e `INTERNAL_ERROR` (500).
+- `INTERNAL_ERROR` nunca devolve detalhes da exceção; só o `requestId` permite a correlação com o log.
+- Identificador malformado no caminho responde `400 VALIDATION_FAILED`, com `field` igual ao nome do parâmetro.
+- O `requestId` (UUID v7) é sempre gerado pelo backend, devolvido no cabeçalho `X-Request-Id` de toda resposta e incluído no MDC dos logs. Um `X-Request-Id` enviado pelo cliente é ignorado, para evitar injeção em log.
+
+**Motivo:** códigos distintos permitem ao frontend tratar cada caso sem interpretar texto; gerar o ID no servidor garante formato e unicidade.  
+**Consequências:** `06-API-CONTRACTS.md` §1 e §2 atualizados. Cada código genérico também exige as chaves `error.<CODE>.title` e `error.<CODE>.detail`.  
+**O que levaria à revisão:** necessidade de propagar um ID de rastreamento vindo de um proxy ou do frontend.
 
 ### D-023 — Contrato OpenAPI
 **Status:** Aceita  
@@ -343,7 +359,7 @@ Projetos ZIP não têm caminho; guardam uma referência ao import correspondente
 
 **Motivo:** mantém o caso comum em uma variável e permite várias raízes sem inventar formato próprio; validar na inicialização evita falhas tardias em uso.  
 **Consequências:**
-- Na Etapa 1: mapear `PROJECTS_ROOT`/`PROJECTS_ROOT_LABEL` em `application.yml` e implementar a validação.
+- Na Etapa 1: mapear `PROJECTS_ROOT`/`PROJECTS_ROOT_LABEL` em `application.yml` e implementar a validação. **Implementado (15/10/2026):** o atalho vira as propriedades `app.projects-root` e `app.projects-root-label`, separadas da lista. Se `app.local-roots` tiver itens, ela substitui o atalho por inteiro; assim, qualquer item da lista com `path` vazio impede a inicialização, sem ambiguidade sobre a origem. Os testes fixam `spring.config.location=optional:classpath:/` e `app.projects-root=` vazio, além das próprias raízes (`src/test/resources/local-roots`).
 - O arquivo local `apps/backend/config/application.yml` é ignorado pelo Git; o formato é documentado no arquivo versionado `apps/backend/config/application.yml.example`, que o Spring não carrega.
 - **Testes declaram suas próprias raízes** em `app.local-roots` (por exemplo, diretórios temporários registrados como propriedades do teste). Como o Spring carrega `config/application.yml` a partir do diretório de execução (`apps/backend`), a configuração local de quem roda os testes, ou a ausência dela, não pode influenciar o resultado.
 - `DATA_DIR` não pode estar dentro de nenhuma raiz (D-028).
@@ -366,6 +382,51 @@ Projetos ZIP não têm caminho; guardam uma referência ao import correspondente
 **Motivo:** volumes pequenos nessas listas; offset é simples de implementar, testar e exibir na UI.  
 **Consequências:** listagens grandes (arquivos, chunks) serão reavaliadas na Etapa 2 ou 3, podendo adotar cursor.  
 **O que levaria à revisão:** listas com volume que torne o `COUNT` ou o offset caros.
+
+### D-031 — Fronteira workspace/project e raízes locais em `shared`
+**Status:** Aceita  
+**Contexto:** `project` precisa de `workspace` (o workspace deve existir), mas `workspace` precisa saber quantos projetos tem (`projectCount` em `GET /workspaces` e `409 WORKSPACE_NOT_EMPTY`, D-021). Uma dependência nos dois sentidos cria ciclo entre módulos. Além disso, as raízes permitidas (D-029) são usadas por `project` (validação de `rootKey`) e por `importjob` (navegação, Etapa 2).  
+**Opções consideradas:**
+1. A consulta de `workspace` faz `JOIN` direto na tabela `projects`.
+2. Uma porta em `workspace`, implementada por `project` (inversão de dependência).
+
+E, para as raízes: no módulo `project`, no `importjob` ou em `shared`.
+
+**Decisão:**
+- Opção 2. `workspace` define a porta (ex.: `WorkspaceProjectCounter`, com contagem individual e em lote), e `project` a implementa. A dependência tem **sentido único**: `project` depende de `workspace`, nunca o contrário.
+- A FK `projects.workspace_id` usa `ON DELETE RESTRICT` como rede de segurança: se um projeto for criado em concorrência entre a verificação e o `DELETE` do workspace, a violação da FK é traduzida para `409 WORKSPACE_NOT_EMPTY`, nunca 500.
+- A configuração e a consulta das raízes permitidas ficam em `shared.localroots`.
+- Regras de arquitetura com **ArchUnit** (dependência de teste nova): `shared` não depende de nenhum módulo de domínio (`workspace`, `project`, `importjob`, `indexing`, `codeanalysis`, `retrieval`, `answering`, `providers`, `history`), e `workspace` não depende de `project`.
+
+**Motivo:** mantém cada tabela sob a responsabilidade de um módulo e torna as fronteiras verificáveis por teste, e não só por convenção.  
+**Consequências:** a contagem de projetos na listagem de workspaces usa uma consulta em lote pela porta (sem N+1). Novos módulos entram na lista da regra do ArchUnit.  
+**O que levaria à revisão:** adoção do Spring Modulith ou necessidade de consultas que cruzem módulos com frequência.
+
+### D-032 — Regras de nome e precedência de erros na criação de projeto
+**Status:** Aceita  
+**Contexto:** os documentos não definiam limites para `name` nem a ordem das verificações quando uma requisição tem mais de um problema.  
+**Opções consideradas:**
+1. Deixar a ordem a cargo da implementação.
+2. Fixar regras de nome e uma ordem de verificação no contrato.
+
+**Decisão:** opção 2.
+- **Nome do workspace:** opcional. Ausente, `null` ou vazio após o `trim`, assume "Meus projetos".
+- **Nome do projeto:** obrigatório; vazio após o `trim` responde `400 VALIDATION_FAILED`.
+- **Ambos:** `trim` e normalização NFC; depois disso, no máximo 100 caracteres (contados em code points), sem caracteres de controle e sem unicidade.
+- **`relativePath`:** `""` e `"."` representam a própria raiz e são gravados como `""`. NUL, barra invertida (`\`) e caracteres de controle respondem `400 VALIDATION_FAILED` (revisa a D-020, que aceitava `\` como caractere comum). Caminho absoluto ou segmento `..` responde `400 PATH_OUTSIDE_ROOT`.
+- **Ordem das verificações em `POST /workspaces/{id}/projects`:**
+  1. `400 VALIDATION_FAILED` (inclui caracteres inválidos em `relativePath`);
+  2. `404 WORKSPACE_NOT_FOUND`;
+  3. `409 LOCAL_ROOTS_NOT_CONFIGURED`;
+  4. `404 ROOT_NOT_FOUND`;
+  5. `400 PATH_OUTSIDE_ROOT`;
+  6. `409 PROJECT_ALREADY_EXISTS`.
+
+  Para `ZIP`, os passos 3 a 6 não se aplicam.
+
+**Motivo:** respostas determinísticas facilitam testes e o tratamento no frontend. Rejeitar `\` evita ambiguidade entre sistemas operacionais (no Windows, `\` é separador), e o padrão de nome do workspace permite criá-lo com um clique na UI.  
+**Consequências:** `05-DATA-MODEL.md` e `06-API-CONTRACTS.md` (§3 e §5) atualizados em 15/10/2026; a migração aplica o limite de nome também por `CHECK`.  
+**O que levaria à revisão:** necessidade de nomes mais longos ou de unicidade de nomes por workspace.
 
 ---
 

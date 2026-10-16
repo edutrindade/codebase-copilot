@@ -9,8 +9,23 @@ spring:
     password: ${DB_PASSWORD}
   flyway:
     enabled: true
+  messages:
+    # User-facing messages are pt-BR only (D-025); never fall back to the OS locale.
+    fallback-to-system-locale: false
+
+logging:
+  pattern:
+    # Correlates every log line with the X-Request-Id of the response (D-022).
+    level: "%5p [%X{requestId:-}]"
+
+app:
+  # Shortcut for the "default" local root (D-029). A list in app.local-roots
+  # (e.g. in config/application.yml) replaces it entirely.
+  projects-root: ${PROJECTS_ROOT:}
+  projects-root-label: ${PROJECTS_ROOT_LABEL:Projetos}
 
 springdoc:
+  default-produces-media-type: application/json
   # Deterministic output so the versioned openapi.json diffs cleanly (D-023).
   writer-with-default-pretty-printer: true
   writer-with-order-by-keys: true
