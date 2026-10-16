@@ -2,5 +2,6 @@
 node_modules/
 .idea/
 *.iml
+.DS_Store
 # Configuração local do backend (exemplo versionado em application.yml.example)
 apps/backend/config/application.yml
