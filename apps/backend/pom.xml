@@ -34,6 +34,8 @@
 		<google-java-format.version>1.36.1</google-java-format.version>
 		<archunit.version>1.5.1</archunit.version>
 		<spring-ai.version>2.0.1</spring-ai.version>
+		<!-- Same version spring-ai-openai ${spring-ai.version} depends on. -->
+		<openai-java.version>4.49.0</openai-java.version>
 		<!-- Manual tests (D-049, D-054); run with -Dtest.excluded-groups= -Dgroups=<tag> -->
 		<test.excluded-groups>performance,smoke</test.excluded-groups>
 	</properties>
@@ -82,6 +84,13 @@
 		<dependency>
 			<groupId>org.springframework.ai</groupId>
 			<artifactId>spring-ai-openai</artifactId>
+		</dependency>
+		<!-- Called directly by providers (D-047). Not managed by spring-ai-bom: keep it equal to
+		     the version spring-ai-openai declares. -->
+		<dependency>
+			<groupId>com.openai</groupId>
+			<artifactId>openai-java-core</artifactId>
+			<version>${openai-java.version}</version>
 		</dependency>
 
 		<dependency>

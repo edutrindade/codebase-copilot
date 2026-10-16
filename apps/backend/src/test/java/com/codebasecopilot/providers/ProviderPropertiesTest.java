@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.codebasecopilot.providers.ProviderProperties.Provider;
 import java.net.URI;
+import java.time.Clock;
 import java.time.Duration;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,7 +20,9 @@ class ProviderPropertiesTest {
     private static final String API_KEY = "sk-test-0123456789-must-not-leak";
 
     private final ApplicationContextRunner runner =
-            new ApplicationContextRunner().withUserConfiguration(ProvidersConfiguration.class);
+            new ApplicationContextRunner()
+                    .withUserConfiguration(ProvidersConfiguration.class)
+                    .withBean(Clock.class, Clock::systemUTC);
 
     @Test
     void defaultsToNoProvider() {
@@ -80,8 +83,9 @@ class ProviderPropertiesTest {
                         context ->
                                 assertThat(context)
                                         .getFailure()
-                                        .cause()
-                                        .hasMessageContaining("app.embeddings.provider"));
+                                        .hasStackTraceContaining(
+                                                "Failed to bind properties under"
+                                                        + " 'app.embeddings.provider'"));
     }
 
     @ParameterizedTest

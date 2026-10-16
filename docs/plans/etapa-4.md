@@ -99,14 +99,15 @@ Todas aprovadas em 16/10/2026. Os ajustes pedidos na aprovação já estão inco
 ### P5 — Falhas do provedor → D-051, F1 e F3
 
 **Decisão:**
-- O adaptador classifica os erros sem expor tipos do Spring AI: `UNAUTHORIZED` (credencial inválida ou ausente), `RATE_LIMITED`, `UNAVAILABLE` (timeout, 5xx, rede) e `INVALID_REQUEST`.
+- O adaptador classifica os erros sem expor tipos do Spring AI: `UNAUTHORIZED` (credencial inválida ou ausente), `RATE_LIMITED`, `QUOTA_EXCEEDED` (créditos, limite de gasto ou de uso esgotados), `UNAVAILABLE` (timeout, 5xx, rede) e `INVALID_REQUEST`. Tabela completa na D-051.
+- **Cota esgotada é erro permanente:** pelo guia oficial de códigos de erro da OpenAI (consultado em 16/10/2026), o 429 de cobrança é identificado por `error.code` (`credit_balance_exhausted`, `organization_spend_limit_exceeded`, `project_spend_limit_exceeded`, `organization_usage_limit_exceeded`) ou por `error.type` `insufficient_quota`, e repetir não restaura o acesso. O job termina na hora com `EMBEDDING_QUOTA_EXCEEDED`, sem repetição. O código lido do corpo não vai para log nem para mensagem.
 - Dentro do job, `RATE_LIMITED` e `UNAVAILABLE` são repetidos com espera exponencial (`app.embeddings.max-retries`, padrão 4), respeitando `Retry-After` quando houver; esgotadas as repetições, o job termina `FAILED` com `EMBEDDING_PROVIDER_UNAVAILABLE` ou `EMBEDDING_RATE_LIMITED`.
 - **Teto da espera:** nenhuma espera passa de `app.embeddings.max-retry-wait` (padrão 60 s), mesmo com um `Retry-After` maior.
 - **Heartbeat durante a espera:** a espera é feita em intervalos menores que `heartbeat-interval`, renovando o lease a cada um, para que um job esperando o provedor não seja retomado por outro worker (D-040). Se o claim for perdido durante a espera, o job para.
 - Relógio e espera são injetáveis, para os testes controlarem o tempo sem dormir.
-- `UNAUTHORIZED` e `INVALID_REQUEST` encerram o job na hora: `EMBEDDING_PROVIDER_UNAUTHORIZED` e `EMBEDDING_REQUEST_REJECTED`. Não contam como tentativa a repetir pela fila (D-040), porque repetir não resolve.
+- `UNAUTHORIZED`, `QUOTA_EXCEEDED` e `INVALID_REQUEST` encerram o job na hora: `EMBEDDING_PROVIDER_UNAUTHORIZED`, `EMBEDDING_QUOTA_EXCEEDED` e `EMBEDDING_REQUEST_REJECTED`. Não contam como tentativa a repetir pela fila (D-040), porque repetir não resolve.
 - Os embeddings já gravados ficam no cache: um novo job retoma de onde parou, sem pagar de novo.
-- Na busca, as mesmas falhas viram `502 EMBEDDING_PROVIDER_UNAVAILABLE`, `502 EMBEDDING_PROVIDER_UNAUTHORIZED` e `429 EMBEDDING_RATE_LIMITED`, com mensagem pt-BR sem detalhes do provedor.
+- Na busca, as mesmas falhas viram `502 EMBEDDING_PROVIDER_UNAVAILABLE`, `502 EMBEDDING_PROVIDER_UNAUTHORIZED` e `429 EMBEDDING_RATE_LIMITED`, com mensagem pt-BR sem detalhes do provedor. **A decidir antes da F4:** o status HTTP de `QUOTA_EXCEEDED` na busca (proposta: `502 EMBEDDING_QUOTA_EXCEEDED`, como a credencial, porque o problema é da conta no provedor e não do cliente da API).
 - A inicialização falha com `provider=openai` sem chave configurada (mensagem clara no log, sem imprimir a chave).
 
 ### P6 — Cache, troca de modelo e limpeza → D-052, F3 e F5
@@ -127,7 +128,8 @@ Todas aprovadas em 16/10/2026. Os ajustes pedidos na aprovação já estão inco
   - a Etapa 5 acrescenta `mode` (`VECTOR`, `LEXICAL`, `HYBRID`) no mesmo endpoint.
 - Erros, nesta ordem: `400 VALIDATION_FAILED`; `404 PROJECT_NOT_FOUND`; `404 SNAPSHOT_NOT_FOUND` (inclusive de outro projeto); `409 SNAPSHOT_NOT_SEARCHABLE` (sem snapshot ativo, `BUILDING`, `FAILED` ou podado); `409 EMBEDDINGS_NOT_AVAILABLE`; `409 SNAPSHOT_EMBEDDING_MISMATCH`; erros do provedor (P5).
 - `GET /snapshots/{id}` e a listagem ganham `embedding: { provider, model, dimensions, tokens } | null`; `outdatedReasons` ganha `EMBEDDING_MODEL_CHANGED` e `EMBEDDINGS_MISSING` (P4).
-- Códigos de job novos: `EMBEDDING_PROVIDER_UNAUTHORIZED`, `EMBEDDING_PROVIDER_UNAVAILABLE`, `EMBEDDING_RATE_LIMITED`, `EMBEDDING_REQUEST_REJECTED` e `EMBEDDING_CHUNK_LIMIT_EXCEEDED` (P8).
+- Códigos de job novos: `EMBEDDING_PROVIDER_UNAUTHORIZED`, `EMBEDDING_PROVIDER_UNAVAILABLE`, `EMBEDDING_RATE_LIMITED`, `EMBEDDING_QUOTA_EXCEEDED` (P5), `EMBEDDING_REQUEST_REJECTED` e `EMBEDDING_CHUNK_LIMIT_EXCEEDED` (P8).
+- Mensagem pt-BR de `EMBEDDING_QUOTA_EXCEEDED` (chave `index.error.EMBEDDING_QUOTA_EXCEEDED` em `messages.properties`, criada na F3 com o código): "A cota ou o limite de gastos da conta no provedor de embeddings foi atingido. Verifique os créditos e os limites da conta e tente novamente."
 
 ### P8 — Privacidade, custo e tokens → D-054, F0, F3 e F6
 
@@ -180,9 +182,19 @@ Um chunk rejeitado pelo provedor (`INVALID_REQUEST`) falha o job inteiro com `EM
 - `OpenAiEmbeddingProvider`, que usa o Spring AI por dentro, traduz erros e devolve o uso de tokens quando reportado. A repetição própria do cliente da OpenAI fica desligada: a única camada de repetição é a da P5.
 - Repetição com espera exponencial, `Retry-After` com teto em `max-retry-wait` e espera fatiada com um gancho de heartbeat, num componente próprio, com relógio e espera injetáveis.
 
+**Como foi entregue (16/10/2026)**
+- `OpenAiEmbeddingProvider` usa o `OpenAiSetup` do Spring AI para montar o cliente e chama o SDK da OpenAI diretamente, porque o `OpenAiEmbeddingModel` falha quando a resposta não traz uso de tokens (detalhes na D-047). O SDK (`openai-java-core`) é declarado explicitamente no `pom.xml`, na mesma versão que o `spring-ai-openai` declara, e um teste confere a igualdade. A Etapa 5 decide se mantém o `spring-ai-openai` ou usa só o SDK.
+- Log do SDK desligado, para que `OPENAI_LOG` não registre corpos de requisição; um teste com `OPENAI_LOG=debug` numa JVM filha confirma isso.
+- `QUOTA_EXCEEDED` na porta, permanente, classificado por `error.code`/`error.type` do corpo (D-051).
+- `EmbeddingRetry`: espera inicial de 1 s, dobrando a cada tentativa, até `max-retry-wait`; `Retry-After` substitui a espera calculada, com o mesmo teto. A espera é injetada como `Sleeper`; o gancho é um `Runnable` chamado após cada fatia, e uma exceção lançada por ele interrompe a espera e se propaga (a F3 usará a `LostClaimException` do heartbeat). Interrupção da thread encerra a espera com a última falha.
+- Mensagens de `EmbeddingFailure` sem causa do SDK (a mensagem dela inclui o corpo da resposta).
+- ArchUnit estendido a `com.openai`.
+- **Não entregue, pendente para a F3:** a validação do limite de entrada contra o modelo configurado, prevista na P8. Exige o limite de entrada de cada modelo vindo de fonte oficial. **A F3 não começa sem isso.**
+
 **Testes**
 - Fake: mesmo texto → mesmo vetor; dimensão configurada; norma 1; textos com termos em comum ficam mais próximos que textos sem termos em comum.
 - Adaptador contra o servidor de teste: lote com N textos → N vetores na ordem; dimensão diferente da configurada → erro; 401 → `UNAUTHORIZED`; 429 com `Retry-After` → `RATE_LIMITED` com o atraso; 500 e timeout → `UNAVAILABLE`; 400 → `INVALID_REQUEST`; uso de tokens repassado; com 429 e `max-retries=4`, o servidor recebe **exatamente 5 requisições** (1 original e 4 repetições), o que prova que só uma camada repete.
+- Acrescentados na revisão da F1: 401 chega uma única vez ao servidor; resposta sem `usage` devolve tokens `null` sem falhar; 429 de cota (cada `error.code` de cobrança e `error.type` `insufficient_quota`) → `QUOTA_EXCEEDED`, chega uma única vez ao servidor e ignora `Retry-After`; 429 de taxa (sem `code` ou `slow_down`) repete e esgota em 5 requisições; o código de cota não aparece em mensagem nem na saída; com `OPENAI_LOG=debug` numa JVM filha, nenhum corpo de requisição aparece na saída (com teste de controle sem o desligamento); a versão do SDK declarada no `pom.xml` é a mesma que o `spring-ai-openai` declara.
 - Repetição, com relógio controlado (sem dormir): para nos erros permanentes; respeita o máximo de tentativas; espera crescente; `Retry-After` de 300 s é limitado a 60 s; durante uma espera longa, o gancho de heartbeat é chamado a cada intervalo; se o gancho sinalizar claim perdido, a espera é interrompida.
 
 ### F2 — Modelo de vetores (V8)
@@ -198,9 +210,11 @@ Um chunk rejeitado pelo provedor (`INVALID_REQUEST`) falha o job inteiro com `EM
 
 ### F3 — Etapa `EMBEDDING` no job
 
+**Pré-condição:** validação, na inicialização, do limite de entrada do modelo configurado, com valor de fonte oficial (P8). A F3 não começa sem isso.
+
 **Entregas**
 - `IndexRunner` ganha a etapa entre arquivos e finalização (P4), com progresso em chunks e heartbeat por lote.
-- Falhas do provedor encerram o job com os códigos da P5; o ativo anterior não muda.
+- Falhas do provedor encerram o job com os códigos da P5 (inclusive `EMBEDDING_QUOTA_EXCEEDED`, com a mensagem pt-BR da P7 em `messages.properties`); o ativo anterior não muda.
 - Antes de chamar o provedor, conta os chunks a enviar e falha com `EMBEDDING_CHUNK_LIMIT_EXCEEDED` acima de `max-chunks-per-job` (P8).
 - Esperas de repetição renovam o heartbeat (P5).
 - Finalização grava provedor, modelo, dimensão e tokens no snapshot e limpa embeddings órfãos (P6).

@@ -703,6 +703,18 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 - Os testes do `./mvnw verify` usam `fake` e nunca precisam de chave; a chave real só entra no teste manual de fumaça. Uma `ContextCustomizerFactory` de teste, registrada em `META-INF/spring.factories`, impede qualquer contexto de teste de subir com `provider=openai`, inclusive contextos novos que esqueçam de fixar o provedor e herdem o valor do `.env`.
 - O SDK da OpenAI tem repetição própria, que o adaptador desliga: a política da D-051 é a única camada de repetição.
 
+**Implementação (F1, 16/10/2026):**
+- Porta `EmbeddingProvider` em `providers` (`embed(textos)` → vetores + tokens; `model()` → provedor, modelo e dimensão), sem tipos do Spring AI nem do SDK da OpenAI na assinatura. O ArchUnit passa a barrar também `com.openai` fora de `providers`.
+- **Cliente montado pelo Spring AI, chamada pelo SDK:** o `OpenAiSetup` do Spring AI cria o cliente (OkHttp, `base-url`, chave, timeout), mas a chamada vai direto a `embeddings().create()` do SDK. O `OpenAiEmbeddingModel` do Spring AI lê o uso de tokens como campo obrigatório e falha quando o provedor não o informa, o que impediria o uso nulo exigido na D-054 com servidores compatíveis.
+- **Nesta etapa, o Spring AI traz só o SDK e a configuração do cliente.** Como o código chama o SDK diretamente, `com.openai:openai-java-core` é declarado explicitamente no `pom.xml`. O `spring-ai-bom` não gerencia essa versão, então ela fica numa propriedade igual à que o `spring-ai-openai` declara (4.49.0 no 2.0.1), e um teste falha se as duas divergirem. A Etapa 5 decide se mantém o `spring-ai-openai` ou passa a usar só o SDK.
+- No cliente: repetição interna em zero e log do SDK desligado, porque `OPENAI_LOG=debug` no ambiente registraria o corpo das requisições. Um teste roda o adaptador numa JVM filha com `OPENAI_LOG=debug` e confirma que nenhum corpo aparece na saída; um teste de controle mostra que, sem o desligamento, o SDK imprime o texto enviado.
+- Timeout de `app.embeddings.timeout` por chamada (conexão e chamada inteira); estouro vira `UNAVAILABLE`.
+- Classificação dos erros e repetição: D-051.
+- Resposta validada antes de devolver qualquer vetor: mesma quantidade de vetores e textos, índices únicos dentro da faixa (o resultado sai na ordem dos índices), dimensão igual à configurada e componentes finitos. Qualquer divergência rejeita o lote inteiro com `INVALID_REQUEST`.
+- Tokens: `total_tokens` reportado, ou `prompt_tokens` na falta dele; sem uso na resposta, `null`. Lote vazio não faz requisição.
+- Mensagens de `EmbeddingFailure` trazem só tipo, status HTTP e quantidades. A exceção do SDK não é guardada como causa, porque a mensagem dela inclui o corpo da resposta do provedor.
+- Com `provider=none` não há bean `EmbeddingProvider`; o provedor `fake` usa o modelo e a dimensão configurados e informa como tokens a contagem de termos.
+
 **Preço e uso de dados (fonte oficial, consultada em 16/10/2026):**
 - Preço: **US$ 0,02 por 1M de tokens de entrada** para `text-embedding-3-small` (tarifa Standard; a página não lista preço Batch para o modelo). Fonte: `developers.openai.com/api/docs/pricing`.
 - Uso de dados: pela tabela de endpoints, `/v1/embeddings` **não usa os dados para treino** (sem opt-in), tem **retenção de 30 dias** para monitoramento de abuso, sem retenção de estado da aplicação, e é elegível a Zero Data Retention (mediante acordo com a OpenAI). Fonte: `developers.openai.com/api/docs/guides/your-data`.
@@ -710,6 +722,31 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Motivo:** integração mais madura no Spring AI 2.0 (D-014) e API "compatível com OpenAI" oferecida por outros provedores e servidores locais, o que facilita a Etapa 9 (D-019).  
 **Consequências:** o texto dos chunks indexados e as perguntas de busca saem da máquina quando `provider=openai` (D-054). Preço e política devem ser reconferidos antes de alterar esta decisão.  
 **O que levaria à revisão:** resultado do bake-off da Etapa 5, mudança de preço ou de política de dados, ou integração da Voyage no Spring AI.
+
+### D-051 — Falhas do provedor de embeddings e repetição
+**Status:** Aceita (16/10/2026; F1 entregue, a F3 completa os códigos do job)  
+**Contexto:** chamadas ao provedor falham por credencial, limite de taxa, cota, indisponibilidade ou pedido recusado. Algumas falhas passam com o tempo, outras não, e um job esperando o provedor não pode perder o lease (D-040).  
+**Decisão:**
+- **Classificação na porta** (`EmbeddingFailure.Type`, sem tipos do Spring AI nem do SDK):
+
+  | Tipo | Quando (adaptador OpenAI) | Repete? |
+  |---|---|---|
+  | `UNAUTHORIZED` | 401, 403 | não |
+  | `QUOTA_EXCEEDED` | 429 com `error.code` de cobrança ou `error.type` `insufficient_quota` | não |
+  | `RATE_LIMITED` | demais 429 (por exemplo, sem `code` ou com `slow_down`) | sim |
+  | `UNAVAILABLE` | 408, 409, 5xx, falha de rede, timeout da chamada | sim |
+  | `INVALID_REQUEST` | demais 4xx; resposta ilegível ou divergente (quantidade, índice, dimensão) | não |
+
+- **Cota esgotada é permanente.** Pelo guia oficial de códigos de erro da OpenAI (`developers.openai.com/api/docs/guides/error-codes`, consultado em 16/10/2026), os 429 de cobrança são identificados por `error.code`: `credit_balance_exhausted`, `organization_spend_limit_exceeded`, `project_spend_limit_exceeded` e `organization_usage_limit_exceeded`. O `error.type` ainda pode vir como `insufficient_quota`, e a página afirma que repetir erros de cobrança, gasto ou cota não restaura o acesso. O adaptador lê `code` e `type` do corpo só para classificar; nenhum dos dois vai para log ou mensagem.
+- **Uma única camada de repetição**, `EmbeddingRetry`; o cliente da OpenAI repete zero vezes. Só `RATE_LIMITED` e `UNAVAILABLE` são repetidos, até `app.embeddings.max-retries` (padrão 4, ou seja, até 5 chamadas). Esgotadas as tentativas, a última falha é lançada.
+- **Espera:** 1 s, dobrando a cada tentativa. `Retry-After` (segundos ou data HTTP) ou `retry-after-ms`, quando presentes em `RATE_LIMITED` ou `UNAVAILABLE`, substituem a espera calculada. Nenhuma espera passa de `app.embeddings.max-retry-wait` (padrão 60 s). Sem variação aleatória.
+- **Heartbeat via callback:** a espera é feita em fatias de no máximo o intervalo informado por quem chama, e um callback roda após cada fatia. Uma exceção lançada pelo callback (claim perdido) interrompe a espera e se propaga sem nova tentativa. A espera é injetável (`Sleeper`), e os testes controlam o tempo sem dormir. Interrupção da thread encerra a espera com a última falha.
+- **Mensagens e logs** trazem só tipo, status HTTP, quantidades e duração; a exceção do SDK não é guardada como causa.
+
+**Códigos do job (a F3 implementa):** `UNAUTHORIZED` → `EMBEDDING_PROVIDER_UNAUTHORIZED`; `QUOTA_EXCEEDED` → `EMBEDDING_QUOTA_EXCEEDED`; `RATE_LIMITED` esgotado → `EMBEDDING_RATE_LIMITED`; `UNAVAILABLE` esgotado → `EMBEDDING_PROVIDER_UNAVAILABLE`; `INVALID_REQUEST` → `EMBEDDING_REQUEST_REJECTED`. Falhas permanentes encerram o job na hora e não voltam à fila (D-040). O mapeamento para a busca fica para a F4.  
+**Motivo:** repetir só o que pode passar evita custo e espera inúteis; uma só camada de repetição torna o número de chamadas previsível (com 429 e `max-retries=4`, exatamente 5 requisições chegam ao provedor).  
+**Consequências:** o callback é o ponto de integração da F3 com o `Heartbeat`. A classificação de cota depende dos códigos documentados pela OpenAI e deve ser reconferida se a página mudar.  
+**O que levaria à revisão:** novos códigos de erro do provedor, outro provedor com semântica diferente, ou medição mostrando repetições sincronizadas entre workers (o que pediria variação aleatória).
 
 ---
 

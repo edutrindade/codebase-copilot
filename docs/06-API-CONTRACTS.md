@@ -410,6 +410,8 @@ Erros, nesta ordem:
 - `stage`: `SCANNING`, `PROCESSING_FILES` ou `FINALIZING` (`null` antes de começar). `progress` conta arquivos.
 - `attempts`: quantas vezes o job foi retirado da fila. Um job interrompido (queda da aplicação, por exemplo) volta à fila quando o heartbeat vence e é retomado automaticamente, até `app.indexing.max-attempts` (padrão 3).
 - `error.code` (D-044): `SOURCE_ROOT_NOT_CONFIGURED`, `SOURCE_DIRECTORY_NOT_FOUND`, `SOURCE_IS_SYMLINK`, `SOURCE_NOT_READABLE`, `SOURCE_NOT_IMPORTED`, `SCAN_LIMIT_REACHED`, `PROJECT_SIZE_LIMIT_EXCEEDED`, `NO_INCLUDED_FILES`, `INDEX_IO_ERROR` ou `INDEX_ATTEMPTS_EXHAUSTED`; `error.message` em pt-BR, sem caminhos.
+- Códigos da etapa de embeddings (Etapa 4, a partir da F3; D-051): `EMBEDDING_PROVIDER_UNAUTHORIZED`, `EMBEDDING_PROVIDER_UNAVAILABLE`, `EMBEDDING_RATE_LIMITED`, `EMBEDDING_QUOTA_EXCEEDED`, `EMBEDDING_REQUEST_REJECTED` e `EMBEDDING_CHUNK_LIMIT_EXCEEDED`. Nenhuma mensagem traz detalhes do provedor.
+  - `EMBEDDING_QUOTA_EXCEEDED`: créditos, limite de gasto ou limite de uso da conta no provedor esgotados. O job falha sem repetir. Mensagem: "A cota ou o limite de gastos da conta no provedor de embeddings foi atingido. Verifique os créditos e os limites da conta e tente novamente."
 
 Não há `retry`: um job `FAILED` é refeito criando outro, que reaproveita o conteúdo já gravado (D-045).
 

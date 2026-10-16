@@ -29,13 +29,13 @@ class ArchitectureTest {
     private static final String PROVIDERS = "com.codebasecopilot.providers..";
 
     @ArchTest
-    static final ArchRule springAiOnlyInProviders =
+    static final ArchRule providerLibrariesOnlyInProviders =
             noClasses()
                     .that()
                     .resideOutsideOfPackage(PROVIDERS)
                     .should()
                     .dependOnClassesThat()
-                    .resideInAPackage("org.springframework.ai..");
+                    .resideInAnyPackage("org.springframework.ai..", "com.openai..");
 
     @ArchTest
     static final ArchRule providersDoesNotDependOnDomainModules =
