@@ -4,6 +4,8 @@ import com.codebasecopilot.shared.error.ErrorCode;
 import com.codebasecopilot.shared.openapi.ApiErrors;
 import com.codebasecopilot.shared.pagination.PageRequestParams;
 import com.codebasecopilot.shared.pagination.PageResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.time.Instant;
@@ -23,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/workspaces")
+@Tag(name = "Workspaces", description = "Agrupam os projetos de quem usa a ferramenta.")
 class WorkspaceController {
 
     private final WorkspaceService service;
@@ -33,6 +36,7 @@ class WorkspaceController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @Operation(operationId = "createWorkspace", summary = "Cria um workspace")
     ResponseEntity<WorkspaceResponse> create(@RequestBody CreateWorkspaceRequest request) {
         WorkspaceResponse workspace =
                 WorkspaceResponse.of(new WorkspaceSummary(service.create(request.name()), 0));
@@ -41,12 +45,14 @@ class WorkspaceController {
     }
 
     @GetMapping
+    @Operation(operationId = "listWorkspaces", summary = "Lista os workspaces")
     PageResponse<WorkspaceResponse> list(@Valid @ParameterObject PageRequestParams params) {
         return service.list(params).map(WorkspaceResponse::of);
     }
 
     @GetMapping("/{workspaceId}")
     @ApiErrors(ErrorCode.WORKSPACE_NOT_FOUND)
+    @Operation(operationId = "getWorkspace", summary = "Busca um workspace")
     WorkspaceResponse get(@PathVariable UUID workspaceId) {
         return WorkspaceResponse.of(service.get(workspaceId));
     }
@@ -54,6 +60,7 @@ class WorkspaceController {
     @DeleteMapping("/{workspaceId}")
     @ApiErrors({ErrorCode.WORKSPACE_NOT_FOUND, ErrorCode.WORKSPACE_NOT_EMPTY})
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(operationId = "deleteWorkspace", summary = "Remove um workspace sem projetos")
     void delete(@PathVariable UUID workspaceId) {
         service.delete(workspaceId);
     }

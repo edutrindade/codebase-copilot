@@ -2,6 +2,8 @@ package com.codebasecopilot.importjob.browse;
 
 import com.codebasecopilot.shared.error.ErrorCode;
 import com.codebasecopilot.shared.openapi.ApiErrors;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -12,6 +14,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/local-roots")
+@Tag(
+        name = "Raízes locais",
+        description = "Navegação nas pastas que o backend permite usar como origem de projetos.")
 class LocalRootsController {
 
     private final DirectoryBrowser browser;
@@ -21,6 +26,7 @@ class LocalRootsController {
     }
 
     @GetMapping
+    @Operation(operationId = "listLocalRoots", summary = "Lista as raízes locais permitidas")
     List<LocalRootResponse> list() {
         return browser.roots().stream()
                 .map(root -> new LocalRootResponse(root.key(), root.label()))
@@ -34,6 +40,9 @@ class LocalRootsController {
         ErrorCode.DIRECTORY_NOT_FOUND,
         ErrorCode.DIRECTORY_NOT_READABLE
     })
+    @Operation(
+            operationId = "listLocalRootDirectories",
+            summary = "Lista os subdiretórios de um caminho da raiz")
     DirectoryListingResponse directories(
             @PathVariable String rootKey, @RequestParam(required = false) @Nullable String path) {
         return DirectoryListingResponse.of(browser.list(rootKey, path));

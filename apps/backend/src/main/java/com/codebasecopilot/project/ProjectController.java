@@ -6,9 +6,11 @@ import com.codebasecopilot.shared.pagination.PageRequestParams;
 import com.codebasecopilot.shared.pagination.PageResponse;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.DiscriminatorMapping;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.time.Instant;
@@ -29,6 +31,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1")
+@Tag(
+        name = "Projetos",
+        description = "Projetos de pasta local ou ZIP, com origem e estado da indexação.")
 class ProjectController {
 
     private final ProjectService service;
@@ -46,6 +51,7 @@ class ProjectController {
         ErrorCode.PATH_OUTSIDE_ROOT,
         ErrorCode.PROJECT_ALREADY_EXISTS
     })
+    @Operation(operationId = "createProject", summary = "Cria um projeto no workspace")
     ResponseEntity<ProjectResponse> create(
             @PathVariable UUID workspaceId, @RequestBody CreateProjectRequest request) {
         ProjectResponse project =
@@ -59,6 +65,7 @@ class ProjectController {
 
     @GetMapping("/workspaces/{workspaceId}/projects")
     @ApiErrors(ErrorCode.WORKSPACE_NOT_FOUND)
+    @Operation(operationId = "listProjects", summary = "Lista os projetos do workspace")
     PageResponse<ProjectResponse> list(
             @PathVariable UUID workspaceId, @Valid @ParameterObject PageRequestParams params) {
         return service.list(workspaceId, params).map(ProjectResponse::of);
@@ -66,6 +73,9 @@ class ProjectController {
 
     @GetMapping("/projects/{projectId}")
     @ApiErrors(ErrorCode.PROJECT_NOT_FOUND)
+    @Operation(
+            operationId = "getProject",
+            summary = "Busca um projeto, com origem e estado da indexação")
     ProjectResponse get(@PathVariable UUID projectId) {
         return ProjectResponse.of(service.get(projectId));
     }
@@ -73,6 +83,7 @@ class ProjectController {
     @DeleteMapping("/projects/{projectId}")
     @ApiErrors({ErrorCode.PROJECT_NOT_FOUND, ErrorCode.PROJECT_BUSY})
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(operationId = "deleteProject", summary = "Remove um projeto e todos os seus dados")
     void delete(@PathVariable UUID projectId) {
         service.delete(projectId);
     }

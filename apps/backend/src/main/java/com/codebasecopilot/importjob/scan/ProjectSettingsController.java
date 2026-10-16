@@ -2,7 +2,9 @@ package com.codebasecopilot.importjob.scan;
 
 import com.codebasecopilot.shared.error.ErrorCode;
 import com.codebasecopilot.shared.openapi.ApiErrors;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.Instant;
 import java.util.List;
 import java.util.Set;
@@ -17,6 +19,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/projects/{projectId}/settings")
+@Tag(
+        name = "Configurações do projeto",
+        description = "Exclusões e limites usados na varredura e na indexação.")
 class ProjectSettingsController {
 
     private final ProjectSettingsService service;
@@ -27,6 +32,9 @@ class ProjectSettingsController {
 
     @GetMapping
     @ApiErrors(ErrorCode.PROJECT_NOT_FOUND)
+    @Operation(
+            operationId = "getProjectSettings",
+            summary = "Busca as exclusões e os limites do projeto")
     SettingsResponse get(@PathVariable UUID projectId) {
         return response(service.get(projectId));
     }
@@ -34,6 +42,9 @@ class ProjectSettingsController {
     // Full replacement (P6): absent lists are empty and null limits fall back to the defaults.
     @PutMapping
     @ApiErrors(ErrorCode.PROJECT_NOT_FOUND)
+    @Operation(
+            operationId = "updateProjectSettings",
+            summary = "Substitui as exclusões e os limites do projeto")
     SettingsResponse update(
             @PathVariable UUID projectId, @RequestBody UpdateSettingsRequest request) {
         return response(

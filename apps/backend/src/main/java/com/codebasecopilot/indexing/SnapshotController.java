@@ -5,7 +5,9 @@ import com.codebasecopilot.shared.error.ErrorCode;
 import com.codebasecopilot.shared.openapi.ApiErrors;
 import com.codebasecopilot.shared.pagination.PageRequestParams;
 import com.codebasecopilot.shared.pagination.PageResponse;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.time.Instant;
 import java.util.UUID;
@@ -20,6 +22,9 @@ import tools.jackson.databind.json.JsonMapper;
 
 @RestController
 @RequestMapping("/api/v1")
+@Tag(
+        name = "Snapshots",
+        description = "Resultados das indexações: contagens, mudanças, inventário e arquivos.")
 class SnapshotController {
 
     private final SnapshotService service;
@@ -32,6 +37,7 @@ class SnapshotController {
 
     @GetMapping("/projects/{projectId}/snapshots")
     @ApiErrors(ErrorCode.PROJECT_NOT_FOUND)
+    @Operation(operationId = "listSnapshots", summary = "Lista os snapshots do projeto")
     PageResponse<SnapshotResponse> list(
             @PathVariable UUID projectId, @Valid @ParameterObject PageRequestParams params) {
         return service.list(projectId, params).map(view -> response(view, false));
@@ -39,12 +45,16 @@ class SnapshotController {
 
     @GetMapping("/snapshots/{snapshotId}")
     @ApiErrors(ErrorCode.SNAPSHOT_NOT_FOUND)
+    @Operation(
+            operationId = "getSnapshot",
+            summary = "Busca um snapshot, com o inventário da varredura")
     SnapshotResponse get(@PathVariable UUID snapshotId) {
         return response(service.get(snapshotId), true);
     }
 
     @GetMapping("/snapshots/{snapshotId}/files")
     @ApiErrors(ErrorCode.SNAPSHOT_NOT_FOUND)
+    @Operation(operationId = "listSnapshotFiles", summary = "Lista os arquivos de um snapshot")
     PageResponse<SnapshotFileResponse> files(
             @PathVariable UUID snapshotId,
             @RequestParam(required = false) @Nullable FileStatus status,

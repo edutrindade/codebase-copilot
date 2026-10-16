@@ -3,6 +3,7 @@ package com.codebasecopilot.shared.openapi;
 import com.codebasecopilot.shared.error.ErrorCode;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.Operation;
+import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.media.Content;
 import io.swagger.v3.oas.models.media.MediaType;
 import io.swagger.v3.oas.models.media.Schema;
@@ -46,6 +47,20 @@ class OpenApiConfiguration {
                     .forEach((status, codes) -> addProblemResponse(operation, status, codes));
             return operation;
         };
+    }
+
+    @Bean
+    OpenApiCustomizer apiInfo() {
+        return openApi ->
+                openApi.info(
+                        new Info()
+                                .title("Codebase Copilot API")
+                                .version("v1")
+                                .description(
+                                        "API local do Codebase Copilot: workspaces, projetos,"
+                                                + " importação, inventário e indexação. Erros"
+                                                + " seguem o ProblemDetail (RFC 9457) com `code`"
+                                                + " estável e `requestId`."));
     }
 
     @Bean

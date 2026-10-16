@@ -4,7 +4,9 @@ import com.codebasecopilot.shared.error.ErrorCode;
 import com.codebasecopilot.shared.openapi.ApiErrors;
 import com.codebasecopilot.shared.pagination.PageRequestParams;
 import com.codebasecopilot.shared.pagination.PageResponse;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.time.Instant;
@@ -25,6 +27,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/v1")
+@Tag(name = "Importação ZIP", description = "Envio e acompanhamento de arquivos ZIP de projetos.")
 class ImportController {
 
     private static final Locale LOCALE = Locale.of("pt", "BR");
@@ -46,6 +49,7 @@ class ImportController {
         ErrorCode.PROJECT_BUSY,
         ErrorCode.UPLOAD_TOO_LARGE
     })
+    @Operation(operationId = "uploadZip", summary = "Envia um ZIP para importação")
     ResponseEntity<ImportResponse> uploadZip(
             @PathVariable UUID projectId,
             @RequestPart(name = "file", required = false) @Nullable MultipartFile file) {
@@ -57,12 +61,14 @@ class ImportController {
 
     @GetMapping("/imports/{importJobId}")
     @ApiErrors(ErrorCode.IMPORT_NOT_FOUND)
+    @Operation(operationId = "getImport", summary = "Busca uma importação")
     ImportResponse get(@PathVariable UUID importJobId) {
         return response(service.get(importJobId));
     }
 
     @GetMapping("/projects/{projectId}/imports")
     @ApiErrors(ErrorCode.PROJECT_NOT_FOUND)
+    @Operation(operationId = "listImports", summary = "Lista as importações do projeto")
     PageResponse<ImportResponse> list(
             @PathVariable UUID projectId, @Valid @ParameterObject PageRequestParams params) {
         return service.list(projectId, params).map(this::response);

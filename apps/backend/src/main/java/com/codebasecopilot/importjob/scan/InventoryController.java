@@ -2,6 +2,8 @@ package com.codebasecopilot.importjob.scan;
 
 import com.codebasecopilot.shared.error.ErrorCode;
 import com.codebasecopilot.shared.openapi.ApiErrors;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
@@ -15,6 +17,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1")
+@Tag(
+        name = "Inventário",
+        description = "Pré-análise dos arquivos do projeto, calculada a cada chamada.")
 class InventoryController {
 
     private static final Locale LOCALE = Locale.of("pt", "BR");
@@ -36,6 +41,9 @@ class InventoryController {
         ErrorCode.SOURCE_NOT_READABLE,
         ErrorCode.SOURCE_NOT_IMPORTED
     })
+    @Operation(
+            operationId = "getInventory",
+            summary = "Calcula o inventário (pré-análise) do projeto")
     InventoryResponse inventory(@PathVariable UUID projectId) {
         Inventory inventory = service.inventory(projectId);
         ScanResult scan = inventory.scan();

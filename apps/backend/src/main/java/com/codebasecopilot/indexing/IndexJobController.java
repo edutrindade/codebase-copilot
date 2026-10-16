@@ -4,7 +4,9 @@ import com.codebasecopilot.shared.error.ErrorCode;
 import com.codebasecopilot.shared.openapi.ApiErrors;
 import com.codebasecopilot.shared.pagination.PageRequestParams;
 import com.codebasecopilot.shared.pagination.PageResponse;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.time.Instant;
@@ -22,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1")
+@Tag(name = "Indexação", description = "Jobs que criam snapshots a partir da origem do projeto.")
 class IndexJobController {
 
     private static final Locale LOCALE = Locale.of("pt", "BR");
@@ -44,6 +47,7 @@ class IndexJobController {
         ErrorCode.SOURCE_NOT_IMPORTED,
         ErrorCode.PROJECT_BUSY
     })
+    @Operation(operationId = "createIndexJob", summary = "Inicia a indexação do projeto")
     ResponseEntity<IndexJobResponse> create(@PathVariable UUID projectId) {
         IndexJobResponse job = response(service.create(projectId));
         return ResponseEntity.accepted()
@@ -53,12 +57,14 @@ class IndexJobController {
 
     @GetMapping("/index-jobs/{jobId}")
     @ApiErrors(ErrorCode.INDEX_JOB_NOT_FOUND)
+    @Operation(operationId = "getIndexJob", summary = "Busca um job de indexação")
     IndexJobResponse get(@PathVariable UUID jobId) {
         return response(service.get(jobId));
     }
 
     @GetMapping("/projects/{projectId}/index-jobs")
     @ApiErrors(ErrorCode.PROJECT_NOT_FOUND)
+    @Operation(operationId = "listIndexJobs", summary = "Lista os jobs de indexação do projeto")
     PageResponse<IndexJobResponse> list(
             @PathVariable UUID projectId, @Valid @ParameterObject PageRequestParams params) {
         return service.list(projectId, params).map(this::response);

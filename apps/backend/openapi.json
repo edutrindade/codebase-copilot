@@ -1,17 +1,43 @@
 {
   "openapi" : "3.1.0",
   "info" : {
-    "title" : "OpenAPI definition",
-    "version" : "v0"
+    "description" : "API local do Codebase Copilot: workspaces, projetos, importação, inventário e indexação. Erros seguem o ProblemDetail (RFC 9457) com `code` estável e `requestId`.",
+    "title" : "Codebase Copilot API",
+    "version" : "v1"
   },
   "servers" : [ {
     "url" : "http://localhost",
     "description" : "Generated server url"
   } ],
+  "tags" : [ {
+    "description" : "Resultados das indexações: contagens, mudanças, inventário e arquivos.",
+    "name" : "Snapshots"
+  }, {
+    "description" : "Pré-análise dos arquivos do projeto, calculada a cada chamada.",
+    "name" : "Inventário"
+  }, {
+    "description" : "Exclusões e limites usados na varredura e na indexação.",
+    "name" : "Configurações do projeto"
+  }, {
+    "description" : "Agrupam os projetos de quem usa a ferramenta.",
+    "name" : "Workspaces"
+  }, {
+    "description" : "Projetos de pasta local ou ZIP, com origem e estado da indexação.",
+    "name" : "Projetos"
+  }, {
+    "description" : "Navegação nas pastas que o backend permite usar como origem de projetos.",
+    "name" : "Raízes locais"
+  }, {
+    "description" : "Jobs que criam snapshots a partir da origem do projeto.",
+    "name" : "Indexação"
+  }, {
+    "description" : "Envio e acompanhamento de arquivos ZIP de projetos.",
+    "name" : "Importação ZIP"
+  } ],
   "paths" : {
     "/api/v1/imports/{importJobId}" : {
       "get" : {
-        "operationId" : "get_5",
+        "operationId" : "getImport",
         "parameters" : [ {
           "in" : "path",
           "name" : "importJobId",
@@ -63,12 +89,13 @@
             "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
           }
         },
-        "tags" : [ "import-controller" ]
+        "summary" : "Busca uma importação",
+        "tags" : [ "Importação ZIP" ]
       }
     },
     "/api/v1/index-jobs/{jobId}" : {
       "get" : {
-        "operationId" : "get_4",
+        "operationId" : "getIndexJob",
         "parameters" : [ {
           "in" : "path",
           "name" : "jobId",
@@ -120,12 +147,13 @@
             "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
           }
         },
-        "tags" : [ "index-job-controller" ]
+        "summary" : "Busca um job de indexação",
+        "tags" : [ "Indexação" ]
       }
     },
     "/api/v1/local-roots" : {
       "get" : {
-        "operationId" : "list_5",
+        "operationId" : "listLocalRoots",
         "responses" : {
           "200" : {
             "content" : {
@@ -151,12 +179,13 @@
             "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
           }
         },
-        "tags" : [ "local-roots-controller" ]
+        "summary" : "Lista as raízes locais permitidas",
+        "tags" : [ "Raízes locais" ]
       }
     },
     "/api/v1/local-roots/{rootKey}/directories" : {
       "get" : {
-        "operationId" : "directories",
+        "operationId" : "listLocalRootDirectories",
         "parameters" : [ {
           "in" : "path",
           "name" : "rootKey",
@@ -224,12 +253,13 @@
             "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
           }
         },
-        "tags" : [ "local-roots-controller" ]
+        "summary" : "Lista os subdiretórios de um caminho da raiz",
+        "tags" : [ "Raízes locais" ]
       }
     },
     "/api/v1/projects/{projectId}" : {
       "delete" : {
-        "operationId" : "delete_1",
+        "operationId" : "deleteProject",
         "parameters" : [ {
           "in" : "path",
           "name" : "projectId",
@@ -284,10 +314,11 @@
             "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
           }
         },
-        "tags" : [ "project-controller" ]
+        "summary" : "Remove um projeto e todos os seus dados",
+        "tags" : [ "Projetos" ]
       },
       "get" : {
-        "operationId" : "get_3",
+        "operationId" : "getProject",
         "parameters" : [ {
           "in" : "path",
           "name" : "projectId",
@@ -339,12 +370,13 @@
             "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
           }
         },
-        "tags" : [ "project-controller" ]
+        "summary" : "Busca um projeto, com origem e estado da indexação",
+        "tags" : [ "Projetos" ]
       }
     },
     "/api/v1/projects/{projectId}/imports" : {
       "get" : {
-        "operationId" : "list_4",
+        "operationId" : "listImports",
         "parameters" : [ {
           "in" : "path",
           "name" : "projectId",
@@ -417,7 +449,8 @@
             "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
           }
         },
-        "tags" : [ "import-controller" ]
+        "summary" : "Lista as importações do projeto",
+        "tags" : [ "Importação ZIP" ]
       }
     },
     "/api/v1/projects/{projectId}/imports/zip" : {
@@ -519,12 +552,13 @@
             "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
           }
         },
-        "tags" : [ "import-controller" ]
+        "summary" : "Envia um ZIP para importação",
+        "tags" : [ "Importação ZIP" ]
       }
     },
     "/api/v1/projects/{projectId}/index-jobs" : {
       "get" : {
-        "operationId" : "list_2",
+        "operationId" : "listIndexJobs",
         "parameters" : [ {
           "in" : "path",
           "name" : "projectId",
@@ -597,10 +631,11 @@
             "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
           }
         },
-        "tags" : [ "index-job-controller" ]
+        "summary" : "Lista os jobs de indexação do projeto",
+        "tags" : [ "Indexação" ]
       },
       "post" : {
-        "operationId" : "create_2",
+        "operationId" : "createIndexJob",
         "parameters" : [ {
           "in" : "path",
           "name" : "projectId",
@@ -662,12 +697,13 @@
             "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
           }
         },
-        "tags" : [ "index-job-controller" ]
+        "summary" : "Inicia a indexação do projeto",
+        "tags" : [ "Indexação" ]
       }
     },
     "/api/v1/projects/{projectId}/inventory" : {
       "get" : {
-        "operationId" : "inventory",
+        "operationId" : "getInventory",
         "parameters" : [ {
           "in" : "path",
           "name" : "projectId",
@@ -729,12 +765,13 @@
             "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
           }
         },
-        "tags" : [ "inventory-controller" ]
+        "summary" : "Calcula o inventário (pré-análise) do projeto",
+        "tags" : [ "Inventário" ]
       }
     },
     "/api/v1/projects/{projectId}/settings" : {
       "get" : {
-        "operationId" : "get",
+        "operationId" : "getProjectSettings",
         "parameters" : [ {
           "in" : "path",
           "name" : "projectId",
@@ -786,10 +823,11 @@
             "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
           }
         },
-        "tags" : [ "project-settings-controller" ]
+        "summary" : "Busca as exclusões e os limites do projeto",
+        "tags" : [ "Configurações do projeto" ]
       },
       "put" : {
-        "operationId" : "update",
+        "operationId" : "updateProjectSettings",
         "parameters" : [ {
           "in" : "path",
           "name" : "projectId",
@@ -861,12 +899,13 @@
             "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
           }
         },
-        "tags" : [ "project-settings-controller" ]
+        "summary" : "Substitui as exclusões e os limites do projeto",
+        "tags" : [ "Configurações do projeto" ]
       }
     },
     "/api/v1/projects/{projectId}/snapshots" : {
       "get" : {
-        "operationId" : "list_3",
+        "operationId" : "listSnapshots",
         "parameters" : [ {
           "in" : "path",
           "name" : "projectId",
@@ -939,12 +978,13 @@
             "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
           }
         },
-        "tags" : [ "snapshot-controller" ]
+        "summary" : "Lista os snapshots do projeto",
+        "tags" : [ "Snapshots" ]
       }
     },
     "/api/v1/snapshots/{snapshotId}" : {
       "get" : {
-        "operationId" : "get_2",
+        "operationId" : "getSnapshot",
         "parameters" : [ {
           "in" : "path",
           "name" : "snapshotId",
@@ -996,12 +1036,13 @@
             "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
           }
         },
-        "tags" : [ "snapshot-controller" ]
+        "summary" : "Busca um snapshot, com o inventário da varredura",
+        "tags" : [ "Snapshots" ]
       }
     },
     "/api/v1/snapshots/{snapshotId}/files" : {
       "get" : {
-        "operationId" : "files",
+        "operationId" : "listSnapshotFiles",
         "parameters" : [ {
           "in" : "path",
           "name" : "snapshotId",
@@ -1089,12 +1130,13 @@
             "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
           }
         },
-        "tags" : [ "snapshot-controller" ]
+        "summary" : "Lista os arquivos de um snapshot",
+        "tags" : [ "Snapshots" ]
       }
     },
     "/api/v1/workspaces" : {
       "get" : {
-        "operationId" : "list",
+        "operationId" : "listWorkspaces",
         "parameters" : [ {
           "in" : "query",
           "name" : "page",
@@ -1149,10 +1191,11 @@
             "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
           }
         },
-        "tags" : [ "workspace-controller" ]
+        "summary" : "Lista os workspaces",
+        "tags" : [ "Workspaces" ]
       },
       "post" : {
-        "operationId" : "create",
+        "operationId" : "createWorkspace",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -1205,12 +1248,13 @@
             "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
           }
         },
-        "tags" : [ "workspace-controller" ]
+        "summary" : "Cria um workspace",
+        "tags" : [ "Workspaces" ]
       }
     },
     "/api/v1/workspaces/{workspaceId}" : {
       "delete" : {
-        "operationId" : "delete",
+        "operationId" : "deleteWorkspace",
         "parameters" : [ {
           "in" : "path",
           "name" : "workspaceId",
@@ -1265,10 +1309,11 @@
             "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
           }
         },
-        "tags" : [ "workspace-controller" ]
+        "summary" : "Remove um workspace sem projetos",
+        "tags" : [ "Workspaces" ]
       },
       "get" : {
-        "operationId" : "get_1",
+        "operationId" : "getWorkspace",
         "parameters" : [ {
           "in" : "path",
           "name" : "workspaceId",
@@ -1320,12 +1365,13 @@
             "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
           }
         },
-        "tags" : [ "workspace-controller" ]
+        "summary" : "Busca um workspace",
+        "tags" : [ "Workspaces" ]
       }
     },
     "/api/v1/workspaces/{workspaceId}/projects" : {
       "get" : {
-        "operationId" : "list_1",
+        "operationId" : "listProjects",
         "parameters" : [ {
           "in" : "path",
           "name" : "workspaceId",
@@ -1398,10 +1444,11 @@
             "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
           }
         },
-        "tags" : [ "project-controller" ]
+        "summary" : "Lista os projetos do workspace",
+        "tags" : [ "Projetos" ]
       },
       "post" : {
-        "operationId" : "create_1",
+        "operationId" : "createProject",
         "parameters" : [ {
           "in" : "path",
           "name" : "workspaceId",
@@ -1483,7 +1530,8 @@
             "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
           }
         },
-        "tags" : [ "project-controller" ]
+        "summary" : "Cria um projeto no workspace",
+        "tags" : [ "Projetos" ]
       }
     }
   },
