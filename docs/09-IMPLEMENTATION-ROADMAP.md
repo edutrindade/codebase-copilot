@@ -23,6 +23,8 @@
 
 ## Etapa 1 — Fundação do domínio
 
+**Status:** concluída em 15/10/2026 (plano, testes e desvios em `docs/plans/etapa-1.md`).
+
 - Criar módulos de workspace e projeto.
 - Criar esquema inicial por Flyway (`workspaces`, `projects` sem `active_snapshot_id`; ver `05-DATA-MODEL.md`).
 - Configurar e validar na inicialização as raízes permitidas (D-029).

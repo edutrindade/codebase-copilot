@@ -171,7 +171,7 @@ ZIP (o arquivo é enviado depois, em `POST /projects/{projectId}/imports/zip`):
 }
 ```
 
-Response: `201 Created` com o projeto.
+Response: `201 Created` com o projeto, no formato de `GET /projects/{projectId}`, e cabeçalho `Location`.
 
 `name` é obrigatório: passa por `trim` e normalização NFC; depois disso, não pode ser vazio, tem no máximo 100 caracteres e não contém caracteres de controle. Nomes repetidos são permitidos (D-032).
 
@@ -202,20 +202,25 @@ Lista os projetos do workspace. Paginada (§1, D-030).
 Erros: `404 WORKSPACE_NOT_FOUND`.
 
 ### `GET /projects/{projectId}`
-Retorna metadados, origem, snapshot ativo e estado de indexação. Os campos de snapshot e de indexação entram na Etapa 3; até lá, a resposta traz apenas metadados e origem.
+Retorna metadados, origem, snapshot ativo e estado de indexação. Os campos de snapshot e de indexação entram na Etapa 3; até lá, a resposta traz apenas metadados e origem:
 
-Origem:
 ```json
 {
+  "id": "0192f5c4-7e3a-7b1e-9c3d-2f4a6b8c0d1e",
+  "workspaceId": "0192f5c4-7e3b-7a2f-8d4e-3a5b7c9d1e2f",
+  "name": "codebase-copilot",
   "source": {
     "type": "LOCAL_FOLDER",
     "rootKey": "default",
     "relativePath": "codebase-copilot"
-  }
+  },
+  "createdAt": "2026-10-15T12:00:00.123456Z"
 }
 ```
 
-Para projetos `ZIP`, `source` traz `type` e `currentImport` (`id` e `status`), nulo até o primeiro upload concluído.
+`source` é polimórfico, com discriminador `type`. Para projetos `ZIP`, traz `type` e `currentImport` (`id` e `status`), `null` até o primeiro upload concluído (Etapa 2).
+
+Erros: `404 PROJECT_NOT_FOUND`.
 
 ### `GET /projects/{projectId}/inventory`
 Retorna linguagens, diretórios, contagens e exclusões.

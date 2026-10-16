@@ -1,6 +1,6 @@
 # Plano — Etapa 1: Fundação do domínio (workspace e projeto)
 
-**Status:** aprovado em 15/10/2026, aguardando implementação.
+**Status:** concluído em 15/10/2026 (branch `etapa-1`). Ver "Resultado e desvios" ao final.
 **Referências:** `09-IMPLEMENTATION-ROADMAP.md` (Etapa 1), D-016, D-020 a D-025, D-029 a D-032.
 
 ## Escopo
@@ -277,3 +277,27 @@ Fora da V3: `current_import_job_id` (Etapa 2) e `active_snapshot_id` (Etapa 3).
 | Tradução de violações dependente do nome da constraint. | Nomes fixados na migração e testes que provocam cada violação. |
 | Contagem de projetos com N+1 na listagem. | Porta com contagem em lote. |
 | `ApplicationContextRunner` não consegue simular diretório ilegível em todo SO. | Teste condicional (`assumeTrue`), registrado como limitação. |
+
+## Resultado e desvios
+
+**Aceite:** workspace e projeto podem ser criados, consultados, listados e removidos, com testes de unidade, de integração (PostgreSQL via Testcontainers) e de contrato (`openapi.json` versionado).
+
+**Commits:** F0 `01b3672`, F1 `1043e7e`, F2 `1ad3e1f`, F3 + F4 `be7d635` (commit único, a pedido), F5 `6594926`.
+
+**Desvios e acréscimos em relação ao plano:**
+- **Contrato OpenAPI de erros (F1):** schemas `Problem`/`FieldError`, respostas de erro por operação (genéricas derivadas e de domínio via `@ApiErrors`), campos de resposta obrigatórios, `mapping` do discriminador e `$ref` anulável como `oneOf` (`06-API-CONTRACTS.md` §11).
+- **Raízes locais (F2):** o atalho `PROJECTS_ROOT` virou as propriedades `app.projects-root`/`app.projects-root-label`, separadas da lista (D-029 atualizada). As raízes dos testes ficam em `src/test/resources/local-roots`.
+- **Validação do projeto (F3):** feita no serviço, reunindo todos os erros de campo numa única resposta, em vez de Bean Validation no DTO.
+- **Agregado `Project` (F3):** `workspaceId` é um `UUID` simples, não `AggregateReference`.
+- **Respostas:** o projeto inclui `workspaceId`; o `POST /workspaces` inclui `projectCount` (0).
+- **`PATH_OUTSIDE_ROOT` e `ROOT_NOT_FOUND`:** respondem sem a lista `errors`, que é exclusiva de `VALIDATION_FAILED`.
+- **`"//"` (F4):** começa com `/` e responde `PATH_OUTSIDE_ROOT`; o plano listava esse caso, por engano, como a própria raiz.
+- **Contextos de teste:** três, e não dois. O terceiro vem do `@MockitoBean` do `WorkspaceDeleteRaceIT`.
+- **Fora do escopo da etapa, feitos durante ela:** testes da Etapa 0 reformatados (violavam o Spotless) e VS Code configurado com google-java-format alinhado ao Spotless (README).
+
+**Pendências para a Etapa 2:**
+- `projects.current_import_job_id` e `currentImport` preenchido na resposta (hoje sempre `null`);
+- `409 PROJECT_BUSY` em `DELETE /projects/{id}`;
+- `GET /local-roots` e navegação nas raízes;
+- validação de `DATA_DIR` fora das raízes (D-028), que passa a considerar `app.local-roots`.
+
