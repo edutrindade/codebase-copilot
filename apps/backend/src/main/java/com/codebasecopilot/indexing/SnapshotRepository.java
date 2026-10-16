@@ -33,6 +33,8 @@ class SnapshotRepository {
 
     record Changes(int added, int modified, int removed, int unchanged) {}
 
+    record Embedding(ModelInfo model, @Nullable Long tokens) {}
+
     record FileItem(
             String relativePath,
             FileStatus status,
@@ -48,7 +50,8 @@ class SnapshotRepository {
             id, project_id, status, source_import_job_id, settings_version, chunking_version,
             inventory::text AS inventory, file_count, indexed_file_count, unsupported_file_count,
             failed_file_count, chunk_count, total_bytes, added_count, modified_count,
-            removed_count, unchanged_count, created_at, completed_at, pruned_at
+            removed_count, unchanged_count, embedding_provider, embedding_model,
+            embedding_dimensions, embedding_tokens, created_at, completed_at, pruned_at
             """;
 
     void insertBuilding(
@@ -428,8 +431,23 @@ class SnapshotRepository {
                                 rs.getInt("modified_count"),
                                 rs.getInt("removed_count"),
                                 rs.getInt("unchanged_count")),
+                embedding(rs),
                 Objects.requireNonNull(Timestamps.read(rs, "created_at")),
                 Timestamps.read(rs, "completed_at"),
                 Timestamps.read(rs, "pruned_at"));
+    }
+
+    // snapshots_embedding_consistency keeps the three model columns all null or all set.
+    private static @Nullable Embedding embedding(ResultSet rs) throws SQLException {
+        String provider = rs.getString("embedding_provider");
+        if (provider == null) {
+            return null;
+        }
+        return new Embedding(
+                new ModelInfo(
+                        provider,
+                        rs.getString("embedding_model"),
+                        rs.getInt("embedding_dimensions")),
+                rs.getObject("embedding_tokens", Long.class));
     }
 }

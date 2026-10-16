@@ -767,7 +767,7 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **O que levaria à revisão:** a comparação da Etapa 5 ou 8 com HNSW parcial por modelo e varredura iterativa (mesmos resultados no corpus, menos latência), que a D-048 permite sem migrar dados.
 
 ### D-050 — Etapa `EMBEDDING` no job e ativação do snapshot
-**Status:** Aceita (16/10/2026; F3 entregue, a F5 completa o estado e a troca de modelo)  
+**Status:** Aceita (16/10/2026; F3 e F5 entregues)  
 **Contexto:** o snapshot ativo precisa ser sempre pesquisável, e uma falha do provedor não pode deixar o projeto sem snapshot utilizável (D-044).  
 **Decisão:**
 - Nova etapa `EMBEDDING` entre `PROCESSING_FILES` e `FINALIZING`. Ela lista os `chunk_hash` do snapshot sem embedding do modelo configurado (D-048), envia em lotes de `app.embeddings.batch-size` (padrão 64) e grava com `ON CONFLICT DO NOTHING`. O progresso do job passa a contar chunks (`total` = chunks a enviar), e cada lote grava progresso e renova o heartbeat na mesma transação da inserção.
@@ -776,7 +776,8 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 - A finalização grava `embedding_provider`, `embedding_model`, `embedding_dimensions` e `embedding_tokens` no snapshot, na mesma transação da ativação.
 - Reindexar com o mesmo modelo não chama o provedor para chunks inalterados (cache por hash); `embedding_tokens` fica `0` nesse caso.
 - Com `app.embeddings.provider=none`, a etapa é pulada e o snapshot é ativado sem metadados de modelo.
-- Troca de modelo, `EMBEDDING_MODEL_CHANGED`, `EMBEDDINGS_MISSING` e `SNAPSHOT_EMBEDDING_MISMATCH`: F4 e F5.
+- **Estado do snapshot ativo** em `outdatedReasons`, só com provedor configurado: `EMBEDDINGS_MISSING` quando o snapshot não tem metadados de modelo (indexado com `provider=none`) e `EMBEDDING_MODEL_CHANGED` quando provedor, modelo ou dimensão diferem dos configurados. Com `provider=none`, nenhum dos dois aparece: sem modelo configurado, nada fica faltando. Nos dois casos a busca responde `409 SNAPSHOT_EMBEDDING_MISMATCH` (D-053).
+- Trocar de modelo gera vetores só na próxima indexação, para todos os chunks do snapshot, mesmo sem arquivo alterado; os vetores do modelo anterior continuam no cache até seus chunks sumirem (D-052).
 
 **Motivo:** a busca vetorial nunca encontra um snapshot ativo pela metade, e o cache evita pagar duas vezes pelo mesmo texto.  
 **Consequências:** um job com muitos chunks novos fica mais longo e depende do provedor; falhas são tratadas pela D-051. O valor `EMBEDDING` aparece em `stage` na API.  
@@ -824,13 +825,14 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **O que levaria à revisão:** limpeza lenta em bancos grandes (medição na Etapa 8) ou bake-off com vários modelos ao mesmo tempo.
 
 ### D-053 — Contrato da busca
-**Status:** Aceita (16/10/2026; F4 entregue, a F5 completa o snapshot e `outdatedReasons`)  
+**Status:** Aceita (16/10/2026; F4 e F5 entregues)  
 **Decisão:**
 - **`POST /api/v1/projects/{projectId}/search`** com `{ "query": "…", "snapshotId": null, "limit": 10 }`. `snapshotId` ausente = snapshot ativo; informado, precisa ser do projeto, `READY`/`PARTIAL` e não podado. `query` de 1 a 2.000 caracteres e não em branco; `limit` de 1 a 50 (padrão 10).
 - Resposta: `{ snapshotId, model: { provider, name, dimensions }, results: [ { chunkId, path, otherPaths, startLine, endLine, content, score } ] }`, em ordem decrescente de `score` (D-049). O plano previa só `model`; virou objeto porque o provedor também identifica os vetores (D-048).
 - Erros, nesta ordem: `400 VALIDATION_FAILED` (campos `query` e `limit`, antes de qualquer consulta); `404 PROJECT_NOT_FOUND`; `404 SNAPSHOT_NOT_FOUND` (inclusive de outro projeto); `409 SNAPSHOT_NOT_SEARCHABLE` (sem snapshot ativo, `BUILDING`, `FAILED` ou podado); `409 EMBEDDINGS_NOT_AVAILABLE` (`provider=none`); `409 SNAPSHOT_EMBEDDING_MISMATCH` (snapshot sem embeddings ou de outro provedor, modelo ou dimensão); erros do provedor (D-051).
 - Logs da busca trazem snapshot, quantidade de resultados e duração, nunca a pergunta (D-054).
 - A Etapa 5 acrescenta `mode` (`VECTOR`, `LEXICAL`, `HYBRID`) no mesmo endpoint.
+- `GET /api/v1/snapshots/{id}` e a listagem de snapshots trazem `embedding: { provider, model, dimensions, tokens }`, ou `null` sem metadados de modelo; `tokens` é `null` quando o provedor não informou o uso (D-054). `outdatedReasons` do projeto ganha `EMBEDDING_MODEL_CHANGED` e `EMBEDDINGS_MISSING` (D-050).
 
 **Motivo:** o cliente sempre sabe qual snapshot e qual modelo responderam, e cada erro tem um código estável.  
 **Consequências:** `ProjectService.find` foi acrescentado para a busca ler o snapshot ativo sem montar o resumo completo do projeto.  

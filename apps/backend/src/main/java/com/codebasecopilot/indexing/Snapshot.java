@@ -15,6 +15,7 @@ record Snapshot(
         @Nullable String inventory,
         SnapshotRepository.@Nullable Counts counts,
         SnapshotRepository.@Nullable Changes changes,
+        SnapshotRepository.@Nullable Embedding embedding,
         Instant createdAt,
         @Nullable Instant completedAt,
         @Nullable Instant prunedAt) {}

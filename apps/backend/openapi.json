@@ -1877,6 +1877,27 @@
         },
         "required" : [ "hasChildren", "name", "readable", "relativePath" ]
       },
+      "EmbeddingResponse" : {
+        "type" : "object",
+        "properties" : {
+          "dimensions" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "model" : {
+            "type" : "string"
+          },
+          "provider" : {
+            "type" : "string"
+          },
+          "tokens" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64",
+            "description" : "Tokens informados pelo provedor; null se não informados."
+          }
+        },
+        "required" : [ "dimensions", "model", "provider", "tokens" ]
+      },
       "ExclusionGroup" : {
         "type" : "object",
         "properties" : {
@@ -2507,7 +2528,7 @@
             "type" : "array",
             "items" : {
               "type" : "string",
-              "enum" : [ "SETTINGS_CHANGED", "SOURCE_REIMPORTED", "CHUNKING_CHANGED" ]
+              "enum" : [ "SETTINGS_CHANGED", "SOURCE_REIMPORTED", "CHUNKING_CHANGED", "EMBEDDING_MODEL_CHANGED", "EMBEDDINGS_MISSING" ]
             }
           },
           "source" : {
@@ -2775,6 +2796,13 @@
             "type" : "string",
             "format" : "date-time"
           },
+          "embedding" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/EmbeddingResponse"
+            }, {
+              "type" : "null"
+            } ]
+          },
           "id" : {
             "type" : "string",
             "format" : "uuid"
@@ -2807,7 +2835,7 @@
             "enum" : [ "BUILDING", "READY", "PARTIAL", "FAILED" ]
           }
         },
-        "required" : [ "active", "changes", "chunkingVersion", "completedAt", "counts", "createdAt", "id", "inventory", "projectId", "prunedAt", "settingsVersion", "sourceImportId", "status" ]
+        "required" : [ "active", "changes", "chunkingVersion", "completedAt", "counts", "createdAt", "embedding", "id", "inventory", "projectId", "prunedAt", "settingsVersion", "sourceImportId", "status" ]
       },
       "SourceResponse" : {
         "discriminator" : {

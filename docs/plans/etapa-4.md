@@ -284,6 +284,20 @@ Um chunk rejeitado pelo provedor (`INVALID_REQUEST`) falha o job inteiro com `EM
 - Testes da troca de modelo: com outro modelo configurado, o projeto informa a desatualização, a busca responde `SNAPSHOT_EMBEDDING_MISMATCH`, e a reindexação gera embeddings só para o novo modelo, mantendo o cache do anterior.
 - Testes de snapshot sem embeddings (P4): projeto indexado com `provider=none` (snapshot inserido por SQL sem metadados de modelo, no contexto com `fake`) → `outdatedReasons` traz `EMBEDDINGS_MISSING`; a busca responde `SNAPSHOT_EMBEDDING_MISMATCH`; uma nova indexação, sem nenhum arquivo alterado, gera os embeddings de todos os chunks, ativa o snapshot novo e a busca passa a funcionar.
 
+**Como foi entregue (16/10/2026)**
+- `Snapshot` passou a ler as colunas de embedding; `embedding: { provider, model, dimensions, tokens } | null` no detalhe e na listagem de snapshots (`openapi.json` regenerado).
+- `outdatedReasons` compara o snapshot ativo com o modelo configurado (`ProjectIndexesAdapter`): `EMBEDDINGS_MISSING` sem metadados de modelo, `EMBEDDING_MODEL_CHANGED` com provedor, modelo ou dimensão diferentes. Com `provider=none` nenhum dos dois aparece (D-050).
+- Nenhuma mudança na busca nem no job: `SNAPSHOT_EMBEDDING_MISMATCH` (F4) e a etapa `EMBEDDING`, que procura chunks sem vetor do modelo configurado (F3), já cobriam a troca de modelo e o snapshot sem embeddings; a F5 os confirma por teste.
+- **Desvio nos testes:** o snapshot "indexado com `provider=none`" é um snapshot indexado no contexto com `fake` cujos metadados de modelo foram apagados por SQL, junto com os vetores. É o mesmo estado que o job com `none` deixa, sem montar arquivos e chunks à mão nem subir outro contexto.
+- Troca de modelo simulada com o spy do fake devolvendo outro `ModelInfo`, no contexto da F3 (`EmbeddingModelChangeIT`), sem contexto Spring novo.
+- Decisões atualizadas: D-050 e D-053.
+
+**Testes**
+- Detalhe e listagem de snapshots trazem provedor, modelo, dimensão e tokens; projeto sem desatualização.
+- Troca de modelo: o projeto informa `EMBEDDING_MODEL_CHANGED`; a busca responde `409 SNAPSHOT_EMBEDDING_MISMATCH` sem chamar o provedor; a reindexação envia todos os chunks para o modelo novo, o snapshot passa a trazê-lo, os vetores do modelo anterior continuam no banco, a desatualização some e a busca volta a funcionar.
+- Snapshot sem embeddings: `EMBEDDINGS_MISSING`, `embedding` nulo e `SNAPSHOT_EMBEDDING_MISMATCH`; a reindexação sem arquivo alterado (`changes.unchanged` = 2) envia todos os chunks, ativa o snapshot novo e a busca devolve os dois chunks.
+- Unitários de `outdatedReasons`: snapshot do modelo configurado; outro modelo, outra dimensão e outro provedor; sem metadados com e sem provedor configurado; vetores ignorados com `provider=none`.
+
 ### F6 — Fechamento
 
 - Aceite: consultas vetoriais retornam chunks do snapshot correto (F4) e os vetores têm dimensão compatível (F2, F4).

@@ -112,7 +112,9 @@ class ProjectController {
                                             allowableValues = {
                                                 "SETTINGS_CHANGED",
                                                 "SOURCE_REIMPORTED",
-                                                "CHUNKING_CHANGED"
+                                                "CHUNKING_CHANGED",
+                                                "EMBEDDING_MODEL_CHANGED",
+                                                "EMBEDDINGS_MISSING"
                                             }))
                     List<String> outdatedReasons,
             Instant createdAt) {

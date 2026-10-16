@@ -5,6 +5,8 @@ import com.codebasecopilot.indexing.content.LineChunker;
 import com.codebasecopilot.project.Project;
 import com.codebasecopilot.project.ProjectIndexes;
 import com.codebasecopilot.project.SourceType;
+import com.codebasecopilot.providers.EmbeddingProvider;
+import com.codebasecopilot.providers.ModelInfo;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -15,6 +17,7 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 
 // Active snapshot, running job and outdated reasons of a page of projects, in three batch
@@ -25,14 +28,17 @@ class ProjectIndexesAdapter implements ProjectIndexes {
     private final SnapshotRepository snapshots;
     private final IndexJobRepository jobs;
     private final ProjectSettingsVersions settingsVersions;
+    private final @Nullable EmbeddingProvider provider;
 
     ProjectIndexesAdapter(
             SnapshotRepository snapshots,
             IndexJobRepository jobs,
-            ProjectSettingsVersions settingsVersions) {
+            ProjectSettingsVersions settingsVersions,
+            ObjectProvider<EmbeddingProvider> provider) {
         this.snapshots = snapshots;
         this.jobs = jobs;
         this.settingsVersions = settingsVersions;
+        this.provider = provider.getIfAvailable();
     }
 
     @Override
@@ -51,6 +57,7 @@ class ProjectIndexesAdapter implements ProjectIndexes {
                 jobs.findActiveByProjects(projectIds).stream()
                         .collect(Collectors.toMap(IndexJob::projectId, Function.identity()));
         Map<UUID, Integer> versions = settingsVersions.find(projectIds);
+        ModelInfo model = provider == null ? null : provider.model();
         Map<UUID, IndexState> states = new HashMap<>();
         for (Project project : projects) {
             Snapshot snapshot =
@@ -64,13 +71,20 @@ class ProjectIndexesAdapter implements ProjectIndexes {
                             snapshot == null ? null : activeSnapshot(snapshot),
                             job == null ? null : indexing(job),
                             outdatedReasons(
-                                    project, snapshot, versions.getOrDefault(project.id(), 0))));
+                                    project,
+                                    snapshot,
+                                    versions.getOrDefault(project.id(), 0),
+                                    model)));
         }
         return states;
     }
 
+    // Without a configured model nothing is embedded, so no snapshot lacks vectors (D-050).
     static List<String> outdatedReasons(
-            Project project, @Nullable Snapshot snapshot, int settingsVersion) {
+            Project project,
+            @Nullable Snapshot snapshot,
+            int settingsVersion,
+            @Nullable ModelInfo model) {
         List<String> reasons = new ArrayList<>();
         if (snapshot == null) {
             return reasons;
@@ -84,6 +98,14 @@ class ProjectIndexesAdapter implements ProjectIndexes {
         }
         if (!snapshot.chunkingVersion().equals(LineChunker.VERSION)) {
             reasons.add("CHUNKING_CHANGED");
+        }
+        SnapshotRepository.Embedding embedding = snapshot.embedding();
+        if (model != null) {
+            if (embedding == null) {
+                reasons.add("EMBEDDINGS_MISSING");
+            } else if (!embedding.model().equals(model)) {
+                reasons.add("EMBEDDING_MODEL_CHANGED");
+            }
         }
         return reasons;
     }

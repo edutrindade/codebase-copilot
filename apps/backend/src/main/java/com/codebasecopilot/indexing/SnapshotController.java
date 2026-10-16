@@ -78,6 +78,7 @@ class SnapshotController {
         Snapshot s = view.snapshot();
         SnapshotRepository.Counts c = s.counts();
         SnapshotRepository.Changes ch = s.changes();
+        SnapshotRepository.Embedding e = s.embedding();
         return new SnapshotResponse(
                 s.id(),
                 s.projectId(),
@@ -102,6 +103,13 @@ class SnapshotController {
                 withInventory && s.inventory() != null
                         ? json.readValue(s.inventory(), ScanResult.class)
                         : null,
+                e == null
+                        ? null
+                        : new EmbeddingResponse(
+                                e.model().provider(),
+                                e.model().model(),
+                                e.model().dimensions(),
+                                e.tokens()),
                 s.createdAt(),
                 s.completedAt(),
                 s.prunedAt());
@@ -123,6 +131,12 @@ class SnapshotController {
                                     "Aggregate of the scan, in the format of GET"
                                             + " /projects/{projectId}/inventory; null in lists")
                     @Nullable ScanResult inventory,
+            @Schema(
+                            nullable = true,
+                            description =
+                                    "Modelo dos embeddings do snapshot; null quando indexado sem"
+                                            + " provedor de embeddings.")
+                    @Nullable EmbeddingResponse embedding,
             Instant createdAt,
             @Nullable Instant completedAt,
             @Nullable Instant prunedAt) {}
@@ -136,6 +150,16 @@ class SnapshotController {
             long bytes) {}
 
     record ChangesResponse(int added, int modified, int removed, int unchanged) {}
+
+    record EmbeddingResponse(
+            String provider,
+            String model,
+            int dimensions,
+            @Schema(
+                            nullable = true,
+                            description =
+                                    "Tokens informados pelo provedor; null se não informados.")
+                    @Nullable Long tokens) {}
 
     record SnapshotFileResponse(
             String relativePath,
