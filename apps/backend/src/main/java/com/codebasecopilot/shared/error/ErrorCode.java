@@ -26,7 +26,8 @@ public enum ErrorCode {
     SOURCE_DIRECTORY_NOT_FOUND(HttpStatus.CONFLICT),
     SOURCE_IS_SYMLINK(HttpStatus.CONFLICT),
     SOURCE_NOT_READABLE(HttpStatus.CONFLICT),
-    SOURCE_NOT_IMPORTED(HttpStatus.CONFLICT);
+    SOURCE_NOT_IMPORTED(HttpStatus.CONFLICT),
+    INDEX_JOB_NOT_FOUND(HttpStatus.NOT_FOUND);
 
     private final HttpStatus status;
 

@@ -58,8 +58,17 @@ public class ProjectSources {
     }
 
     public SourceScan scan(UUID projectId) {
+        return scan(projectId, () -> {});
+    }
+
+    // onFile runs for every included file, so long scans can report liveness.
+    public SourceScan scan(UUID projectId, Runnable onFile) {
         Project project = projects.get(projectId).project();
-        return scan(project, resolve(project), true);
+        return scan(project, resolve(project), true, onFile);
+    }
+
+    public int settingsVersion(UUID projectId) {
+        return settings.effective(projectId).settings().version();
     }
 
     Path resolve(Project project) {
@@ -84,12 +93,18 @@ public class ProjectSources {
     }
 
     SourceScan scan(Project project, Path source, boolean collectFiles) {
+        return scan(project, source, collectFiles, () -> {});
+    }
+
+    private SourceScan scan(Project project, Path source, boolean collectFiles, Runnable onFile) {
         ProjectSettingsService.Effective effective = settings.effective(project.id());
         List<SourceFile> files = new ArrayList<>();
         SafeScanner.Listener listener =
                 collectFiles
-                        ? (relativePath, file, sizeBytes, language) ->
-                                files.add(new SourceFile(relativePath, file, sizeBytes, language))
+                        ? (relativePath, file, sizeBytes, language) -> {
+                            files.add(new SourceFile(relativePath, file, sizeBytes, language));
+                            onFile.run();
+                        }
                         : (relativePath, file, sizeBytes, language) -> {};
         ScanResult result;
         try {

@@ -564,3 +564,13 @@ A preencher no fechamento (F7). Desvios registrados durante as fatias:
 - Os testes de esquema mostraram que `reason IN (…)` com `reason` nulo passa no `CHECK` (o resultado é `NULL`); a V7 exige `reason IS NOT NULL` em `UNSUPPORTED` e `FAILED`.
 - A F2 entrega só o `IndexStore` (conteúdo, chunks e arquivos do snapshot); os repositórios de jobs e snapshots ficam para a F3, que os usa.
 - `IndexStore.chunkedHashes` decide o que já está pronto: conteúdo com chunks da versão atual, ou conteúdo em branco (que não tem chunks). O teste de branco no SQL usa um conjunto de espaços contido no do `String.isBlank()`, então uma divergência só causa reprocessamento, nunca chunks faltando.
+
+**F3**
+- Worker: um despachante (`SmartLifecycle`, sobe depois do contexto) retira jobs e os entrega a um pool fixo de `max-concurrent` threads; o sinal após o commit acorda o despachante.
+- Heartbeat: além de cada lote, é renovado durante a varredura (a cada arquivo incluído, no máximo uma vez por `heartbeat-interval`), para que árvores grandes não percam o lease. `ProjectSources` ganhou `scan(projectId, Runnable)` e `settingsVersion(projectId)`.
+- Exceção inesperada no pipeline: o job volta para `PENDING` na hora (a tentativa já foi contada), sem esperar o lease; na última tentativa, termina `FAILED INDEX_IO_ERROR`. `INDEX_ATTEMPTS_EXHAUSTED` fica para jobs cujo worker morreu em todas as tentativas (retirados de novo com o lease vencido).
+- `settings_version` é gravada na criação do snapshot e atualizada na varredura, que é a que vale.
+- Provisório da F3 (substituído na F4): sem a etapa de arquivos, o job conclui com o snapshot `READY`, contagens zeradas e sem ativação.
+- `SCAN_LIMIT_REACHED` é coberto por teste unitário de `IndexRunner.check`: o limite de entradas é global e baixá-lo exigiria outro contexto de teste.
+- Os executores do worker são criados a cada `start()`: o Spring Test pausa contextos em cache (chama `stop()`) e os retoma depois.
+- Correção fora do escopo: `Directories.deleteRecursively` passou a ignorar entradas removidas durante a remoção. Havia uma corrida no `ImportApiIT` entre a remoção da pasta de um import, depois do commit, e a limpeza do teste seguinte; a nova configuração de testes a tornou frequente.
