@@ -4,7 +4,10 @@ import com.codebasecopilot.shared.pagination.PageRequestParams;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.OffsetDateTime;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jdbc.core.JdbcAggregateTemplate;
@@ -56,6 +59,27 @@ class ProjectRepository {
                 .param("workspaceId", workspaceId)
                 .query(Long.class)
                 .single();
+    }
+
+    Map<UUID, Long> countByWorkspaces(Collection<UUID> workspaceIds) {
+        if (workspaceIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<UUID, Long> counts = new HashMap<>();
+        jdbc.sql(
+                        """
+                        SELECT workspace_id, count(*) AS total
+                        FROM projects
+                        WHERE workspace_id IN (:workspaceIds)
+                        GROUP BY workspace_id
+                        """)
+                .param("workspaceIds", workspaceIds)
+                .query(
+                        rs -> {
+                            counts.put(
+                                    rs.getObject("workspace_id", UUID.class), rs.getLong("total"));
+                        });
+        return counts;
     }
 
     boolean deleteById(UUID id) {

@@ -8,6 +8,8 @@ import com.codebasecopilot.IntegrationTest;
 import com.codebasecopilot.shared.pagination.PageRequestParams;
 import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -71,6 +73,18 @@ class ProjectRepositoryIT {
                 .containsExactly(oldest);
         assertThat(repository.countByWorkspace(workspace)).isEqualTo(3);
         assertThat(repository.countByWorkspace(otherWorkspace)).isEqualTo(1);
+    }
+
+    @Test
+    void countsProjectsOfSeveralWorkspacesInOneQuery() {
+        UUID empty = insertWorkspace();
+        repository.insert(zip(workspace, "0192f5c4-0000-7000-8000-000000000001", T0));
+        repository.insert(zip(workspace, "0192f5c4-0000-7000-8000-000000000002", T0));
+        repository.insert(zip(otherWorkspace, "0192f5c4-0000-7000-8000-000000000003", T0));
+
+        assertThat(repository.countByWorkspaces(List.of(workspace, otherWorkspace, empty)))
+                .containsExactlyInAnyOrderEntriesOf(Map.of(workspace, 2L, otherWorkspace, 1L));
+        assertThat(repository.countByWorkspaces(List.of())).isEmpty();
     }
 
     @Test

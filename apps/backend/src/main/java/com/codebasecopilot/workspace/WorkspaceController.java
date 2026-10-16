@@ -34,7 +34,8 @@ class WorkspaceController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     ResponseEntity<WorkspaceResponse> create(@RequestBody CreateWorkspaceRequest request) {
-        WorkspaceResponse workspace = WorkspaceResponse.of(service.create(request.name()));
+        WorkspaceResponse workspace =
+                WorkspaceResponse.of(new WorkspaceSummary(service.create(request.name()), 0));
         return ResponseEntity.created(URI.create("/api/v1/workspaces/" + workspace.id()))
                 .body(workspace);
     }
@@ -51,7 +52,7 @@ class WorkspaceController {
     }
 
     @DeleteMapping("/{workspaceId}")
-    @ApiErrors(ErrorCode.WORKSPACE_NOT_FOUND)
+    @ApiErrors({ErrorCode.WORKSPACE_NOT_FOUND, ErrorCode.WORKSPACE_NOT_EMPTY})
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void delete(@PathVariable UUID workspaceId) {
         service.delete(workspaceId);
@@ -59,10 +60,15 @@ class WorkspaceController {
 
     record CreateWorkspaceRequest(@Nullable String name) {}
 
-    record WorkspaceResponse(UUID id, String name, Instant createdAt) {
+    record WorkspaceResponse(UUID id, String name, long projectCount, Instant createdAt) {
 
-        static WorkspaceResponse of(Workspace workspace) {
-            return new WorkspaceResponse(workspace.id(), workspace.name(), workspace.createdAt());
+        static WorkspaceResponse of(WorkspaceSummary summary) {
+            Workspace workspace = summary.workspace();
+            return new WorkspaceResponse(
+                    workspace.id(),
+                    workspace.name(),
+                    summary.projectCount(),
+                    workspace.createdAt());
         }
     }
 }

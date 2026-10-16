@@ -75,7 +75,7 @@ class OpenApiErrorContractIT {
                 .bodyJson()
                 .extractingPath("$.components.schemas.WorkspaceResponse.required")
                 .asInstanceOf(InstanceOfAssertFactories.list(String.class))
-                .containsExactlyInAnyOrder("id", "name", "createdAt");
+                .containsExactlyInAnyOrder("id", "name", "projectCount", "createdAt");
     }
 
     @Test

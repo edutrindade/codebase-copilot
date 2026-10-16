@@ -50,7 +50,7 @@ class WorkspaceApiIT {
                 .bodyJson()
                 .isStrictlyEqualTo(
                         """
-                        {"id": "%s", "name": "Meus repos", "createdAt": "%s"}
+                        {"id": "%s", "name": "Meus repos", "projectCount": 0, "createdAt": "%s"}
                         """
                                 .formatted(id, JsonPath.read(body, "$.createdAt")));
     }
@@ -171,6 +171,62 @@ class WorkspaceApiIT {
                 .bodyJson()
                 .extractingPath("$.code")
                 .isEqualTo("WORKSPACE_NOT_FOUND");
+    }
+
+    @Test
+    void countsProjectsInListAndDetail() {
+        String empty = createdId("Vazio");
+        String two = createdId("Dois");
+        String one = createdId("Um");
+        createZipProject(two);
+        createZipProject(two);
+        createZipProject(one);
+
+        assertThat(mvc.get().uri(BASE))
+                .bodyJson()
+                .extractingPath("$.items[*].projectCount")
+                .isEqualTo(List.of(1, 2, 0));
+        assertThat(mvc.get().uri(BASE + "/" + two))
+                .bodyJson()
+                .extractingPath("$.projectCount")
+                .isEqualTo(2);
+        assertThat(mvc.get().uri(BASE + "/" + empty))
+                .bodyJson()
+                .extractingPath("$.projectCount")
+                .isEqualTo(0);
+    }
+
+    @Test
+    void workspaceWithProjectsCannotBeDeleted() throws Exception {
+        String id = createdId("Com projeto");
+        String projectId = createZipProject(id);
+
+        assertThat(mvc.delete().uri(BASE + "/" + id))
+                .hasStatus(HttpStatus.CONFLICT)
+                .hasContentType(MediaType.APPLICATION_PROBLEM_JSON)
+                .bodyJson()
+                .extractingPath("$.code")
+                .isEqualTo("WORKSPACE_NOT_EMPTY");
+        assertThat(mvc.get().uri(BASE + "/" + id)).hasStatusOk();
+
+        assertThat(mvc.delete().uri("/api/v1/projects/" + projectId))
+                .hasStatus(HttpStatus.NO_CONTENT);
+        assertThat(mvc.delete().uri(BASE + "/" + id)).hasStatus(HttpStatus.NO_CONTENT);
+    }
+
+    private String createZipProject(String workspaceId) {
+        MvcTestResult result =
+                mvc.post()
+                        .uri(BASE + "/" + workspaceId + "/projects")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\": \"P\", \"sourceType\": \"ZIP\"}")
+                        .exchange();
+        assertThat(result).hasStatus(HttpStatus.CREATED);
+        try {
+            return JsonPath.read(result.getResponse().getContentAsString(), "$.id");
+        } catch (java.io.UnsupportedEncodingException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     private MvcTestResult create(String body) {

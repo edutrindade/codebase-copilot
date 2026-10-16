@@ -92,15 +92,17 @@ Request:
 
 `name` é opcional. Ausente, `null` ou vazio após o `trim`, assume "Meus projetos". O valor passa por `trim` e normalização NFC; depois disso, tem no máximo 100 caracteres e não contém caracteres de controle. Nomes repetidos são permitidos (D-032).
 
-Response: `201 Created`, objeto com `id`, `name`, `createdAt`.
+Response: `201 Created`, objeto com `id`, `name`, `projectCount` (0 na criação) e `createdAt`.
 
 Erros: `400 VALIDATION_FAILED`.
 
 ### `GET /workspaces`
-Lista workspaces com a contagem de projetos. Paginada (§1, D-030).
+Lista workspaces com a contagem de projetos (`projectCount`), no mesmo formato da criação. Paginada (§1, D-030).
 
 ### `GET /workspaces/{workspaceId}`
-Retorna detalhes do workspace.
+Retorna detalhes do workspace, incluindo `projectCount`.
+
+Erros: `404 WORKSPACE_NOT_FOUND`.
 
 ### `DELETE /workspaces/{workspaceId}`
 Remove o workspace (D-021).

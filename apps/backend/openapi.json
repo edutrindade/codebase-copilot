@@ -266,6 +266,16 @@
             },
             "description" : "Erro (ProblemDetail). Códigos: WORKSPACE_NOT_FOUND."
           },
+          "409" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: WORKSPACE_NOT_EMPTY."
+          },
           "500" : {
             "content" : {
               "application/problem+json" : {
@@ -629,7 +639,7 @@
         "properties" : {
           "code" : {
             "type" : "string",
-            "enum" : [ "VALIDATION_FAILED", "MALFORMED_REQUEST", "RESOURCE_NOT_FOUND", "METHOD_NOT_ALLOWED", "UNSUPPORTED_MEDIA_TYPE", "INTERNAL_ERROR", "WORKSPACE_NOT_FOUND", "PROJECT_NOT_FOUND", "LOCAL_ROOTS_NOT_CONFIGURED", "ROOT_NOT_FOUND", "PATH_OUTSIDE_ROOT", "PROJECT_ALREADY_EXISTS" ]
+            "enum" : [ "VALIDATION_FAILED", "MALFORMED_REQUEST", "RESOURCE_NOT_FOUND", "METHOD_NOT_ALLOWED", "UNSUPPORTED_MEDIA_TYPE", "INTERNAL_ERROR", "WORKSPACE_NOT_FOUND", "WORKSPACE_NOT_EMPTY", "PROJECT_NOT_FOUND", "LOCAL_ROOTS_NOT_CONFIGURED", "ROOT_NOT_FOUND", "PATH_OUTSIDE_ROOT", "PROJECT_ALREADY_EXISTS" ]
           },
           "detail" : {
             "type" : "string"
@@ -716,9 +726,13 @@
           },
           "name" : {
             "type" : "string"
+          },
+          "projectCount" : {
+            "type" : "integer",
+            "format" : "int64"
           }
         },
-        "required" : [ "createdAt", "id", "name" ]
+        "required" : [ "createdAt", "id", "name", "projectCount" ]
       },
       "ZipSourceResponse" : {
         "allOf" : [ {

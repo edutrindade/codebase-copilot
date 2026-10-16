@@ -14,6 +14,9 @@ import org.springframework.stereotype.Repository;
 @Repository
 class WorkspaceRepository {
 
+    // Owned by the projects table (V3); referenced by name only, see D-031.
+    static final String PROJECTS_FK = "projects_workspace_id_fkey";
+
     private final JdbcAggregateTemplate aggregates;
     private final JdbcClient jdbc;
 
