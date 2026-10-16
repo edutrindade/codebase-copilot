@@ -44,7 +44,8 @@ class ProjectRepository {
         return jdbc.sql(
                         """
                         SELECT id, workspace_id, name, source_type, source_root_key,
-                               source_relative_path, current_import_job_id, created_at,
+                               source_relative_path, current_import_job_id, active_snapshot_id,
+                               created_at,
                                updated_at
                         FROM projects
                         WHERE workspace_id = :workspaceId
@@ -58,12 +59,13 @@ class ProjectRepository {
                 .list();
     }
 
-    // Blocks concurrent uploads, whose insert into import_jobs takes a KEY SHARE lock here.
+    // Blocks concurrent job creation, whose insert into project_jobs takes a KEY SHARE lock here.
     Optional<Project> findByIdForUpdate(UUID id) {
         return jdbc.sql(
                         """
                         SELECT id, workspace_id, name, source_type, source_root_key,
-                               source_relative_path, current_import_job_id, created_at,
+                               source_relative_path, current_import_job_id, active_snapshot_id,
+                               created_at,
                                updated_at
                         FROM projects
                         WHERE id = :id
@@ -87,6 +89,19 @@ class ProjectRepository {
                 .update();
     }
 
+    void updateActiveSnapshot(UUID id, UUID snapshotId, Instant now) {
+        jdbc.sql(
+                        """
+                        UPDATE projects
+                        SET active_snapshot_id = :snapshotId, updated_at = :now
+                        WHERE id = :id
+                        """)
+                .param("id", id)
+                .param("snapshotId", snapshotId)
+                .param("now", OffsetDateTime.ofInstant(now, ZoneOffset.UTC))
+                .update();
+    }
+
     Set<UUID> findCurrentImportIds(Collection<UUID> importJobIds) {
         if (importJobIds.isEmpty()) {
             return Set.of();
@@ -106,7 +121,8 @@ class ProjectRepository {
         return jdbc.sql(
                         """
                         SELECT id, workspace_id, name, source_type, source_root_key,
-                               source_relative_path, current_import_job_id, created_at,
+                               source_relative_path, current_import_job_id, active_snapshot_id,
+                               created_at,
                                updated_at
                         FROM projects
                         WHERE workspace_id = :workspaceId
@@ -165,6 +181,7 @@ class ProjectRepository {
                 rs.getString("source_root_key"),
                 rs.getString("source_relative_path"),
                 rs.getObject("current_import_job_id", UUID.class),
+                rs.getObject("active_snapshot_id", UUID.class),
                 rs.getObject("created_at", OffsetDateTime.class).toInstant(),
                 rs.getObject("updated_at", OffsetDateTime.class).toInstant());
     }

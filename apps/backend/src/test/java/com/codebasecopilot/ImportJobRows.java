@@ -37,9 +37,9 @@ public final class ImportJobRows {
 
     // Fills the columns that import_jobs_state_consistency requires for the status.
     public static UUID insertJob(JdbcClient jdbc, UUID projectId, String status) {
-        UUID id = UUID.randomUUID();
         boolean active = status.equals("PENDING") || status.equals("EXTRACTING");
         boolean completed = status.equals("COMPLETED");
+        UUID id = insertProjectJob(jdbc, projectId, "IMPORT", active);
         jdbc.sql(
                         """
                         INSERT INTO import_jobs (id, project_id, status, compressed_bytes,
@@ -57,6 +57,29 @@ public final class ImportJobRows {
                 .param("completedAt", active ? null : OffsetDateTime.now())
                 .update();
         return id;
+    }
+
+    public static UUID insertProjectJob(
+            JdbcClient jdbc, UUID projectId, String kind, boolean active) {
+        UUID id = UUID.randomUUID();
+        jdbc.sql(
+                        """
+                        INSERT INTO project_jobs (id, project_id, kind, active, created_at)
+                        VALUES (:id, :projectId, :kind, :active, now())
+                        """)
+                .param("id", id)
+                .param("projectId", projectId)
+                .param("kind", kind)
+                .param("active", active)
+                .update();
+        return id;
+    }
+
+    public static boolean isJobActive(JdbcClient jdbc, UUID jobId) {
+        return jdbc.sql("SELECT active FROM project_jobs WHERE id = :id")
+                .param("id", jobId)
+                .query(Boolean.class)
+                .single();
     }
 
     public static void setCurrentImport(JdbcClient jdbc, UUID projectId, UUID importJobId) {

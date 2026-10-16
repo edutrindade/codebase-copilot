@@ -20,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.support.TransactionTemplate;
 
 // Runs before the web server starts, so it never fails a job created by a new upload.
 @Component
@@ -30,16 +31,19 @@ class ImportRecovery implements SmartInitializingSingleton {
     private final ImportJobRepository repository;
     private final ProjectService projects;
     private final DataDirectory dataDirectory;
+    private final TransactionTemplate transactions;
     private final Clock clock;
 
     ImportRecovery(
             ImportJobRepository repository,
             ProjectService projects,
             DataDirectory dataDirectory,
+            TransactionTemplate transactions,
             Clock clock) {
         this.repository = repository;
         this.projects = projects;
         this.dataDirectory = dataDirectory;
+        this.transactions = transactions;
         this.clock = clock;
     }
 
@@ -50,9 +54,16 @@ class ImportRecovery implements SmartInitializingSingleton {
 
     void recover() {
         List<UUID> interrupted =
-                repository.failAllActive(
-                        ImportErrorCode.IMPORT_INTERRUPTED,
-                        clock.instant().truncatedTo(ChronoUnit.MICROS));
+                Objects.requireNonNull(
+                        transactions.execute(
+                                tx -> {
+                                    List<UUID> ids =
+                                            repository.failAllActive(
+                                                    ImportErrorCode.IMPORT_INTERRUPTED,
+                                                    clock.instant().truncatedTo(ChronoUnit.MICROS));
+                                    projects.finishJobs(ids);
+                                    return ids;
+                                }));
         if (!interrupted.isEmpty()) {
             log.warn("Marked {} interrupted imports as failed", interrupted.size());
         }

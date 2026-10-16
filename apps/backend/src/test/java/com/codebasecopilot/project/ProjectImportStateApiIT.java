@@ -1,6 +1,7 @@
 package com.codebasecopilot.project;
 
 import static com.codebasecopilot.ImportJobRows.insertJob;
+import static com.codebasecopilot.ImportJobRows.insertProjectJob;
 import static com.codebasecopilot.ImportJobRows.insertWorkspace;
 import static com.codebasecopilot.ImportJobRows.insertZipProject;
 import static com.codebasecopilot.ImportJobRows.setCurrentImport;
@@ -55,6 +56,18 @@ class ProjectImportStateApiIT {
                         """
                         {"code": "PROJECT_BUSY", "title": "Projeto ocupado", "status": 409}
                         """);
+        assertThat(mvc.get().uri("/api/v1/projects/" + projectId)).hasStatusOk();
+    }
+
+    @Test
+    void deleteIsRefusedWhileAnyJobIsActive() {
+        insertProjectJob(jdbc, projectId, "INDEX", true);
+
+        assertThat(mvc.delete().uri("/api/v1/projects/" + projectId))
+                .hasStatus(HttpStatus.CONFLICT)
+                .bodyJson()
+                .extractingPath("$.code")
+                .isEqualTo("PROJECT_BUSY");
         assertThat(mvc.get().uri("/api/v1/projects/" + projectId)).hasStatusOk();
     }
 

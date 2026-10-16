@@ -37,6 +37,12 @@ class SafeScanner {
         byte[] read(Path file, int maxBytes) throws IOException;
     }
 
+    // Receives every included file, in file system order.
+    @FunctionalInterface
+    interface Listener {
+        void included(String relativePath, Path file, long sizeBytes, String language);
+    }
+
     private enum State {
         INCLUDED,
         EXCLUDED,
@@ -56,7 +62,11 @@ class SafeScanner {
 
     // root must be a real directory already confined (ConfinedPaths).
     ScanResult scan(Path root, Rules rules, Limits limits) throws IOException {
-        Walk walk = new Walk(root, rules, limits);
+        return scan(root, rules, limits, (relativePath, file, sizeBytes, language) -> {});
+    }
+
+    ScanResult scan(Path root, Rules rules, Limits limits, Listener listener) throws IOException {
+        Walk walk = new Walk(root, rules, limits, listener);
         Files.walkFileTree(root, EnumSet.noneOf(FileVisitOption.class), Integer.MAX_VALUE, walk);
         return walk.result();
     }
@@ -72,6 +82,7 @@ class SafeScanner {
         private final Path root;
         private final Rules rules;
         private final Limits limits;
+        private final Listener listener;
         private final Map<String, long[]> languages = new TreeMap<>();
         private final Map<String, long[]> directories = new TreeMap<>();
         private final Map<GroupKey, Group> groups = new TreeMap<>();
@@ -85,10 +96,11 @@ class SafeScanner {
         private int entries;
         private boolean truncated;
 
-        Walk(Path root, Rules rules, Limits limits) {
+        Walk(Path root, Rules rules, Limits limits, Listener listener) {
             this.root = root;
             this.rules = rules;
             this.limits = limits;
+            this.listener = listener;
         }
 
         @Override
@@ -196,6 +208,7 @@ class SafeScanner {
             includedFiles++;
             includedBytes += size;
             directory(path)[State.INCLUDED.ordinal()]++;
+            listener.included(path, file, size, language);
         }
 
         private @Nullable Exclusion ruleExclusion(String path, boolean directory) {

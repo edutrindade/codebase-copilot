@@ -53,6 +53,8 @@
 
 ## Etapa 3 — Snapshots, hashes e chunking
 
+**Status:** concluída em 16/10/2026 (plano, testes e desvios em `docs/plans/etapa-3.md`; decisões D-039 a D-046).
+
 - Criar snapshots e jobs.
 - Calcular hashes de arquivos.
 - Implementar chunking genérico com linhas.

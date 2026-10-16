@@ -1,8 +1,10 @@
 package com.codebasecopilot.importjob;
 
 import static com.codebasecopilot.ImportJobRows.insertJob;
+import static com.codebasecopilot.ImportJobRows.insertProjectJob;
 import static com.codebasecopilot.ImportJobRows.insertWorkspace;
 import static com.codebasecopilot.ImportJobRows.insertZipProject;
+import static com.codebasecopilot.ImportJobRows.isJobActive;
 import static com.codebasecopilot.importjob.ZipFixtures.randomBytes;
 import static com.codebasecopilot.importjob.ZipFixtures.raw;
 import static com.codebasecopilot.importjob.ZipFixtures.zip;
@@ -96,6 +98,7 @@ class ImportApiIT {
         Path dir = dataDirectory.importDir(UUID.fromString(id));
         assertThat(dir.resolve("source/src/Main.java")).hasContent("class Main {}");
         assertThat(dir.resolve("upload.zip")).doesNotExist();
+        assertThat(isJobActive(jdbc, UUID.fromString(id))).isFalse();
     }
 
     @Test
@@ -129,6 +132,8 @@ class ImportApiIT {
         assertThat(output.getAll()).doesNotContain(SECRET_NAME);
         assertThat(currentImport()).isEqualTo(current);
         assertThat(dataDirectory.importDir(UUID.fromString(rejected))).doesNotExist();
+        assertThat(isJobActive(jdbc, UUID.fromString(rejected))).isFalse();
+        assertThat(upload(projectId, zip("b.txt", "2"))).hasStatus(HttpStatus.ACCEPTED);
     }
 
     @Test
@@ -192,6 +197,15 @@ class ImportApiIT {
         insertJob(jdbc, projectId, "EXTRACTING");
 
         assertCode(upload(projectId, zip("a.txt", "a")), HttpStatus.CONFLICT, "PROJECT_BUSY");
+    }
+
+    @Test
+    void activeIndexJobMakesProjectBusy() {
+        insertProjectJob(jdbc, projectId, "INDEX", true);
+
+        assertCode(upload(projectId, zip("a.txt", "a")), HttpStatus.CONFLICT, "PROJECT_BUSY");
+        assertThat(jdbc.sql("SELECT count(*) FROM import_jobs").query(Long.class).single())
+                .isZero();
     }
 
     @Test

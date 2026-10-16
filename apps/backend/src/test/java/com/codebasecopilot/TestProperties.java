@@ -24,5 +24,10 @@ final class TestProperties {
     // The inventory fixture has one file above this limit.
     static final String MAX_INVENTORY_FILE_BYTES = "app.inventory.max-file-bytes=4KB";
 
+    // Short queue intervals so index jobs start and report quickly.
+    static final String INDEX_POLL_INTERVAL = "app.indexing.poll-interval=100ms";
+    static final String INDEX_HEARTBEAT_INTERVAL = "app.indexing.heartbeat-interval=100ms";
+    static final String INDEX_MAX_CONCURRENT = "app.indexing.max-concurrent=2";
+
     private TestProperties() {}
 }

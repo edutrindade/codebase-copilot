@@ -486,6 +486,9 @@ E, para as raízes: no módulo `project`, no `importjob` ou em `shared`.
 **Consequências:** a persistência vem com os snapshots na Etapa 3; o custo da varredura deve ser medido na Etapa 8.  
 **O que levaria à revisão:** latência inaceitável em repositórios grandes.
 
+#### Atualização de 16/10/2026 — persistência por snapshot
+O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3, cada snapshot persiste o agregado da varredura que o originou (`snapshots.inventory`) e os arquivos incluídos (`snapshot_files`), conforme a D-039.
+
 ### D-036 — Regras de exclusão (resolve O-012)
 **Status:** Aceita (16/10/2026)  
 **Contexto:** a Etapa 2 exige exclusões padrão e customizadas, e a O-012 pedia decidir a detecção de segredos antes dela.  
@@ -525,6 +528,151 @@ E, para as raízes: no módulo `project`, no `importjob` ou em `shared`.
 **Motivo:** respostas sem truncamento silencioso e um código por situação, para o frontend não interpretar texto (D-022).  
 **Consequências:** `06-API-CONTRACTS.md` §4, §5 e §6 atualizados.
 
+### D-039 — Modelo de snapshots, conteúdo e chunks (resolve O-008)
+**Status:** Aceita (16/10/2026)  
+**Contexto:** com `chunks.snapshot_id`, chunks de arquivos inalterados não seriam reaproveitados; `files (project_id, relative_path)` não guarda histórico; e o visualizador (F-06) precisa do arquivo como estava no snapshot.  
+**Opções consideradas:**
+1. Copiar chunks e embeddings a cada snapshot.
+2. Tabelas de ligação `snapshot_files` e `snapshot_chunks`, com chunks compartilhados (recomendação original da O-008).
+3. Chunks ligados à versão do conteúdo, e o snapshot apontando caminho → hash.
+
+**Decisão:** opção 3.
+- **`file_contents`** `(project_id, content_hash)`: conteúdo decodificado, deduplicado **por projeto**; atende o visualizador.
+- **`snapshot_files`** `(snapshot_id, relative_path)`: estado de cada arquivo incluído no snapshot (hash, tamanho, linguagem, estado e motivo). Substitui a tabela `files`.
+- **`chunks`** por `(project_id, content_hash, chunking_version, ordinal)`, imutáveis. Arquivo inalterado reaproveita chunks sem escrita; a busca por snapshot faz `JOIN` de `snapshot_files` com `chunks` pelo hash e pela `chunking_version` do snapshot.
+- **Mesmo conteúdo em caminhos diferentes:** a recuperação devolve o chunk uma vez e resolve os caminhos por `snapshot_files`. A citação usa o primeiro caminho em ordem lexicográfica e lista os demais (`otherPaths`), com as mesmas linhas.
+- **Inventário persistido** por snapshot (`snapshots.inventory`, JSONB); arquivos excluídos não viram linhas. O `GET /inventory` continua sob demanda (D-035).
+- **Limpeza de conteúdo e chunks sem snapshot**, ao fim de cada job, depois da poda (D-044):
+  1. apagam-se os chunks cuja combinação `(content_hash, chunking_version)` não é usada por nenhum snapshot não podado, o que também remove versões antigas de chunking;
+  2. apagam-se os `file_contents` sem referência em `snapshot_files`, com os chunks restantes em cascata.
+
+  Snapshots `BUILDING` não são podados, então um job em andamento protege o próprio conteúdo.
+
+**Motivo:** reaproveitamento sem tabelas de ligação por chunk, cascata simples na remoção do projeto e conteúdo disponível para o visualizador.  
+**Consequências:**
+- `05-DATA-MODEL.md` atualizado; a tabela `files` sai do modelo.
+- O texto fica guardado duas vezes (conteúdo e chunks com sobreposição), limitado por `max-project-bytes`.
+- O cache global de embeddings por `chunk_hash` (Etapa 4) não muda.
+- **Risco para a Etapa 4:** busca vetorial com filtro por snapshot (`JOIN`) em índice HNSW pode devolver menos resultados que o pedido, porque o filtro é aplicado depois da busca aproximada. Avaliar no corpus a varredura iterativa do pgvector (`hnsw.iterative_scan`) ou alternativa (índice parcial, busca exata em projetos pequenos).
+
+**O que levaria à revisão:** volume de armazenamento inviável ou `JOIN` de recuperação caro demais no corpus.
+
+### D-040 — Fila de jobs de indexação (resolve O-009)
+**Status:** Aceita (16/10/2026)  
+**Contexto:** `@Async` simples perde jobs se a aplicação cair; a indexação é longa e precisa ser retomada.  
+**Opções consideradas:**
+1. Executor em processo com recuperação na inicialização, como os imports (D-034).
+2. Fila em tabela com retirada por `SKIP LOCKED`, heartbeat e limite de tentativas.
+
+**Decisão:** opção 2.
+- `index_jobs` em `PENDING` → `RUNNING` → `COMPLETED` ou `FAILED`.
+- Retirada com `SELECT … FOR UPDATE SKIP LOCKED` numa transação curta, que marca `RUNNING`, incrementa `attempt_count` e grava `heartbeat_at`; o trabalho roda fora dela, em workers do processo (`app.indexing.max-concurrent`, padrão 1).
+- Heartbeat a cada lote (`heartbeat-interval`, 10 s); job `RUNNING` com heartbeat mais antigo que `lease-timeout` (60 s) volta a ser elegível. Cobre queda da aplicação e thread travada sem código de inicialização.
+- Ao ser retirado com `attempt_count` igual a `max-attempts` (3), o job termina `FAILED` com `INDEX_ATTEMPTS_EXHAUSTED`.
+- Sondagem a cada `poll-interval` (2 s) e sinal imediato após o commit que cria o job.
+- Transições condicionadas ao estado e ao `attempt_count` retirado, para que um worker cujo lease expirou não sobrescreva quem retomou o job.
+
+**Motivo:** retomada sem infraestrutura nova, segura sob concorrência.  
+**Consequências:** a D-034 (imports) não muda. O MVP assume um processo do backend por banco; dois processos funcionariam, mas não são cenário testado.  
+**O que levaria à revisão:** medições de recurso ou confiabilidade que justifiquem um worker separado (D-005).
+
+#### Atualização de 16/10/2026 — implementação
+- Um erro inesperado durante o job devolve-o para `PENDING` na hora (a tentativa já foi contada), sem esperar o lease; na última tentativa, o job termina `FAILED` com `INDEX_IO_ERROR`. `INDEX_ATTEMPTS_EXHAUSTED` fica para jobs cujo worker morreu em todas as tentativas.
+- O heartbeat é renovado a cada lote e também durante a varredura, no máximo uma vez por `heartbeat-interval`, para que árvores grandes não percam o lease.
+- Um despachante retira os jobs e os entrega a um pool fixo; o sinal após o commit o acorda sem esperar a sondagem.
+- A retomada apaga os `snapshot_files` parciais do snapshot e recomeça pela varredura; conteúdo e chunks já gravados são reaproveitados.
+
+### D-041 — Um job ativo por projeto
+**Status:** Aceita (16/10/2026)  
+**Contexto:** um import ZIP que conclui apaga a pasta do import anterior, que pode ser a origem de uma indexação em andamento; e a D-021 pede `409 PROJECT_BUSY` também para indexação.  
+**Opções consideradas:**
+1. Verificar, em cada módulo, os jobs ativos dos outros, com lock na linha do projeto.
+2. Um registro único de jobs do projeto, com índice único parcial.
+
+**Decisão:** opção 2.
+- Tabela `project_jobs` (módulo `project`): uma linha por job, de import ou de indexação, com `kind` e `active`; **índice único parcial `(project_id) WHERE active`**.
+- Os IDs de `import_jobs` e `index_jobs` são FK para `project_jobs (id)`.
+- `ProjectService.startJob` insere o registro na transação que cria o job (violação do índice → `409 PROJECT_BUSY`; FK do projeto → `404 PROJECT_NOT_FOUND`); `finishJob` o desativa na mesma transação de toda transição terminal.
+- `DELETE /projects/{id}` consulta `project_jobs` depois de travar a linha do projeto.
+- A indexação lê a origem pela fachada pública `ProjectSources` de `importjob.scan`. Dependências: `indexing` → `importjob` → `project`; `project` e `importjob` não dependem de `indexing` (ArchUnit).
+
+**Motivo:** a garantia fica no banco, segura sob concorrência, sem cada módulo conhecer os jobs dos outros.  
+**Consequências:** `ProjectImports.hasActiveImport` sai; os índices únicos de cada tipo de job continuam como defesa adicional.  
+**O que levaria à revisão:** necessidade de jobs simultâneos no mesmo projeto (por exemplo, reembedding em paralelo a uma indexação).
+
+### D-042 — Leitura, classificação e hash dos arquivos
+**Status:** Aceita (16/10/2026)  
+**Decisão:**
+- Cada arquivo é lido uma vez, com `NOFOLLOW_LINKS` e leitura limitada a `maxFileBytes + 1`; hash e conteúdo saem dos mesmos bytes.
+- Hash: SHA-256 dos bytes brutos, hexadecimal minúsculo.
+- Decodificação: UTF-8 estrito, com BOM removido; linhas separadas por `\n`, `\r\n` ou `\r`, numeradas a partir de 1; conteúdo guardado sem normalizar quebras.
+- Estados por arquivo do snapshot:
+  - `INDEXED`;
+  - `UNSUPPORTED`, com motivo `BINARY` (byte NUL em qualquer posição), `INVALID_ENCODING` (não é UTF-8 válido) ou `LINE_TOO_LONG` (D-043);
+  - `FAILED`, **só** para erro de leitura (`READ_ERROR`) ou arquivo alterado durante a leitura (`CHANGED_DURING_READ`: atributos diferentes antes e depois, ou tamanho acima do limite).
+
+**Motivo:** `UNSUPPORTED` descreve o conteúdo e não é falha; `FAILED` indica um problema transitório que um novo job pode resolver.  
+**Consequências:** outras codificações ficam para a Etapa 8, com casos no corpus.  
+**O que levaria à revisão:** proporção relevante de arquivos `INVALID_ENCODING` no corpus.
+
+### D-043 — Chunking genérico inicial (provisória, O-010)
+**Status:** Aceita (provisória, 16/10/2026)  
+**Decisão:**
+- Janela de até 60 linhas e 4.000 caracteres; sobreposição de 10 linhas; corte preferencial em linha em branco nas últimas 15 linhas da janela.
+- Linha com mais de 4.000 caracteres: o arquivo inteiro vira `UNSUPPORTED` com `LINE_TOO_LONG`.
+- Arquivo vazio ou só com linhas em branco: `INDEXED`, sem chunks.
+- `token_count_estimate` = ⌈caracteres / 4⌉ até existir o tokenizador do provedor.
+- `chunking_version` = `lines-v1`, com os parâmetros no código; qualquer mudança cria uma versão nova.
+- `chunk_hash` = SHA-256 de `chunking_version` + texto do chunk.
+
+**Motivo:** valores conservadores e determinísticos, fáceis de comparar no corpus.  
+**Consequências:** a O-010 continua aberta para ajustar os valores na Etapa 5.  
+**O que levaria à revisão:** resultados do corpus de avaliação.
+
+#### Atualização de 16/10/2026 — detalhes do `lines-v1`
+- Chunks nunca começam nem terminam em linha em branco, e o texto do chunk junta as linhas com `\n`.
+- Depois de um corte em linha em branco não há sobreposição; depois de um corte pelo limite, a sobreposição é de até 10 linhas, mas o chunk seguinte começa pelo menos na metade do anterior.
+- Comprimentos de linha e de chunk são contados em unidades UTF-16.
+
+### D-044 — Ciclo de vida do snapshot, ativação e poda
+**Status:** Aceita (16/10/2026)  
+**Decisão:**
+- Um snapshot por job: `BUILDING` → `READY`, `PARTIAL` ou `FAILED`. Etapas do job: `SCANNING` → `PROCESSING_FILES` → `FINALIZING` (a Etapa 4 acrescenta `EMBEDDING`).
+- O job falha, sem ativar o snapshot, com origem indisponível (`SOURCE_*`), `SCAN_LIMIT_REACHED`, `PROJECT_SIZE_LIMIT_EXCEEDED`, `NO_INCLUDED_FILES`, `INDEX_IO_ERROR` ou `INDEX_ATTEMPTS_EXHAUSTED`.
+- Arquivos `FAILED` deixam o snapshot `PARTIAL`, que é ativado; arquivos `UNSUPPORTED` não impedem `READY`.
+- A API expõe as contagens de arquivos `FAILED` e `UNSUPPORTED` do snapshot e a lista de cada um, com o motivo.
+- A ativação (contagens, resumo de mudanças, `projects.active_snapshot_id`, job `COMPLETED`) é uma transação.
+- Resumo de mudanças contra o snapshot ativo anterior, sobre os arquivos `INDEXED`: `added`, `modified`, `removed`, `unchanged`.
+- O snapshot guarda `settings_version`, `chunking_version` e, em ZIP, o import de origem; o projeto informa `outdatedReasons` (`SETTINGS_CHANGED`, `SOURCE_REIMPORTED`, `CHUNKING_CHANGED`).
+- **Poda:** além do ativo, mantêm-se os `app.indexing.retained-snapshots` (padrão 3) mais recentes `READY`/`PARTIAL`. Os mais antigos são podados (`pruned_at`; a linha fica como histórico, sem `snapshot_files`); os `FAILED` perdem os `snapshot_files` ao falhar. Em seguida, a limpeza da D-039.
+
+**Motivo:** a falha de um arquivo não deve invalidar o projeto (`03-UX-ONBOARDING.md` §3), e uma árvore incompleta não pode virar índice ativo.  
+**Consequências:** mudanças no disco de pasta local não são detectadas sem nova indexação. Resolve as pendências da Etapa 2 sobre `settings_version` e `PROJECT_SIZE_LIMIT_EXCEEDED`.  
+**O que levaria à revisão:** volume de snapshots retidos, ou a Etapa 6 exigir outra regra de retenção.
+
+### D-045 — Ajustes de contrato da Etapa 3
+**Status:** Aceita (16/10/2026)  
+**Decisão:**
+- `POST /projects/{projectId}/index-jobs` sem corpo: o campo `mode` sai, porque toda indexação é incremental por conteúdo. A resposta é o job completo.
+- `POST /index-jobs/{jobId}/retry` sai: jobs interrompidos são retomados automaticamente (D-040), e um job `FAILED` é refeito criando outro.
+- Um novo job reprocessa os arquivos cujo estado anterior era `FAILED`: todo arquivo é lido de novo, e um arquivo `FAILED` não tem conteúdo a reaproveitar.
+- Novos: `GET /projects/{projectId}/index-jobs`, `GET /projects/{projectId}/snapshots`, `GET /snapshots/{snapshotId}` e `GET /snapshots/{snapshotId}/files` (substitui `GET /projects/{projectId}/files`, para o snapshot ser explícito).
+- Códigos novos: `INDEX_JOB_NOT_FOUND` e `SNAPSHOT_NOT_FOUND`. Códigos do job em `index.error.<CODE>` (pt-BR), sem coluna de mensagem.
+
+**Consequências:** `06-API-CONTRACTS.md` §5, §7 e §9 atualizados.
+
+### D-046 — Evidências independentes da retenção de snapshots
+**Status:** Aceita (16/10/2026; implementação na Etapa 6)  
+**Contexto:** a poda de snapshots e a limpeza de chunks (D-039, D-044) não podem invalidar respostas já dadas.  
+**Decisão:**
+- `answer_evidence` guarda **cópia** do caminho, das linhas, do hash do conteúdo e do trecho no momento da resposta, além das referências ao snapshot e ao chunk.
+- Podar um snapshot nunca apaga respostas nem evidências: as referências a snapshot e chunk não têm FK com cascata.
+- Ao abrir uma evidência cujo snapshot foi podado, a API devolve a cópia com `snapshotStatus: "PRUNED"` ("snapshot removido"), em vez de erro.
+
+**Motivo:** o histórico (F-07) precisa continuar verificável depois da poda.  
+**Consequências:** `05-DATA-MODEL.md` (`answer_evidence`) e `06-API-CONTRACTS.md` §9 atualizados. A remoção do projeto continua apagando o histórico (D-021).  
+**O que levaria à revisão:** volume de evidências copiadas relevante frente ao conteúdo indexado.
+
 ---
 
 ## Decisões em aberto
@@ -545,29 +693,11 @@ E, para as raízes: no módulo `project`, no `importjob` ou em `shared`.
 **A comparar:** lexical puro, vetorial puro, híbrido com RRF e variações (valor de k, pesos), tratamento de identificadores, e, apenas se o lexical se mostrar fraco, índice auxiliar com BM25.  
 **Evidência para decidir:** resultados no corpus da Etapa 5 (recall@k, MRR, latência).
 
-### O-008 — Modelo de snapshot, arquivos e conteúdo
-**Status:** A decidir antes da Etapa 3 (bloqueia apenas a Etapa 3)  
-**Contexto:** `chunks` possui um único `snapshot_id`, mas a reindexação incremental reaproveita chunks de arquivos inalterados. A unicidade `(project_id, relative_path)` em `files` não representa histórico por snapshot. Além disso, o F-06 exige abrir o arquivo no estado do snapshot, e o modelo atual só guarda chunks (com sobreposição).  
-**Opções:**
-1. Copiar chunks e embeddings a cada snapshot (simples, mas caro e contraditório com o cache por hash).
-2. Tabelas de ligação `snapshot_files` e `snapshot_chunks`, com chunks e embeddings imutáveis e compartilhados por hash.
-
-E, para o conteúdo: guardar o conteúdo completo deduplicado por hash (`file_contents`) ou reconstruí-lo a partir dos chunks.  
-**Recomendação:** opção 2 para chunks e `file_contents` deduplicado para o visualizador.  
-**Consequência:** exige atualizar `05-DATA-MODEL.md` e a política de retenção (limpeza de chunks sem snapshot associado).  
-**Impacto na Etapa 1 (15/10/2026):** nenhum. A coluna `projects.active_snapshot_id` e a FK para `snapshots` entram na migração da Etapa 3, não na da Etapa 1.
-
-### O-009 — Execução assíncrona dos jobs
-**Status:** A decidir antes da Etapa 3  
-**Contexto:** `@Async` simples perde jobs se a aplicação cair, o que conflita com o requisito de recuperação após falhas.  
-**Recomendação:** fila em tabela (`index_jobs`) com `SELECT … FOR UPDATE SKIP LOCKED`, retomada de jobs interrompidos na inicialização e etapas idempotentes. Sem infraestrutura nova.  
-**Revisão:** separar um worker apenas se medições de recurso ou confiabilidade justificarem (D-005).  
-**Etapa 2 (16/10/2026):** os imports ZIP usam executor em processo com recuperação na inicialização (D-034), o que não decide a O-009 para a indexação.
-
 ### O-010 — Parâmetros iniciais de chunking
 **Status:** A validar  
 **Contexto:** tamanho, sobreposição e limites de linhas são hipóteses.  
-**Plano:** definir valores iniciais conservadores na Etapa 3 e ajustá-los no corpus, alterando uma variável por vez (`08-EVALUATION.md`, seção 8).
+**Plano:** ajustar no corpus, alterando uma variável por vez (`08-EVALUATION.md`, seção 8).  
+**Etapa 3 (16/10/2026):** valores iniciais provisórios na D-043 (`lines-v1`: 60 linhas, 4.000 caracteres, sobreposição de 10 linhas, `LINE_TOO_LONG` acima de 4.000 caracteres por linha). A comparação fica para a Etapa 5.
 
 ### O-011 — Corpus de avaliação
 **Status:** A decidir antes da Etapa 5  

@@ -1,0 +1,114 @@
+package com.codebasecopilot.indexing;
+
+import com.codebasecopilot.shared.error.ErrorCode;
+import com.codebasecopilot.shared.openapi.ApiErrors;
+import com.codebasecopilot.shared.pagination.PageRequestParams;
+import com.codebasecopilot.shared.pagination.PageResponse;
+import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.Valid;
+import java.net.URI;
+import java.time.Instant;
+import java.util.Locale;
+import java.util.UUID;
+import org.jspecify.annotations.Nullable;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.context.MessageSource;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/v1")
+class IndexJobController {
+
+    private static final Locale LOCALE = Locale.of("pt", "BR");
+
+    private final IndexJobService service;
+    private final MessageSource messages;
+
+    IndexJobController(IndexJobService service, MessageSource messages) {
+        this.service = service;
+        this.messages = messages;
+    }
+
+    @PostMapping("/projects/{projectId}/index-jobs")
+    @ApiErrors({
+        ErrorCode.PROJECT_NOT_FOUND,
+        ErrorCode.SOURCE_ROOT_NOT_CONFIGURED,
+        ErrorCode.SOURCE_DIRECTORY_NOT_FOUND,
+        ErrorCode.SOURCE_IS_SYMLINK,
+        ErrorCode.SOURCE_NOT_READABLE,
+        ErrorCode.SOURCE_NOT_IMPORTED,
+        ErrorCode.PROJECT_BUSY
+    })
+    ResponseEntity<IndexJobResponse> create(@PathVariable UUID projectId) {
+        IndexJobResponse job = response(service.create(projectId));
+        return ResponseEntity.accepted()
+                .location(URI.create("/api/v1/index-jobs/" + job.id()))
+                .body(job);
+    }
+
+    @GetMapping("/index-jobs/{jobId}")
+    @ApiErrors(ErrorCode.INDEX_JOB_NOT_FOUND)
+    IndexJobResponse get(@PathVariable UUID jobId) {
+        return response(service.get(jobId));
+    }
+
+    @GetMapping("/projects/{projectId}/index-jobs")
+    @ApiErrors(ErrorCode.PROJECT_NOT_FOUND)
+    PageResponse<IndexJobResponse> list(
+            @PathVariable UUID projectId, @Valid @ParameterObject PageRequestParams params) {
+        return service.list(projectId, params).map(this::response);
+    }
+
+    private IndexJobResponse response(IndexJob job) {
+        IndexJobErrorResponse error =
+                job.errorCode() == null
+                        ? null
+                        : new IndexJobErrorResponse(
+                                job.errorCode().name(),
+                                messages.getMessage(
+                                        "index.error." + job.errorCode().name(), null, LOCALE));
+        ProgressResponse progress =
+                job.progressTotal() == null
+                        ? null
+                        : new ProgressResponse(
+                                job.progressTotal(),
+                                job.progressCompleted() == null ? 0 : job.progressCompleted());
+        return new IndexJobResponse(
+                job.id(),
+                job.projectId(),
+                job.snapshotId(),
+                job.status().name(),
+                job.stage() == null ? null : job.stage().name(),
+                progress,
+                job.attemptCount(),
+                error,
+                job.createdAt(),
+                job.startedAt(),
+                job.completedAt());
+    }
+
+    record IndexJobResponse(
+            UUID id,
+            UUID projectId,
+            UUID snapshotId,
+            @Schema(allowableValues = {"PENDING", "RUNNING", "COMPLETED", "FAILED"}) String status,
+            @Schema(
+                            nullable = true,
+                            allowableValues = {"SCANNING", "PROCESSING_FILES", "FINALIZING"})
+                    @Nullable String stage,
+            @Schema(nullable = true) @Nullable ProgressResponse progress,
+            int attempts,
+            @Schema(nullable = true) @Nullable IndexJobErrorResponse error,
+            Instant createdAt,
+            @Nullable Instant startedAt,
+            @Nullable Instant completedAt) {}
+
+    record ProgressResponse(int total, int completed) {}
+
+    record IndexJobErrorResponse(String code, String message) {}
+}

@@ -47,6 +47,7 @@ class ProjectRepositoryIT {
                         "default",
                         "",
                         null,
+                        null,
                         T0,
                         T0);
 
@@ -199,6 +200,7 @@ class ProjectRepositoryIT {
                 workspaceId,
                 "Projeto " + id,
                 SourceType.ZIP,
+                null,
                 null,
                 null,
                 null,

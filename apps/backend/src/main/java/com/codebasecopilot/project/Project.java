@@ -15,5 +15,6 @@ public record Project(
         @Nullable String sourceRootKey,
         @Nullable String sourceRelativePath,
         @Nullable UUID currentImportJobId,
+        @Nullable UUID activeSnapshotId,
         Instant createdAt,
         Instant updatedAt) {}

@@ -33,23 +33,29 @@ public class ProjectService {
     private static final String NOT_ALLOWED_FOR_ZIP = "validation.project.not-allowed-for-zip";
 
     private final ProjectRepository repository;
+    private final ProjectJobRepository jobs;
     private final WorkspaceService workspaces;
     private final LocalRoots localRoots;
     private final ProjectImports imports;
+    private final ProjectIndexes indexes;
     private final IdGenerator idGenerator;
     private final Clock clock;
 
     ProjectService(
             ProjectRepository repository,
+            ProjectJobRepository jobs,
             WorkspaceService workspaces,
             LocalRoots localRoots,
             ProjectImports imports,
+            ProjectIndexes indexes,
             IdGenerator idGenerator,
             Clock clock) {
         this.repository = repository;
+        this.jobs = jobs;
         this.workspaces = workspaces;
         this.localRoots = localRoots;
         this.imports = imports;
+        this.indexes = indexes;
         this.idGenerator = idGenerator;
         this.clock = clock;
     }
@@ -80,6 +86,7 @@ public class ProjectService {
                         command.sourceType(),
                         rootKey,
                         relativePath,
+                        null,
                         null,
                         now,
                         now);
@@ -114,15 +121,39 @@ public class ProjectService {
                 repository.countByWorkspace(workspaceId));
     }
 
-    // The row lock serializes the busy check with concurrent uploads (D-021, D-028).
+    // The row lock serializes the busy check with concurrent job creation (D-021, D-041).
     @Transactional
     public void delete(UUID id) {
         repository.findByIdForUpdate(id).orElseThrow(ProjectService::notFound);
-        if (imports.hasActiveImport(id)) {
+        if (jobs.existsActive(id)) {
             throw new ApiException(ErrorCode.PROJECT_BUSY);
         }
         imports.onProjectDeleted(id);
         repository.deleteById(id);
+    }
+
+    // Must run in the transaction that creates the job; the partial unique index makes the busy
+    // check safe under concurrency (D-041).
+    @Transactional
+    public void startJob(UUID projectId, UUID jobId, JobKind kind) {
+        try {
+            jobs.insertActive(
+                    jobId, projectId, kind, clock.instant().truncatedTo(ChronoUnit.MICROS));
+        } catch (DataIntegrityViolationException ex) {
+            if (ConstraintViolations.violates(ex, ProjectJobRepository.ACTIVE_UNIQUE)) {
+                throw new ApiException(ErrorCode.PROJECT_BUSY);
+            }
+            if (ConstraintViolations.violates(ex, ProjectJobRepository.PROJECT_FK)) {
+                throw notFound();
+            }
+            throw ex;
+        }
+    }
+
+    // Must run in the transaction of the job's terminal transition.
+    @Transactional
+    public void finishJobs(Collection<UUID> jobIds) {
+        jobs.deactivate(jobIds);
     }
 
     // Returns the previous current import, whose files the caller may now remove.
@@ -133,6 +164,17 @@ public class ProjectService {
         repository.updateCurrentImport(
                 projectId, importJobId, clock.instant().truncatedTo(ChronoUnit.MICROS));
         return project.currentImportJobId();
+    }
+
+    // Returns the previous active snapshot; only the index worker calls it, while the project
+    // has an active job, so the value cannot change concurrently (D-041, D-044).
+    @Transactional
+    public @Nullable UUID activateSnapshot(UUID projectId, UUID snapshotId) {
+        Project project =
+                repository.findByIdForUpdate(projectId).orElseThrow(ProjectService::notFound);
+        repository.updateActiveSnapshot(
+                projectId, snapshotId, clock.instant().truncatedTo(ChronoUnit.MICROS));
+        return project.activeSnapshotId();
     }
 
     // LOCAL_FOLDER projects of the same workspace and root whose path differs only by case;
@@ -160,6 +202,8 @@ public class ProjectService {
                         .toList();
         Map<UUID, ProjectImports.CurrentImport> current =
                 importIds.isEmpty() ? Map.of() : imports.find(importIds);
+        Map<UUID, ProjectIndexes.IndexState> index =
+                projects.isEmpty() ? Map.of() : indexes.find(projects);
         return projects.stream()
                 .map(
                         p ->
@@ -167,7 +211,8 @@ public class ProjectService {
                                         p,
                                         p.currentImportJobId() == null
                                                 ? null
-                                                : current.get(p.currentImportJobId())))
+                                                : current.get(p.currentImportJobId()),
+                                        index.getOrDefault(p.id(), ProjectIndexes.IndexState.NONE)))
                 .toList();
     }
 

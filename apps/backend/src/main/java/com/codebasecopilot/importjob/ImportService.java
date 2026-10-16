@@ -1,5 +1,6 @@
 package com.codebasecopilot.importjob;
 
+import com.codebasecopilot.project.JobKind;
 import com.codebasecopilot.project.ProjectService;
 import com.codebasecopilot.project.SourceType;
 import com.codebasecopilot.shared.IdGenerator;
@@ -53,7 +54,7 @@ class ImportService {
     }
 
     // The multipart limit already answers 413 before this method; the size check is defense in
-    // depth. The unique index makes the busy check safe under concurrent uploads (D-028).
+    // depth. The job registry makes the busy check safe under concurrency (D-041).
     @Transactional
     ImportJob startZipImport(UUID projectId, @Nullable MultipartFile file) {
         if (file == null || file.isEmpty()) {
@@ -69,6 +70,7 @@ class ImportService {
         }
         UUID id = idGenerator.newId();
         Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);
+        projects.startJob(projectId, id, JobKind.IMPORT);
         try {
             repository.insertPending(id, projectId, file.getSize(), now);
         } catch (DataIntegrityViolationException ex) {

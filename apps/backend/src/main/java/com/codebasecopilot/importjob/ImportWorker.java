@@ -99,6 +99,7 @@ class ImportWorker {
                                             now())) {
                                         return false;
                                     }
+                                    projects.finishJobs(List.of(id));
                                     UUID previous = projects.replaceCurrentImport(projectId, id);
                                     if (previous != null) {
                                         files.deleteAfterCommit(List.of(previous));
@@ -113,7 +114,12 @@ class ImportWorker {
     }
 
     private void finish(UUID id, ImportStatus status, ImportErrorCode code) {
-        repository.markFinished(id, status, code, now());
+        transactions.executeWithoutResult(
+                tx -> {
+                    if (repository.markFinished(id, status, code, now())) {
+                        projects.finishJobs(List.of(id));
+                    }
+                });
         files.delete(id);
         log.info("Import {} {}: {}", id, status, code);
     }

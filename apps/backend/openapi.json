@@ -11,7 +11,7 @@
   "paths" : {
     "/api/v1/imports/{importJobId}" : {
       "get" : {
-        "operationId" : "get_3",
+        "operationId" : "get_5",
         "parameters" : [ {
           "in" : "path",
           "name" : "importJobId",
@@ -66,9 +66,66 @@
         "tags" : [ "import-controller" ]
       }
     },
+    "/api/v1/index-jobs/{jobId}" : {
+      "get" : {
+        "operationId" : "get_4",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "jobId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/IndexJobResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: VALIDATION_FAILED."
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: INDEX_JOB_NOT_FOUND."
+          },
+          "500" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
+          }
+        },
+        "tags" : [ "index-job-controller" ]
+      }
+    },
     "/api/v1/local-roots" : {
       "get" : {
-        "operationId" : "list_3",
+        "operationId" : "list_5",
         "responses" : {
           "200" : {
             "content" : {
@@ -230,7 +287,7 @@
         "tags" : [ "project-controller" ]
       },
       "get" : {
-        "operationId" : "get_2",
+        "operationId" : "get_3",
         "parameters" : [ {
           "in" : "path",
           "name" : "projectId",
@@ -287,7 +344,7 @@
     },
     "/api/v1/projects/{projectId}/imports" : {
       "get" : {
-        "operationId" : "list_2",
+        "operationId" : "list_4",
         "parameters" : [ {
           "in" : "path",
           "name" : "projectId",
@@ -463,6 +520,149 @@
           }
         },
         "tags" : [ "import-controller" ]
+      }
+    },
+    "/api/v1/projects/{projectId}/index-jobs" : {
+      "get" : {
+        "operationId" : "list_2",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 0,
+            "minimum" : 0
+          }
+        }, {
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 20,
+            "maximum" : 100,
+            "minimum" : 1
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PageResponseIndexJobResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: VALIDATION_FAILED."
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: PROJECT_NOT_FOUND."
+          },
+          "500" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
+          }
+        },
+        "tags" : [ "index-job-controller" ]
+      },
+      "post" : {
+        "operationId" : "create_2",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/IndexJobResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: VALIDATION_FAILED."
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: PROJECT_NOT_FOUND."
+          },
+          "409" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: PROJECT_BUSY, SOURCE_ROOT_NOT_CONFIGURED, SOURCE_DIRECTORY_NOT_FOUND, SOURCE_IS_SYMLINK, SOURCE_NOT_READABLE, SOURCE_NOT_IMPORTED."
+          },
+          "500" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
+          }
+        },
+        "tags" : [ "index-job-controller" ]
       }
     },
     "/api/v1/projects/{projectId}/inventory" : {
@@ -662,6 +862,234 @@
           }
         },
         "tags" : [ "project-settings-controller" ]
+      }
+    },
+    "/api/v1/projects/{projectId}/snapshots" : {
+      "get" : {
+        "operationId" : "list_3",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 0,
+            "minimum" : 0
+          }
+        }, {
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 20,
+            "maximum" : 100,
+            "minimum" : 1
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PageResponseSnapshotResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: VALIDATION_FAILED."
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: PROJECT_NOT_FOUND."
+          },
+          "500" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
+          }
+        },
+        "tags" : [ "snapshot-controller" ]
+      }
+    },
+    "/api/v1/snapshots/{snapshotId}" : {
+      "get" : {
+        "operationId" : "get_2",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "snapshotId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SnapshotResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: VALIDATION_FAILED."
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: SNAPSHOT_NOT_FOUND."
+          },
+          "500" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
+          }
+        },
+        "tags" : [ "snapshot-controller" ]
+      }
+    },
+    "/api/v1/snapshots/{snapshotId}/files" : {
+      "get" : {
+        "operationId" : "files",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "snapshotId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "query",
+          "name" : "status",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "INDEXED", "UNSUPPORTED", "FAILED" ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "pathPrefix",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 0,
+            "minimum" : 0
+          }
+        }, {
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 20,
+            "maximum" : 100,
+            "minimum" : 1
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PageResponseSnapshotFileResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: VALIDATION_FAILED."
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: SNAPSHOT_NOT_FOUND."
+          },
+          "500" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
+          }
+        },
+        "tags" : [ "snapshot-controller" ]
       }
     },
     "/api/v1/workspaces" : {
@@ -1061,6 +1489,79 @@
   },
   "components" : {
     "schemas" : {
+      "ActiveSnapshotResponse" : {
+        "type" : "object",
+        "properties" : {
+          "completedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "counts" : {
+            "$ref" : "#/components/schemas/SnapshotCountsResponse"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "READY", "PARTIAL" ]
+          }
+        },
+        "required" : [ "completedAt", "counts", "id", "status" ]
+      },
+      "ChangesResponse" : {
+        "type" : "object",
+        "properties" : {
+          "added" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "modified" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "removed" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "unchanged" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "added", "modified", "removed", "unchanged" ]
+      },
+      "CountsResponse" : {
+        "type" : "object",
+        "properties" : {
+          "bytes" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "chunks" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "failedFiles" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "files" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "indexedFiles" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "unsupportedFiles" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "bytes", "chunks", "failedFiles", "files", "indexedFiles", "unsupportedFiles" ]
+      },
       "CreateProjectRequest" : {
         "type" : "object",
         "properties" : {
@@ -1131,6 +1632,30 @@
         },
         "required" : [ "category", "disabled", "exceptions", "id", "overridable", "patterns" ]
       },
+      "DirectoryCount" : {
+        "type" : "object",
+        "properties" : {
+          "excludedFiles" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "includedFiles" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "path" : {
+            "type" : "string"
+          },
+          "unreadableFiles" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "unsupportedFiles" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }
+      },
       "DirectoryCountResponse" : {
         "type" : "object",
         "properties" : {
@@ -1191,6 +1716,35 @@
           }
         },
         "required" : [ "hasChildren", "name", "readable", "relativePath" ]
+      },
+      "ExclusionGroup" : {
+        "type" : "object",
+        "properties" : {
+          "directories" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "examples" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "files" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "pattern" : {
+            "type" : "string"
+          },
+          "reason" : {
+            "type" : "string",
+            "enum" : [ "DEFAULT_RULE", "CUSTOM_PATTERN", "SYMLINK", "SPECIAL_FILE", "DEPTH_LIMIT", "TOO_LARGE", "BINARY", "UNREADABLE" ]
+          },
+          "ruleId" : {
+            "type" : "string"
+          }
+        }
       },
       "ExclusionGroupResponse" : {
         "type" : "object",
@@ -1291,6 +1845,99 @@
         },
         "required" : [ "completedAt", "compressedBytes", "createdAt", "entryCount", "error", "id", "projectId", "status", "uncompressedBytes" ]
       },
+      "IndexJobErrorResponse" : {
+        "type" : "object",
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "code", "message" ]
+      },
+      "IndexJobResponse" : {
+        "type" : "object",
+        "properties" : {
+          "attempts" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "completedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "error" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/IndexJobErrorResponse"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "progress" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/ProgressResponse"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "projectId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "snapshotId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "stage" : {
+            "type" : [ "string", "null" ],
+            "enum" : [ "SCANNING", "PROCESSING_FILES", "FINALIZING" ]
+          },
+          "startedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "PENDING", "RUNNING", "COMPLETED", "FAILED" ]
+          }
+        },
+        "required" : [ "attempts", "completedAt", "createdAt", "error", "id", "progress", "projectId", "snapshotId", "stage", "startedAt", "status" ]
+      },
+      "IndexingResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "progress" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/ProgressResponse"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "stage" : {
+            "type" : [ "string", "null" ],
+            "enum" : [ "SCANNING", "PROCESSING_FILES", "FINALIZING" ]
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "PENDING", "RUNNING" ]
+          }
+        },
+        "required" : [ "id", "progress", "stage", "status" ]
+      },
       "InventoryResponse" : {
         "type" : "object",
         "properties" : {
@@ -1373,6 +2020,22 @@
         },
         "required" : [ "excludedDirectories", "excludedFiles", "files", "includedBytes", "includedFiles", "unreadableFiles", "unsupportedFiles" ]
       },
+      "LanguageCount" : {
+        "type" : "object",
+        "properties" : {
+          "bytes" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "files" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "language" : {
+            "type" : "string"
+          }
+        }
+      },
       "LanguageCountResponse" : {
         "type" : "object",
         "properties" : {
@@ -1446,6 +2109,34 @@
         },
         "required" : [ "items", "page", "size", "totalItems", "totalPages" ]
       },
+      "PageResponseIndexJobResponse" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/IndexJobResponse"
+            }
+          },
+          "page" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "size" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "totalItems" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "totalPages" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "items", "page", "size", "totalItems", "totalPages" ]
+      },
       "PageResponseProjectResponse" : {
         "type" : "object",
         "properties" : {
@@ -1453,6 +2144,62 @@
             "type" : "array",
             "items" : {
               "$ref" : "#/components/schemas/ProjectResponse"
+            }
+          },
+          "page" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "size" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "totalItems" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "totalPages" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "items", "page", "size", "totalItems", "totalPages" ]
+      },
+      "PageResponseSnapshotFileResponse" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/SnapshotFileResponse"
+            }
+          },
+          "page" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "size" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "totalItems" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "totalPages" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "items", "page", "size", "totalItems", "totalPages" ]
+      },
+      "PageResponseSnapshotResponse" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/SnapshotResponse"
             }
           },
           "page" : {
@@ -1507,7 +2254,7 @@
         "properties" : {
           "code" : {
             "type" : "string",
-            "enum" : [ "VALIDATION_FAILED", "MALFORMED_REQUEST", "RESOURCE_NOT_FOUND", "METHOD_NOT_ALLOWED", "UNSUPPORTED_MEDIA_TYPE", "INTERNAL_ERROR", "WORKSPACE_NOT_FOUND", "WORKSPACE_NOT_EMPTY", "PROJECT_NOT_FOUND", "LOCAL_ROOTS_NOT_CONFIGURED", "ROOT_NOT_FOUND", "PATH_OUTSIDE_ROOT", "PROJECT_ALREADY_EXISTS", "DIRECTORY_NOT_FOUND", "DIRECTORY_NOT_READABLE", "PROJECT_BUSY", "PROJECT_SOURCE_MISMATCH", "UPLOAD_TOO_LARGE", "IMPORT_NOT_FOUND", "SOURCE_ROOT_NOT_CONFIGURED", "SOURCE_DIRECTORY_NOT_FOUND", "SOURCE_IS_SYMLINK", "SOURCE_NOT_READABLE", "SOURCE_NOT_IMPORTED" ]
+            "enum" : [ "VALIDATION_FAILED", "MALFORMED_REQUEST", "RESOURCE_NOT_FOUND", "METHOD_NOT_ALLOWED", "UNSUPPORTED_MEDIA_TYPE", "INTERNAL_ERROR", "WORKSPACE_NOT_FOUND", "WORKSPACE_NOT_EMPTY", "PROJECT_NOT_FOUND", "LOCAL_ROOTS_NOT_CONFIGURED", "ROOT_NOT_FOUND", "PATH_OUTSIDE_ROOT", "PROJECT_ALREADY_EXISTS", "DIRECTORY_NOT_FOUND", "DIRECTORY_NOT_READABLE", "PROJECT_BUSY", "PROJECT_SOURCE_MISMATCH", "UPLOAD_TOO_LARGE", "IMPORT_NOT_FOUND", "SOURCE_ROOT_NOT_CONFIGURED", "SOURCE_DIRECTORY_NOT_FOUND", "SOURCE_IS_SYMLINK", "SOURCE_NOT_READABLE", "SOURCE_NOT_IMPORTED", "INDEX_JOB_NOT_FOUND", "SNAPSHOT_NOT_FOUND" ]
           },
           "detail" : {
             "type" : "string"
@@ -1538,9 +2285,30 @@
         },
         "required" : [ "code", "detail", "instance", "requestId", "status", "title", "type" ]
       },
+      "ProgressResponse" : {
+        "type" : "object",
+        "properties" : {
+          "completed" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "total" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "completed", "total" ]
+      },
       "ProjectResponse" : {
         "type" : "object",
         "properties" : {
+          "activeSnapshot" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/ActiveSnapshotResponse"
+            }, {
+              "type" : "null"
+            } ]
+          },
           "createdAt" : {
             "type" : "string",
             "format" : "date-time"
@@ -1549,8 +2317,22 @@
             "type" : "string",
             "format" : "uuid"
           },
+          "indexing" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/IndexingResponse"
+            }, {
+              "type" : "null"
+            } ]
+          },
           "name" : {
             "type" : "string"
+          },
+          "outdatedReasons" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "enum" : [ "SETTINGS_CHANGED", "SOURCE_REIMPORTED", "CHUNKING_CHANGED" ]
+            }
           },
           "source" : {
             "oneOf" : [ {
@@ -1564,7 +2346,36 @@
             "format" : "uuid"
           }
         },
-        "required" : [ "createdAt", "id", "name", "source", "workspaceId" ]
+        "required" : [ "activeSnapshot", "createdAt", "id", "indexing", "name", "outdatedReasons", "source", "workspaceId" ]
+      },
+      "ScanResult" : {
+        "type" : "object",
+        "properties" : {
+          "byDirectory" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/DirectoryCount"
+            }
+          },
+          "byLanguage" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/LanguageCount"
+            }
+          },
+          "exclusions" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ExclusionGroup"
+            }
+          },
+          "totals" : {
+            "$ref" : "#/components/schemas/Totals"
+          },
+          "truncated" : {
+            "type" : "boolean"
+          }
+        }
       },
       "SettingsResponse" : {
         "type" : "object",
@@ -1614,6 +2425,136 @@
         },
         "required" : [ "defaultRules", "disabledDefaultRules", "effectiveMaxFileBytes", "effectiveMaxProjectBytes", "excludePatterns", "maxFileBytes", "maxProjectBytes", "updatedAt", "version" ]
       },
+      "SnapshotCountsResponse" : {
+        "type" : "object",
+        "properties" : {
+          "bytes" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "chunks" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "failedFiles" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "files" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "indexedFiles" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "unsupportedFiles" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "bytes", "chunks", "failedFiles", "files", "indexedFiles", "unsupportedFiles" ]
+      },
+      "SnapshotFileResponse" : {
+        "type" : "object",
+        "properties" : {
+          "chunkCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "contentHash" : {
+            "type" : "string"
+          },
+          "language" : {
+            "type" : "string"
+          },
+          "lineCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "reason" : {
+            "type" : [ "string", "null" ],
+            "enum" : [ "BINARY", "INVALID_ENCODING", "LINE_TOO_LONG", "READ_ERROR", "CHANGED_DURING_READ" ]
+          },
+          "relativePath" : {
+            "type" : "string"
+          },
+          "sizeBytes" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "INDEXED", "UNSUPPORTED", "FAILED" ]
+          }
+        },
+        "required" : [ "chunkCount", "contentHash", "language", "lineCount", "reason", "relativePath", "sizeBytes", "status" ]
+      },
+      "SnapshotResponse" : {
+        "type" : "object",
+        "properties" : {
+          "active" : {
+            "type" : "boolean"
+          },
+          "changes" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/ChangesResponse"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "chunkingVersion" : {
+            "type" : "string"
+          },
+          "completedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "counts" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/CountsResponse"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "inventory" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/ScanResult"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "projectId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "prunedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "settingsVersion" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "sourceImportId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "BUILDING", "READY", "PARTIAL", "FAILED" ]
+          }
+        },
+        "required" : [ "active", "changes", "chunkingVersion", "completedAt", "counts", "createdAt", "id", "inventory", "projectId", "prunedAt", "settingsVersion", "sourceImportId", "status" ]
+      },
       "SourceResponse" : {
         "discriminator" : {
           "mapping" : {
@@ -1628,6 +2569,39 @@
           }
         },
         "required" : [ "type" ]
+      },
+      "Totals" : {
+        "type" : "object",
+        "properties" : {
+          "excludedDirectories" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "excludedFiles" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "files" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "includedBytes" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "includedFiles" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "unreadableFiles" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "unsupportedFiles" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }
       },
       "UpdateSettingsRequest" : {
         "type" : "object",

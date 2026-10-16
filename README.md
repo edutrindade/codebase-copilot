@@ -64,6 +64,20 @@ Os padrões são hipóteses a ajustar com medições e podem ser alterados por p
 | `app.inventory.max-file-bytes` / `max-project-bytes` | 1MB / 500MB | Padrões por projeto, ajustáveis em `PUT /projects/{id}/settings` até `max-file-bytes-limit` (10MB) e `max-project-bytes-limit` (2GB). |
 | `app.browse.max-directories` | 1000 | Itens por listagem de diretórios. |
 
+### Indexação
+
+A indexação (`POST /api/v1/projects/{id}/index-jobs`) lê os arquivos incluídos pela varredura e grava o conteúdo, os chunks e os snapshots no PostgreSQL (`file_contents`, `chunks`, `snapshot_files`, `snapshots`); nada é gravado no `DATA_DIR`. Remover o projeto apaga tudo em cascata. Os jobs ficam numa fila em tabela e são retomados após uma queda (D-040).
+
+| Propriedade | Padrão | Uso |
+|---|---|---|
+| `app.indexing.max-concurrent` | 1 | Jobs de indexação simultâneos. |
+| `app.indexing.poll-interval` | 2s | Intervalo de sondagem da fila. |
+| `app.indexing.heartbeat-interval` | 10s | Renovação do lease de um job em execução. |
+| `app.indexing.lease-timeout` | 60s | Tempo sem heartbeat após o qual um job `RUNNING` volta à fila. |
+| `app.indexing.max-attempts` | 3 | Tentativas por job antes de falhar. |
+| `app.indexing.batch-files` | 100 | Arquivos gravados por transação. |
+| `app.indexing.retained-snapshots` | 3 | Snapshots anteriores mantidos com arquivos, além do ativo. |
+
 O `.env` está no `.gitignore` e nunca deve ser commitado.
 
 ## Subir o banco

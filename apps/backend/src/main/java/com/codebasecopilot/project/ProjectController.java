@@ -6,11 +6,13 @@ import com.codebasecopilot.shared.pagination.PageRequestParams;
 import com.codebasecopilot.shared.pagination.PageResponse;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.DiscriminatorMapping;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 import org.springdoc.core.annotations.ParameterObject;
@@ -48,7 +50,10 @@ class ProjectController {
             @PathVariable UUID workspaceId, @RequestBody CreateProjectRequest request) {
         ProjectResponse project =
                 ProjectResponse.of(
-                        new ProjectSummary(service.create(workspaceId, request.toCommand()), null));
+                        new ProjectSummary(
+                                service.create(workspaceId, request.toCommand()),
+                                null,
+                                ProjectIndexes.IndexState.NONE));
         return ResponseEntity.created(URI.create("/api/v1/projects/" + project.id())).body(project);
     }
 
@@ -84,7 +89,22 @@ class ProjectController {
     }
 
     record ProjectResponse(
-            UUID id, UUID workspaceId, String name, SourceResponse source, Instant createdAt) {
+            UUID id,
+            UUID workspaceId,
+            String name,
+            SourceResponse source,
+            @Schema(nullable = true) @Nullable ActiveSnapshotResponse activeSnapshot,
+            @Schema(nullable = true) @Nullable IndexingResponse indexing,
+            @ArraySchema(
+                            schema =
+                                    @Schema(
+                                            allowableValues = {
+                                                "SETTINGS_CHANGED",
+                                                "SOURCE_REIMPORTED",
+                                                "CHUNKING_CHANGED"
+                                            }))
+                    List<String> outdatedReasons,
+            Instant createdAt) {
 
         static ProjectResponse of(ProjectSummary summary) {
             Project project = summary.project();
@@ -101,14 +121,69 @@ class ProjectController {
                                                 : new CurrentImportResponse(
                                                         current.id(), current.status()));
                     };
+            ProjectIndexes.IndexState index = summary.index();
+            ProjectIndexes.ActiveSnapshot active = index.activeSnapshot();
+            ProjectIndexes.Indexing indexing = index.indexing();
             return new ProjectResponse(
                     project.id(),
                     project.workspaceId(),
                     project.name(),
                     source,
+                    active == null
+                            ? null
+                            : new ActiveSnapshotResponse(
+                                    active.id(),
+                                    active.status(),
+                                    active.completedAt(),
+                                    new SnapshotCountsResponse(
+                                            active.counts().files(),
+                                            active.counts().indexedFiles(),
+                                            active.counts().unsupportedFiles(),
+                                            active.counts().failedFiles(),
+                                            active.counts().chunks(),
+                                            active.counts().bytes())),
+                    indexing == null
+                            ? null
+                            : new IndexingResponse(
+                                    indexing.id(),
+                                    indexing.status(),
+                                    indexing.stage(),
+                                    indexing.total() == null
+                                            ? null
+                                            : new ProgressResponse(
+                                                    indexing.total(),
+                                                    indexing.completed() == null
+                                                            ? 0
+                                                            : indexing.completed())),
+                    index.outdatedReasons(),
                     project.createdAt());
         }
     }
+
+    record ActiveSnapshotResponse(
+            UUID id,
+            @Schema(allowableValues = {"READY", "PARTIAL"}) String status,
+            @Nullable Instant completedAt,
+            SnapshotCountsResponse counts) {}
+
+    record SnapshotCountsResponse(
+            int files,
+            int indexedFiles,
+            int unsupportedFiles,
+            int failedFiles,
+            int chunks,
+            long bytes) {}
+
+    record IndexingResponse(
+            UUID id,
+            @Schema(allowableValues = {"PENDING", "RUNNING"}) String status,
+            @Schema(
+                            nullable = true,
+                            allowableValues = {"SCANNING", "PROCESSING_FILES", "FINALIZING"})
+                    @Nullable String stage,
+            @Schema(nullable = true) @Nullable ProgressResponse progress) {}
+
+    record ProgressResponse(int total, int completed) {}
 
     @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type")
     @JsonSubTypes({
