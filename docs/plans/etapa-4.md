@@ -203,10 +203,19 @@ Um chunk rejeitado pelo provedor (`INVALID_REQUEST`) falha o job inteiro com `EM
 - Migração V8 (abaixo): `chunk_embeddings`, colunas de embedding em `snapshots` e `EMBEDDING` no `CHECK` de etapa de `index_jobs`.
 - Repositório em `indexing` por `JdbcClient`: hashes sem embedding de um snapshot, inserção em lote idempotente, limpeza de órfãos.
 
+**Como foi entregue (16/10/2026)**
+- A V8 é o próximo número livre (a última migração era a V7), e o nome real da constraint de etapa é `index_jobs_stage_valid`, como no esboço. A migração segue o esboço sem mudanças.
+- `ChunkEmbeddingRepository`: `missingChunkHashes(snapshotId, model)`, `insert(model, embeddings, now)` (devolve as linhas realmente inseridas) e `deleteOrphans()` (devolve as linhas apagadas). Recebe o `ModelInfo` da porta de `providers`. Detalhes na D-048.
+- `VectorLiteral` monta o literal do pgvector sem depender do locale e rejeita NaN, infinito e vetor vazio; o repositório rejeita também vetor com dimensão diferente da do modelo, tudo antes do banco.
+- Plano de execução conferido por teste (`ChunkEmbeddingPlanIT`, 200 mil chunks): só acessos por índice em `snapshot_files`, `chunks` e `chunk_embeddings`. Nenhum índice novo é necessário (D-048).
+- A consulta devolve só hashes. A F3 vai precisar do texto de cada lote: uma consulta por lote (texto de um chunk por hash, no snapshot) evita carregar o texto de todos os chunks de uma vez.
+- `IndexStage` não ganhou `EMBEDDING`, nem o `IndexRunner` mudou: entram na F3.
+
 **Testes**
 - `CHECK` de dimensão: vetor com dimensão diferente de `dimensions` é rejeitado.
 - Inserção repetida não duplica; hashes sem embedding ignoram os que já têm o mesmo modelo e contam os de outro modelo como faltando.
 - Limpeza remove só os órfãos.
+- Acrescentados na F2: a coluna `embedding` não tem dimensão fixa; `dimensions` fora de 1 a 2.000 é rejeitado; metadados de embedding do snapshot são todos nulos ou todos preenchidos; `index_jobs` aceita a etapa `EMBEDDING`; o mesmo hash coexiste com dois modelos e com duas dimensões; o vetor gravado volta igual ao enviado; vetor com NaN, infinito ou dimensão errada é rejeitado antes do banco, sem gravar nada do lote; o literal usa ponto com o locale padrão pt-BR; embedding de outra dimensão do mesmo modelo conta como faltando; chunks de outra versão de chunking, de outro snapshot e arquivos não suportados ficam fora; hash repetido em dois arquivos aparece uma vez; a limpeza mantém hashes usados por outro projeto; `EXPLAIN` da consulta de hashes sem embedding sem varredura sequencial com 200 mil chunks.
 
 ### F3 — Etapa `EMBEDDING` no job
 

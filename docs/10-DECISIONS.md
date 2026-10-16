@@ -723,6 +723,30 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Consequências:** o texto dos chunks indexados e as perguntas de busca saem da máquina quando `provider=openai` (D-054). Preço e política devem ser reconferidos antes de alterar esta decisão.  
 **O que levaria à revisão:** resultado do bake-off da Etapa 5, mudança de preço ou de política de dados, ou integração da Voyage no Spring AI.
 
+### D-048 — Armazenamento dos vetores (revisa a restrição da O-004)
+**Status:** Aceita (16/10/2026; F2 entregue)  
+**Contexto:** a O-004 previa fixar a dimensão do vetor por migração, o que obrigaria uma migração a cada troca de modelo, inclusive no bake-off da Etapa 5.  
+**Opções consideradas:**
+1. Coluna `vector(N)` com a dimensão do modelo escolhido.
+2. Coluna `vector` sem dimensão fixa, com a dimensão na própria linha.
+
+**Decisão:** opção 2, na migração `V8__create_chunk_embeddings.sql`.
+- **`chunk_embeddings`**: PK `(chunk_hash, provider, model, dimensions)`, global (sem `project_id`); `embedding vector` sem dimensão; `CHECK (dimensions BETWEEN 1 AND 2000)` e `CHECK (vector_dims(embedding) = dimensions)` (`chunk_embeddings_dimensions_match`). Sem FK para `chunks` (o embedding é por texto e sobrevive à remoção de um projeto até a limpeza de órfãos) e sem índice aproximado (busca exata, D-049).
+- **`snapshots`** ganha `embedding_provider`, `embedding_model`, `embedding_dimensions` e `embedding_tokens`; os três primeiros são todos nulos ou todos preenchidos (`snapshots_embedding_consistency`).
+- **`index_jobs`**: a constraint `index_jobs_stage_valid` passa a aceitar `EMBEDDING`.
+- Verificado no PostgreSQL dos testes (pgvector 0.8.7): a coluna fica com tipo `vector` sem modificador, o `CHECK` com `vector_dims` rejeita vetor de outra dimensão, e o mesmo `chunk_hash` coexiste com modelos ou dimensões diferentes.
+
+**Implementação (F2, 16/10/2026):** `ChunkEmbeddingRepository` em `indexing`, com `JdbcClient` e SQL explícito.
+- **Vetor como parâmetro:** literal de texto do pgvector (`[0.6,-0.8]`), passado como parâmetro e convertido com `CAST(:embedding AS vector)`, nunca concatenado ao SQL. Os componentes são escritos com `Float.toString`, que não depende do locale (ponto decimal sempre, inclusive com locale padrão pt-BR, coberto por teste). NaN, infinito, vetor vazio e vetor com dimensão diferente da do modelo são rejeitados antes de chegar ao banco.
+- **Hashes sem embedding de um snapshot:** chunks dos arquivos do snapshot na `chunking_version` dele (D-039), sem linha em `chunk_embeddings` para o mesmo provedor, modelo e dimensão. Embedding de outro modelo ou de outra dimensão conta como faltando. Devolve hashes distintos, em ordem.
+- **Inserção em lote idempotente:** `ON CONFLICT DO NOTHING`, devolvendo quantas linhas foram realmente inseridas (soma das contagens do lote; o driver não usa `reWriteBatchedInserts`, e uma contagem não informada falha em vez de virar zero).
+- **Limpeza de órfãos:** apaga embeddings cujo `chunk_hash` não existe em nenhum chunk, de qualquer projeto, e devolve a quantidade.
+- **Plano de execução:** com 200 mil chunks em 100 projetos, o `EXPLAIN` da consulta de hashes sem embedding usa a PK de `snapshot_files`, `chunks_natural_key` e a PK de `chunk_embeddings`, sem varredura sequencial dessas tabelas (`ChunkEmbeddingPlanIT`). Com 40 mil chunks o planejador ainda prefere varrer `chunks` com hash join, o que é mais barato nesse tamanho. Não é preciso índice novo: o índice em `chunks(chunk_hash)` já existe desde a V7 e serve à limpeza de órfãos.
+
+**Motivo:** trocar de modelo, inclusive no bake-off, não exige migração, e vetores de modelos diferentes convivem no cache.  
+**Consequências:** toda consulta filtra por provedor, modelo e dimensão. Um índice aproximado futuro precisa ser parcial por modelo, sobre `embedding::vector(N)`. O limite de 2.000 dimensões continua validado na inicialização (D-047) e no `CHECK`.  
+**O que levaria à revisão:** necessidade de mais de 2.000 dimensões (`halfvec`) ou índice aproximado que não funcione bem como índice parcial.
+
 ### D-051 — Falhas do provedor de embeddings e repetição
 **Status:** Aceita (16/10/2026; F1 entregue, a F3 completa os códigos do job)  
 **Contexto:** chamadas ao provedor falham por credencial, limite de taxa, cota, indisponibilidade ou pedido recusado. Algumas falhas passam com o tempo, outras não, e um job esperando o provedor não pode perder o lease (D-040).  
@@ -756,7 +780,7 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Status:** A validar (bake-off na Etapa 5, com o corpus de avaliação)  
 **Restrições já aceitas:**
 - Escolher **um** par embedding/chat por instalação; trocar de modelo implica reindexar.
-- Preferir modelos de embedding com **até 2.000 dimensões**, compatível com índice HNSW sobre `vector` no pgvector (`halfvec` permite mais); a dimensão é fixada por migração.
+- Preferir modelos de embedding com **até 2.000 dimensões**, compatível com índice HNSW sobre `vector` no pgvector (`halfvec` permite mais). A dimensão não é mais fixada por migração: fica na linha (D-048).
 - Provedor de embeddings e de chat podem ser diferentes (a Anthropic, por exemplo, não oferece modelo de embeddings próprio), o que justifica as duas portas separadas.
 
 **Critérios de comparação:** recall@k e MRR no corpus, qualidade em código, custo por 1M de tokens, latência, limites de taxa e política de retenção de dados do provedor.  
