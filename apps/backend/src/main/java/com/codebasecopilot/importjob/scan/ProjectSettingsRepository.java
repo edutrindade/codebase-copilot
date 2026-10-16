@@ -6,7 +6,10 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
@@ -22,6 +25,26 @@ class ProjectSettingsRepository {
 
     ProjectSettingsRepository(JdbcClient jdbc) {
         this.jdbc = jdbc;
+    }
+
+    Map<UUID, Integer> findVersions(Collection<UUID> projectIds) {
+        Map<UUID, Integer> versions = new HashMap<>();
+        if (projectIds.isEmpty()) {
+            return versions;
+        }
+        jdbc.sql(
+                        """
+                        SELECT project_id, settings_version FROM project_settings
+                        WHERE project_id IN (:ids)
+                        """)
+                .param("ids", projectIds)
+                .query(
+                        rs -> {
+                            versions.put(
+                                    rs.getObject("project_id", UUID.class),
+                                    rs.getInt("settings_version"));
+                        });
+        return versions;
     }
 
     Optional<ProjectSettings> find(UUID projectId) {

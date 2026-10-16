@@ -4,6 +4,7 @@ import com.codebasecopilot.shared.pagination.PageRequestParams;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -62,6 +63,22 @@ class IndexJobRepository {
                 .param("projectId", projectId)
                 .param("limit", params.size())
                 .param("offset", params.offset())
+                .query(IndexJobRepository::map)
+                .list();
+    }
+
+    List<IndexJob> findActiveByProjects(Collection<UUID> projectIds) {
+        if (projectIds.isEmpty()) {
+            return List.of();
+        }
+        return jdbc.sql(
+                        "SELECT "
+                                + COLUMNS
+                                + """
+                                FROM index_jobs
+                                WHERE project_id IN (:ids) AND status IN ('PENDING', 'RUNNING')
+                                """)
+                .param("ids", projectIds)
                 .query(IndexJobRepository::map)
                 .list();
     }

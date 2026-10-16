@@ -44,6 +44,7 @@ class ProjectServiceTest {
     private final ProjectJobRepository jobs = mock(ProjectJobRepository.class);
     private final WorkspaceService workspaces = mock(WorkspaceService.class);
     private final ProjectImports imports = mock(ProjectImports.class);
+    private final ProjectIndexes indexes = mock(ProjectIndexes.class);
     private final ProjectService service =
             service(LocalRoots.from(new LocalRootsProperties(rootDir.toString(), null, List.of())));
 
@@ -274,6 +275,20 @@ class ProjectServiceTest {
     }
 
     @Test
+    void getFillsIndexStateFromPortOrDefaultsToNone() {
+        Project project = zipProject(null);
+        ProjectIndexes.IndexState state =
+                new ProjectIndexes.IndexState(null, null, List.of("SETTINGS_CHANGED"));
+        when(repository.findById(ID)).thenReturn(Optional.of(project));
+        when(indexes.find(List.of(project))).thenReturn(Map.of(ID, state));
+
+        assertThat(service.get(ID).index()).isEqualTo(state);
+
+        when(indexes.find(List.of(project))).thenReturn(Map.of());
+        assertThat(service.get(ID).index()).isEqualTo(ProjectIndexes.IndexState.NONE);
+    }
+
+    @Test
     void getWithoutCurrentImportDoesNotQueryPort() {
         when(repository.findById(ID)).thenReturn(Optional.of(zipProject(null)));
 
@@ -368,6 +383,7 @@ class ProjectServiceTest {
                 workspaces,
                 roots,
                 imports,
+                indexes,
                 () -> ID,
                 Clock.fixed(NOW, ZoneOffset.UTC));
     }

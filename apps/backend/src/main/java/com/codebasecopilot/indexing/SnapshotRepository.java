@@ -4,6 +4,7 @@ import com.codebasecopilot.shared.pagination.PageRequestParams;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -131,6 +132,21 @@ class SnapshotRepository {
                 .param("id", id)
                 .query(SnapshotRepository::map)
                 .optional();
+    }
+
+    // Without the inventory, which only the snapshot detail returns.
+    List<Snapshot> findByIds(Collection<UUID> ids) {
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+        return jdbc.sql(
+                        "SELECT "
+                                + COLUMNS.replace(
+                                        "inventory::text AS inventory", "NULL AS inventory")
+                                + " FROM snapshots WHERE id IN (:ids)")
+                .param("ids", ids)
+                .query(SnapshotRepository::map)
+                .list();
     }
 
     List<Snapshot> findPageByProject(UUID projectId, PageRequestParams params) {

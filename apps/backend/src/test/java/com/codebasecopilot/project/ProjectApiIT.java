@@ -53,6 +53,9 @@ class ProjectApiIT {
                           "workspaceId": "%s",
                           "name": "Meu ZIP",
                           "source": {"type": "ZIP", "currentImport": null},
+                          "activeSnapshot": null,
+                          "indexing": null,
+                          "outdatedReasons": [],
                           "createdAt": "%s"
                         }
                         """

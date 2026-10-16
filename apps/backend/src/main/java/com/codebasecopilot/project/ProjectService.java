@@ -37,6 +37,7 @@ public class ProjectService {
     private final WorkspaceService workspaces;
     private final LocalRoots localRoots;
     private final ProjectImports imports;
+    private final ProjectIndexes indexes;
     private final IdGenerator idGenerator;
     private final Clock clock;
 
@@ -46,6 +47,7 @@ public class ProjectService {
             WorkspaceService workspaces,
             LocalRoots localRoots,
             ProjectImports imports,
+            ProjectIndexes indexes,
             IdGenerator idGenerator,
             Clock clock) {
         this.repository = repository;
@@ -53,6 +55,7 @@ public class ProjectService {
         this.workspaces = workspaces;
         this.localRoots = localRoots;
         this.imports = imports;
+        this.indexes = indexes;
         this.idGenerator = idGenerator;
         this.clock = clock;
     }
@@ -199,6 +202,8 @@ public class ProjectService {
                         .toList();
         Map<UUID, ProjectImports.CurrentImport> current =
                 importIds.isEmpty() ? Map.of() : imports.find(importIds);
+        Map<UUID, ProjectIndexes.IndexState> index =
+                projects.isEmpty() ? Map.of() : indexes.find(projects);
         return projects.stream()
                 .map(
                         p ->
@@ -206,7 +211,8 @@ public class ProjectService {
                                         p,
                                         p.currentImportJobId() == null
                                                 ? null
-                                                : current.get(p.currentImportJobId())))
+                                                : current.get(p.currentImportJobId()),
+                                        index.getOrDefault(p.id(), ProjectIndexes.IndexState.NONE)))
                 .toList();
     }
 

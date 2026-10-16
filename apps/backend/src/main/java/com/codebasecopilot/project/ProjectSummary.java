@@ -3,4 +3,6 @@ package com.codebasecopilot.project;
 import org.jspecify.annotations.Nullable;
 
 public record ProjectSummary(
-        Project project, ProjectImports.@Nullable CurrentImport currentImport) {}
+        Project project,
+        ProjectImports.@Nullable CurrentImport currentImport,
+        ProjectIndexes.IndexState index) {}

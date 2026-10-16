@@ -1489,6 +1489,27 @@
   },
   "components" : {
     "schemas" : {
+      "ActiveSnapshotResponse" : {
+        "type" : "object",
+        "properties" : {
+          "completedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "counts" : {
+            "$ref" : "#/components/schemas/SnapshotCountsResponse"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "READY", "PARTIAL" ]
+          }
+        },
+        "required" : [ "completedAt", "counts", "id", "status" ]
+      },
       "ChangesResponse" : {
         "type" : "object",
         "properties" : {
@@ -1892,6 +1913,31 @@
         },
         "required" : [ "attempts", "completedAt", "createdAt", "error", "id", "progress", "projectId", "snapshotId", "stage", "startedAt", "status" ]
       },
+      "IndexingResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "progress" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/ProgressResponse"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "stage" : {
+            "type" : [ "string", "null" ],
+            "enum" : [ "SCANNING", "PROCESSING_FILES", "FINALIZING" ]
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "PENDING", "RUNNING" ]
+          }
+        },
+        "required" : [ "id", "progress", "stage", "status" ]
+      },
       "InventoryResponse" : {
         "type" : "object",
         "properties" : {
@@ -2256,6 +2302,13 @@
       "ProjectResponse" : {
         "type" : "object",
         "properties" : {
+          "activeSnapshot" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/ActiveSnapshotResponse"
+            }, {
+              "type" : "null"
+            } ]
+          },
           "createdAt" : {
             "type" : "string",
             "format" : "date-time"
@@ -2264,8 +2317,22 @@
             "type" : "string",
             "format" : "uuid"
           },
+          "indexing" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/IndexingResponse"
+            }, {
+              "type" : "null"
+            } ]
+          },
           "name" : {
             "type" : "string"
+          },
+          "outdatedReasons" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "enum" : [ "SETTINGS_CHANGED", "SOURCE_REIMPORTED", "CHUNKING_CHANGED" ]
+            }
           },
           "source" : {
             "oneOf" : [ {
@@ -2279,7 +2346,7 @@
             "format" : "uuid"
           }
         },
-        "required" : [ "createdAt", "id", "name", "source", "workspaceId" ]
+        "required" : [ "activeSnapshot", "createdAt", "id", "indexing", "name", "outdatedReasons", "source", "workspaceId" ]
       },
       "ScanResult" : {
         "type" : "object",
@@ -2357,6 +2424,36 @@
           }
         },
         "required" : [ "defaultRules", "disabledDefaultRules", "effectiveMaxFileBytes", "effectiveMaxProjectBytes", "excludePatterns", "maxFileBytes", "maxProjectBytes", "updatedAt", "version" ]
+      },
+      "SnapshotCountsResponse" : {
+        "type" : "object",
+        "properties" : {
+          "bytes" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "chunks" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "failedFiles" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "files" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "indexedFiles" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "unsupportedFiles" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "bytes", "chunks", "failedFiles", "files", "indexedFiles", "unsupportedFiles" ]
       },
       "SnapshotFileResponse" : {
         "type" : "object",

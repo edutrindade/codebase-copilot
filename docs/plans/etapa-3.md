@@ -589,3 +589,8 @@ A preencher no fechamento (F7). Desvios registrados durante as fatias:
 - A queda no meio é simulada por uma exceção não tratada do leitor no quinto arquivo, com lotes de 2: o job volta para a fila na hora (D-040, desvio da F3), e não por heartbeat envelhecido. O worker morto é coberto à parte, com um job `RUNNING` de heartbeat antigo.
 - A reexecução do mesmo lote é coberta pelo `IndexStoreIT` (inserts repetidos não mudam as contagens).
 - Os testes que precisam do spy no leitor herdam de `SpiedReaderContext`, para dividir um único contexto extra: com o `@MockitoSpyBean` declarado em cada classe, o Spring criava um contexto por classe.
+
+**F6**
+- A porta `ProjectIndexes` recebe os próprios `Project` da página (precisa de `activeSnapshotId` e `currentImportJobId`) e devolve o estado em três consultas em lote: snapshots ativos, jobs ativos e versões das configurações.
+- A versão das configurações vem de `ProjectSettingsVersions` (novo, em `importjob.scan`), que só depende do repositório: usar `ProjectSources` criaria um ciclo `ProjectService` → `ProjectIndexes` → `ProjectSources` → `ProjectService`.
+- `POST /workspaces/{id}/projects` também devolve os campos novos, com `activeSnapshot` e `indexing` nulos e `outdatedReasons` vazia.
