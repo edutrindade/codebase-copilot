@@ -43,7 +43,7 @@ cp apps/backend/config/application.yml.example apps/backend/config/application.y
 
 O `config/application.yml` é carregado automaticamente pelo Spring ao executar a partir de `apps/backend` e é ignorado pelo Git. A lista substitui por inteiro a raiz `default` gerada por `PROJECTS_ROOT`; o exemplo já a repete. Os testes não dependem desse arquivo: cada teste declara as próprias raízes.
 
-O `DATA_DIR` precisa ficar **fora** de todas as raízes permitidas e fora deste repositório; caso contrário, a aplicação não inicia.
+O `DATA_DIR` precisa ficar **fora** de todas as raízes permitidas (sem estar dentro de uma delas nem contê-la) e fora deste repositório; caso contrário, a aplicação não inicia. Se não existir, é criado na inicialização.
 
 O `.env` está no `.gitignore` e nunca deve ser commitado.
 

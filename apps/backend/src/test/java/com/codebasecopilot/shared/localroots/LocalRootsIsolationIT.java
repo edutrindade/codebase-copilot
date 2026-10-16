@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.codebasecopilot.IntegrationTest;
 import com.codebasecopilot.IntegrationTestWithoutLocalRoots;
+import com.codebasecopilot.TestFileSystemInitializer;
 import java.nio.file.Path;
 import java.util.stream.StreamSupport;
 import org.junit.jupiter.api.Nested;
@@ -15,7 +16,7 @@ import org.springframework.core.env.PropertySource;
 // The developer's config/application.yml and PROJECTS_ROOT must not affect tests (D-029).
 class LocalRootsIsolationIT {
 
-    private static final Path TEST_ROOTS = Path.of("src/test/resources/local-roots");
+    private static final Path TEST_ROOTS = TestFileSystemInitializer.ROOTS_DIR;
 
     @Nested
     @IntegrationTest
@@ -28,14 +29,8 @@ class LocalRootsIsolationIT {
         void seesOnlyTheRootsDeclaredByTests() {
             assertThat(roots.list())
                     .containsExactly(
-                            new LocalRoot(
-                                    "default",
-                                    "Projetos",
-                                    TEST_ROOTS.resolve("default").toAbsolutePath()),
-                            new LocalRoot(
-                                    "work",
-                                    "Trabalho",
-                                    TEST_ROOTS.resolve("work").toAbsolutePath()));
+                            new LocalRoot("default", "Projetos", TEST_ROOTS.resolve("default")),
+                            new LocalRoot("work", "Trabalho", TEST_ROOTS.resolve("work")));
         }
 
         @Test

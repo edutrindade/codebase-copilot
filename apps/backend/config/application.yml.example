@@ -11,7 +11,7 @@
 # - key: única, formato [a-z0-9-]+
 # - path: absoluto, existente, diretório legível (nunca exposto pela API)
 # - label: opcional; ausente, usa a key
-# - DATA_DIR não pode estar dentro de nenhuma raiz (D-028)
+# - DATA_DIR não pode estar dentro de nenhuma raiz nem conter uma delas (D-028)
 app:
   local-roots:
     - key: default

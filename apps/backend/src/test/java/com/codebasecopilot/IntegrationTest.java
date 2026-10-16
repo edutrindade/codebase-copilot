@@ -7,6 +7,7 @@ import java.lang.annotation.Target;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.ContextConfiguration;
 
 // One shared configuration so Spring caches a single context and PostgreSQL container.
 @Target(ElementType.TYPE)
@@ -23,5 +24,6 @@ import org.springframework.context.annotation.Import;
             TestProperties.WORK_ROOT_PATH
         })
 @AutoConfigureMockMvc
+@ContextConfiguration(initializers = TestFileSystemInitializer.class)
 @Import(TestcontainersConfiguration.class)
 public @interface IntegrationTest {}

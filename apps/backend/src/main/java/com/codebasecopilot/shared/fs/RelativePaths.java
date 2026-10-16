@@ -1,4 +1,4 @@
-package com.codebasecopilot.project;
+package com.codebasecopilot.shared.fs;
 
 import com.codebasecopilot.shared.error.ApiException;
 import com.codebasecopilot.shared.error.ErrorCode;
@@ -7,12 +7,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 // Purely syntactic: never touches the file system (D-020, D-032).
-final class RelativePaths {
+public final class RelativePaths {
 
     private RelativePaths() {}
 
     /** NUL, backslash and control characters are a validation failure (precedence step 1). */
-    static boolean hasForbiddenCharacters(String raw) {
+    public static boolean hasForbiddenCharacters(String raw) {
         return raw.chars().anyMatch(c -> c == '\\' || Character.isISOControl(c));
     }
 
@@ -22,7 +22,7 @@ final class RelativePaths {
      *
      * @throws ApiException {@code PATH_OUTSIDE_ROOT} for an absolute path or a {@code ..} segment
      */
-    static String normalize(String raw) {
+    public static String normalize(String raw) {
         String path = Normalizer.normalize(raw, Normalizer.Form.NFC);
         if (path.startsWith("/")) {
             throw new ApiException(ErrorCode.PATH_OUTSIDE_ROOT);

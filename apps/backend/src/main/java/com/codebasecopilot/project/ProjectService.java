@@ -4,6 +4,7 @@ import com.codebasecopilot.shared.IdGenerator;
 import com.codebasecopilot.shared.error.ApiException;
 import com.codebasecopilot.shared.error.ErrorCode;
 import com.codebasecopilot.shared.error.FieldViolation;
+import com.codebasecopilot.shared.fs.RelativePaths;
 import com.codebasecopilot.shared.localroots.LocalRoots;
 import com.codebasecopilot.shared.pagination.PageRequestParams;
 import com.codebasecopilot.shared.pagination.PageResponse;

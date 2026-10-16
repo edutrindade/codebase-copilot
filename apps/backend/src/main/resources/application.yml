@@ -23,6 +23,9 @@ app:
   # (e.g. in config/application.yml) replaces it entirely.
   projects-root: ${PROJECTS_ROOT:}
   projects-root-label: ${PROJECTS_ROOT_LABEL:Projetos}
+  # Application data (D-028); "~" is expanded by the application. Must be outside
+  # every local root and outside this repository, or the application does not start.
+  data-dir: ${DATA_DIR:~/.codebase-copilot}
 
 springdoc:
   default-produces-media-type: application/json
