@@ -45,7 +45,7 @@ class SearchService {
 
     record Query(@Nullable String text, @Nullable UUID snapshotId, @Nullable Integer limit) {}
 
-    record Result(UUID snapshotId, ModelInfo model, List<VectorSearch.Hit> hits) {}
+    record Result(UUID snapshotId, ModelInfo model, List<SearchHit> hits) {}
 
     Result search(UUID projectId, Query query) {
         String text = query.text();
@@ -63,7 +63,7 @@ class SearchService {
         }
         long start = System.nanoTime();
         float[] vector = embed(provider, text);
-        List<VectorSearch.Hit> hits = search.search(snapshotId, model, vector, limit);
+        List<SearchHit> hits = search.search(snapshotId, model, vector, limit);
         log.info(
                 "Vector search on snapshot {} returned {} results in {} ms",
                 snapshotId,

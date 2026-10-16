@@ -253,6 +253,14 @@ Consequências para a P1:
 - `LexicalSearch` e `PathSearch` em `retrieval`, com o trecho de candidatos compartilhado com `VectorSearch`.
 - **Testes:** `getUserById` encontra pela forma original, por "user by id" e por "get user"; termos com caracteres especiais da `tsquery` (`&`, `|`, `!`, `:`, `'`, `(`) não quebram a consulta; isolamento por projeto e snapshot; um resultado por chunk com `otherPaths`; nome de arquivo na pergunta traz os chunks desse arquivo; desempate estável; plano de execução usa os índices GIN com volume (como o `ChunkEmbeddingPlanIT`).
 
+**Como foi entregue (16/10/2026)**
+- `LexicalSearch` e `PathSearch` em `retrieval`; `SnapshotChunks` com o SQL compartilhado pelos três canais (a `VectorSearch` passou a usá-lo, sem mudar o resultado); `SearchHit` substitui `VectorSearch.Hit`. `PathTerms` em `codeanalysis`. Registrado na D-057 e na D-058. O endpoint não muda nesta fatia (F4).
+- **Testes:** `LexicalSearchIT` (formas de `getUserById`, inclusive em pt-BR e em maiúsculas; operadores e injeção na pergunta; pergunta só com stopwords; isolamento por snapshot e projeto; `otherPaths`; desempate repetível; peso A acima da prosa; `limit`), `PathSearchIT` (arquivo citado em ordem de linhas, sem o vizinho `VectorSearchPerformanceIT.java`; nome de arquivo sem extensão; isolamento; `otherPaths`; limiar inválido), `PathTermsTest` e `LexicalSearchPlanIT`.
+- **Desvios:**
+  - **Planos de execução:** com 100 projetos e 200 arquivos por snapshot, nenhuma das duas buscas usa o índice GIN: o PostgreSQL parte do snapshot pela PK, o que é melhor nesse volume (só lê o snapshot pedido). O teste garante a ausência de varredura sequencial, não o uso do GIN; os índices ficam para snapshots grandes, e a F4 mede a latência com 50 mil chunks.
+  - **Limiar de caminhos:** com diretórios em comum, `docs/plans/etapa-3.md` passa de 0,8 para o termo `docs/plans/etapa-4.md` (o F0 mediu só o nome do arquivo, 0,692). O arquivo exato vem primeiro; o limiar é revisto na avaliação.
+  - Um nome sem extensão só vira termo de caminho se algum arquivo do snapshot tiver esse nome (consulta extra, dentro do snapshot), e palavras com menos de 3 caracteres ou stopwords nunca viram.
+
 ### F4 — Fusão e contrato
 - `RrfFusion` pura; `mode` no endpoint; `ranks` na resposta; códigos novos (`SNAPSHOT_LEXICAL_MISMATCH`) com mensagens pt-BR; `openapi.json`.
 - Teste de desempenho (tag `performance`): latência lexical e híbrida com 50 mil chunks, e tamanho de `chunk_lexical`; resultado registrado aqui.

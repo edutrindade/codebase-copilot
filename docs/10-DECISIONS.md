@@ -887,6 +887,33 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Consequências:** o texto do chunk fica três vezes no banco (conteúdo, chunk, `tsv`); o tamanho de `chunk_lexical` é medido no teste de desempenho da F4. Com `provider=none` a etapa roda normalmente.  
 **O que levaria à revisão:** tamanho ou tempo da etapa inaceitáveis na medição da F4, ou um índice lexical externo (O-005).
 
+### D-057 — Consulta lexical
+**Status:** Aceita (16/10/2026; F3 da Etapa 5 entregue)  
+**Contexto:** as perguntas são em linguagem natural; `plainto_tsquery` exige todos os termos (AND) e quase nunca casa, a configuração `simple` não tem stopwords, e o `ts_rank` não tem IDF (D-017).  
+**Decisão:**
+- `LexicalSearch`, em `retrieval`. A pergunta passa por `IdentifierTokenizer.queryTerms` (D-055); cada termo vai entre aspas simples (aspas internas dobradas), unido aos demais por ` | `, e o texto inteiro é **um parâmetro** de `to_tsquery('simple', :query)`. Nada da pergunta é concatenado ao SQL, e operadores da `tsquery` (`&`, `|`, `!`, `:`, `(`, `<->`, `*`) nunca chegam a ela, porque os termos só têm letras e dígitos. Pergunta sem termos (só stopwords ou pontuação) devolve lista vazia sem consultar o banco.
+- Só as linhas de `chunk_lexical` da versão atual contam. Ordem: `ts_rank_cd(tsv, query, 1)` decrescente (pesos padrão A=1,0 e B=0,4; normalização pelo log do comprimento), depois primeiro caminho, linha inicial e id.
+- Mesmo formato de resultado da vetorial (`SearchHit`: um resultado por chunk, todos os caminhos do snapshot com o mesmo conteúdo, em ordem de bytes). Os candidatos do snapshot e o `SELECT` final com os caminhos ficaram num trecho compartilhado (`SnapshotChunks`), usado pelos três canais.
+- **Plano medido** (100 projetos × 2.000 chunks, `LexicalSearchPlanIT`): o PostgreSQL parte do snapshot (PK de `snapshot_files`), chega aos chunks pela chave natural e a `chunk_lexical` pela PK, e aplica o `@@` linha a linha; o GIN em `tsv` não é escolhido nesse volume. É o mesmo desenho exato por snapshot da vetorial (D-049): o custo cresce com o snapshot, não com o banco. O teste garante a ausência de varredura sequencial em `chunk_lexical`, `chunks` e `snapshot_files`.
+
+**Motivo:** OR com ranking por densidade devolve resultados mesmo quando só parte da pergunta aparece no código, e a montagem na aplicação mantém o tokenizador da consulta igual ao da indexação.  
+**Consequências:** sem IDF, termos comuns pesam tanto quanto raros; o peso A favorece identificadores (coberto por teste). A recusa por versão lexical (`409 SNAPSHOT_LEXICAL_MISMATCH`) entra na F4.  
+**O que levaria à revisão:** resultados da avaliação (O-005), em especial perguntas em pt-BR sobre código em inglês, ou latência alta em snapshots grandes (o GIN em `tsv` continua disponível para o planejador).
+
+### D-058 — Canal de caminhos
+**Status:** Aceita (16/10/2026; F3 da Etapa 5 entregue; o canal pode sair na avaliação)  
+**Contexto:** perguntas que citam um arquivo (`VectorSearch.java`, `docs/plans/etapa-4.md`, `IndexJob`) devem trazer esse arquivo, o que o full-text não garante (o parser guarda caminhos como um lexema só).  
+**Decisão:**
+- `PathTerms`, em `codeanalysis`, separa da pergunta (por espaço em branco, sem aspas e pontuação nas pontas, sem `./` ou `/` no início): **caminhos** (contêm `/` e alguma letra ou dígito, ou terminam em `.<extensão>` com extensão começando por letra, o que deixa `1.2.3` de fora) e **nomes** (letras, dígitos, `_` e `-`, ao menos 3 caracteres, sem stopwords). Um nome só vira termo se algum arquivo do snapshot tiver esse nome sem diretório e sem a última extensão, sem diferenciar caixa (`IndexJob` → `IndexJob.java`; `search` não casa com `SearchApiIT.java`).
+- `PathSearch`, em `retrieval`: arquivos do snapshot com `term <<% relative_path` (pré-filtro do `pg_trgm`, limiar padrão 0,5) e `strict_word_similarity(term, relative_path) >= :threshold`, com o limiar como parâmetro (padrão **0,8**; abaixo de 0,5 é recusado, porque o pré-filtro cortaria antes). Score do arquivo = maior similaridade entre os termos; resultados = chunks desses arquivos, por score, caminho casado e linha inicial. Um chunk de conteúdo repetido em dois arquivos casados aparece uma vez, com todos os caminhos.
+- Os termos vão ao banco como um parâmetro só, um por linha (`string_to_array`), porque nunca contêm espaço em branco.
+- Pergunta sem caminho nem nome de arquivo do snapshot → lista vazia; na fusão (F4), o canal só entra quando tem resultados.
+- **Plano medido:** com 200 arquivos por snapshot, o planejador lê os arquivos do snapshot pela PK e calcula a similaridade em cada um, sem usar o índice trigram (que cobre os caminhos de todos os snapshots). O trigram fica para snapshots grandes; o teste garante só a ausência de varredura sequencial.
+
+**Motivo:** `strict_word_similarity` separa o arquivo citado de vizinhos com nome parecido (F0: `IndexJobApiIT.java` 0,533 para `IndexJob`).  
+**Consequências:** caminhos longos que diferem num só trecho passam do limiar: `docs/plans/etapa-3.md` casa com `docs/plans/etapa-4.md`, abaixo do arquivo exato (1,0). Fica para a avaliação decidir o limiar ou se o canal permanece.  
+**O que levaria à revisão:** ganho nulo do canal na avaliação (sai antes do fechamento da etapa), ou limiar diferente medido no corpus.
+
 ---
 
 ## Decisões em aberto
