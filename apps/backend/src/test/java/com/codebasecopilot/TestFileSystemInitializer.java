@@ -95,6 +95,8 @@ public final class TestFileSystemInitializer
         if (isPosix()) {
             Path locked = Files.createDirectory(root.resolve("locked"));
             Files.setPosixFilePermissions(locked, PosixFilePermissions.fromString("---------"));
+            // Otherwise "mvn clean" cannot delete target/ after the tests.
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> unlock(locked)));
         }
     }
 
@@ -122,6 +124,14 @@ public final class TestFileSystemInitializer
             Files.createDirectory(root.resolve(name));
         } catch (IOException | InvalidPathException e) {
             // Not every file system accepts these names; the listing test covers the rest.
+        }
+    }
+
+    private static void unlock(Path path) {
+        try {
+            Files.setPosixFilePermissions(path, PosixFilePermissions.fromString("rwx------"));
+        } catch (IOException e) {
+            // Best effort: the next test run unlocks it before rebuilding the tree.
         }
     }
 

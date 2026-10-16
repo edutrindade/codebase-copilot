@@ -596,3 +596,4 @@ CREATE TABLE project_settings (
 - **Configuração (F4):** os limites `app.inventory.*` têm padrão em `InventoryProperties`, sem entradas no `application.yml`.
 - **Origem ZIP (F4):** `DataDirectory.importSourceDir(id)` passou a ser o único lugar que conhece o nome `source/`.
 - **Configurações (F5):** `defaultRules` também traz `exceptions` (ex.: `.env.example` em `env-files`), para a UI mostrar o que a regra não exclui. Itens `null` nas listas respondem `validation.required` no índice; mais de 100 padrões geram um único erro em `excludePatterns`. A mensagem de limite fora da faixa é genérica, porque `FieldViolation` não carrega argumentos.
+- **Correção no fechamento:** o `./mvnw clean verify` mostrou que o diretório de teste `locked` (sem permissões, F1) impedia o `mvn clean` de apagar `target/`. O `TestFileSystemInitializer` passou a restaurar as permissões ao fim da JVM de teste.
