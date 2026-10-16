@@ -1,4 +1,4 @@
-package com.codebasecopilot.indexing;
+package com.codebasecopilot.shared.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

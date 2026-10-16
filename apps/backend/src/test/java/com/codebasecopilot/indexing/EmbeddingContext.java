@@ -17,8 +17,9 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
-// One extra context for the embedding stage: a spy on the fake provider, small batches and job
-// limit, and retry waits that move a shared clock forward instead of sleeping (D-051).
+// One extra context for the embedding stage and the search: a spy on the fake provider, small
+// batches and job limit, and retry waits that move a shared clock forward instead of sleeping
+// (D-051).
 @IntegrationTest
 @TestPropertySource(
         properties = {
@@ -27,9 +28,9 @@ import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
             "app.indexing.heartbeat-interval=10s"
         })
 @Import(EmbeddingContext.ControlledTime.class)
-abstract class EmbeddingContext {
+public abstract class EmbeddingContext {
 
-    @MockitoSpyBean EmbeddingProvider provider;
+    @MockitoSpyBean protected EmbeddingProvider provider;
 
     static final class ControlledClock extends Clock {
 

@@ -108,8 +108,13 @@ public class ProjectService {
 
     @Transactional(readOnly = true)
     public ProjectSummary get(UUID id) {
-        Project project = repository.findById(id).orElseThrow(ProjectService::notFound);
-        return summarize(List.of(project)).getFirst();
+        return summarize(List.of(find(id))).getFirst();
+    }
+
+    // Without the import and index state of get().
+    @Transactional(readOnly = true)
+    public Project find(UUID id) {
+        return repository.findById(id).orElseThrow(ProjectService::notFound);
     }
 
     @Transactional(readOnly = true)

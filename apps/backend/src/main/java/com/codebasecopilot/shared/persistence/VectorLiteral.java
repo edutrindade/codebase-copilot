@@ -1,12 +1,12 @@
-package com.codebasecopilot.indexing;
+package com.codebasecopilot.shared.persistence;
 
 // pgvector text format ("[1.0,-0.5]"), bound as a text parameter and cast in SQL.
 // Float.toString never uses the default locale, so the decimal separator is always a dot.
-final class VectorLiteral {
+public final class VectorLiteral {
 
     private VectorLiteral() {}
 
-    static String of(float[] vector) {
+    public static String of(float[] vector) {
         if (vector.length == 0) {
             throw new IllegalArgumentException("vector must not be empty");
         }

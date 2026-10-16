@@ -1,6 +1,7 @@
 package com.codebasecopilot.indexing;
 
 import com.codebasecopilot.providers.ModelInfo;
+import com.codebasecopilot.shared.persistence.VectorLiteral;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;

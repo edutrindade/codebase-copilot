@@ -107,7 +107,7 @@ Todas aprovadas em 16/10/2026. Os ajustes pedidos na aprovação já estão inco
 - Relógio e espera são injetáveis, para os testes controlarem o tempo sem dormir.
 - `UNAUTHORIZED`, `QUOTA_EXCEEDED` e `INVALID_REQUEST` encerram o job na hora: `EMBEDDING_PROVIDER_UNAUTHORIZED`, `EMBEDDING_QUOTA_EXCEEDED` e `EMBEDDING_REQUEST_REJECTED`. Não contam como tentativa a repetir pela fila (D-040), porque repetir não resolve.
 - Os embeddings já gravados ficam no cache: um novo job retoma de onde parou, sem pagar de novo.
-- Na busca, as mesmas falhas viram `502 EMBEDDING_PROVIDER_UNAVAILABLE`, `502 EMBEDDING_PROVIDER_UNAUTHORIZED` e `429 EMBEDDING_RATE_LIMITED`, com mensagem pt-BR sem detalhes do provedor. **A decidir antes da F4:** o status HTTP de `QUOTA_EXCEEDED` na busca (proposta: `502 EMBEDDING_QUOTA_EXCEEDED`, como a credencial, porque o problema é da conta no provedor e não do cliente da API).
+- Na busca, as mesmas falhas viram `502 EMBEDDING_PROVIDER_UNAVAILABLE`, `502 EMBEDDING_PROVIDER_UNAUTHORIZED` e `429 EMBEDDING_RATE_LIMITED`, com mensagem pt-BR sem detalhes do provedor. **Decidido antes da F4 (16/10/2026):** `QUOTA_EXCEEDED` na busca responde `502 EMBEDDING_QUOTA_EXCEEDED`, como a credencial, porque o problema é da conta no provedor e não do cliente da API.
 - A inicialização falha com `provider=openai` sem chave configurada (mensagem clara no log, sem imprimir a chave).
 
 ### P6 — Cache, troca de modelo e limpeza → D-052, F3 e F5
@@ -258,6 +258,14 @@ Um chunk rejeitado pelo provedor (`INVALID_REQUEST`) falha o job inteiro com `EM
 - `POST /projects/{projectId}/search` (P7), com `@Tag("Busca")` e `@Operation`.
 - Medição manual (tag `performance`, fora do `verify`): latência da busca exata com 50 mil chunks sintéticos, com o resultado registrado neste plano (P3).
 
+**Como foi entregue (16/10/2026)**
+- Módulo `retrieval`: `VectorSearch` (SQL exato, D-049), `SearchService` (validação e precedência dos erros, D-053) e `SearchController` (`@Tag("Busca")`, `operationId` `searchProject`).
+- `model` na resposta virou objeto `{ provider, name, dimensions }`.
+- `INVALID_REQUEST` do provedor na busca vira `502 EMBEDDING_REQUEST_REJECTED`, código que o plano não listava. A busca não repete chamadas ao provedor e ainda não repassa `Retry-After`.
+- `VectorLiteral` foi movido para `shared.persistence`; `ProjectService.find` lê o projeto sem montar o resumo.
+- O `EmbeddingContext` da F3 ficou público e é reaproveitado pelo `SearchApiIT`, sem contexto Spring novo. O caso `provider=none` é coberto por teste unitário do serviço, para não subir mais um contexto com PostgreSQL.
+- Medição manual registrada em "Resultado e desvios".
+
 **Testes (aceite da etapa)**
 - Dois projetos e dois snapshots do mesmo projeto com conteúdos diferentes: a busca só devolve chunks do snapshot pedido, nunca de outro projeto nem de outro snapshot.
 - O snapshot ativo é o padrão; snapshot antigo não podado pode ser consultado explicitamente; podado → `409 SNAPSHOT_NOT_SEARCHABLE`.
@@ -267,6 +275,7 @@ Um chunk rejeitado pelo provedor (`INVALID_REQUEST`) falha o job inteiro com `EM
 - Dimensão incompatível: snapshot de outro modelo → `409 SNAPSHOT_EMBEDDING_MISMATCH`.
 - `provider=none` → `409 EMBEDDINGS_NOT_AVAILABLE`; validação de `query` e `limit`; precedência dos erros.
 - A pergunta não aparece nos logs.
+- Acrescentados na F4: `limit` padrão 10 e explícito; pergunta em branco e com 2.001 caracteres recusadas, com 2.000 aceita; erros de `query` e `limit` juntos, antes de procurar o projeto; snapshot `BUILDING` e `FAILED`; projeto sem snapshot ativo; snapshot sem embeddings; cada falha do provedor com status e código, sem detalhe do provedor no corpo; linhas e `model` na resposta.
 
 ### F5 — Estado, contrato e troca de modelo
 
@@ -360,3 +369,16 @@ A chave vem de `EMBEDDING_API_KEY`. Padrões em `ProviderProperties`, sem entrad
 ## Resultado e desvios
 
 A preencher no fechamento (F6).
+
+### Medição da busca exata (F4, 16/10/2026)
+
+Comando (fora do `verify`):
+
+```bash
+./mvnw verify -Dtest.excluded-groups= -Dgroups=performance -Dtest=none \
+  -Dsurefire.failIfNoSpecifiedTests=false -Dit.test=VectorSearchPerformanceIT
+```
+
+| Máquina | Chunks | Dimensões | Consultas | Média | p95 | Máximo |
+|---|---|---|---|---|---|---|
+| Apple M4, 16 GB, PostgreSQL 17 + pgvector 0.8.7 no Testcontainers | 50.000 | 1.536 | 50 (após 5 de aquecimento), `limit` 10 | 213 ms | 313 ms | 396 ms |

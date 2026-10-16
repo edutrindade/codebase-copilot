@@ -747,6 +747,25 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Consequências:** toda consulta filtra por provedor, modelo e dimensão. Um índice aproximado futuro precisa ser parcial por modelo, sobre `embedding::vector(N)`. O limite de 2.000 dimensões continua validado na inicialização (D-047) e no `CHECK`.  
 **O que levaria à revisão:** necessidade de mais de 2.000 dimensões (`halfvec`) ou índice aproximado que não funcione bem como índice parcial.
 
+### D-049 — Busca vetorial exata (trata o risco da D-039)
+**Status:** Aceita (16/10/2026; F4 entregue)  
+**Contexto:** com HNSW, o filtro por snapshot é aplicado depois da busca aproximada e pode devolver menos resultados que o pedido.  
+**Opções consideradas:**
+1. HNSW com varredura iterativa do pgvector (`hnsw.iterative_scan`).
+2. Busca exata (distância de cosseno sobre os chunks do snapshot, sem índice aproximado).
+3. Índice HNSW parcial por projeto.
+
+**Decisão:** opção 2 como baseline.
+- `VectorSearch`, no módulo `retrieval`, em SQL explícito sobre as tabelas da indexação (D-016): chunks dos arquivos do snapshot na `chunking_version` dele (D-039), unidos a `chunk_embeddings` pela PK com provedor, modelo e dimensão do modelo configurado (D-048). Vetores de outros modelos nunca entram.
+- Ordem: distância de cosseno (`<=>`), depois o primeiro caminho em ordem de bytes (`COLLATE "C"`), a linha inicial e o id do chunk. `score` = 1 − distância.
+- Uma linha por chunk: um chunk compartilhado por vários arquivos do snapshot traz todos os caminhos, ordenados; o primeiro vira `path` e os demais `otherPaths`.
+- O vetor da pergunta vai como literal de texto convertido no SQL (`VectorLiteral`, movido para `shared.persistence`, porque agora `indexing` e `retrieval` o usam).
+
+**Medição (16/10/2026, `VectorSearchPerformanceIT`, tag `performance`, fora do `verify`):** 50 mil chunks sintéticos de 1.536 dimensões num snapshot, 50 consultas depois de 5 de aquecimento, `limit` 10: **média de 213 ms, p95 de 313 ms, máximo de 396 ms**, num Apple M4 com 16 GB e o PostgreSQL 17 do Testcontainers (pgvector 0.8.7).  
+**Motivo:** correta por construção (só considera os chunks do snapshot pedido), com custo proporcional ao tamanho do snapshot, limitado por `max-project-bytes`.  
+**Consequências:** a latência cresce linearmente com os chunks do snapshot; 50 mil chunks ficam na casa de 0,2 a 0,3 s, aceitável para uso local e acima do que se quer numa busca híbrida com várias consultas por pergunta.  
+**O que levaria à revisão:** a comparação da Etapa 5 ou 8 com HNSW parcial por modelo e varredura iterativa (mesmos resultados no corpus, menos latência), que a D-048 permite sem migrar dados.
+
 ### D-050 — Etapa `EMBEDDING` no job e ativação do snapshot
 **Status:** Aceita (16/10/2026; F3 entregue, a F5 completa o estado e a troca de modelo)  
 **Contexto:** o snapshot ativo precisa ser sempre pesquisável, e uma falha do provedor não pode deixar o projeto sem snapshot utilizável (D-044).  
@@ -764,7 +783,7 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **O que levaria à revisão:** necessidade de ativar snapshots sem vetores quando o provedor estiver fora (busca só lexical, Etapa 5).
 
 ### D-051 — Falhas do provedor de embeddings e repetição
-**Status:** Aceita (16/10/2026; F1 e F3 entregues)  
+**Status:** Aceita (16/10/2026; F1, F3 e F4 entregues)  
 **Contexto:** chamadas ao provedor falham por credencial, limite de taxa, cota, indisponibilidade ou pedido recusado. Algumas falhas passam com o tempo, outras não, e um job esperando o provedor não pode perder o lease (D-040).  
 **Decisão:**
 - **Classificação na porta** (`EmbeddingFailure.Type`, sem tipos do Spring AI nem do SDK):
@@ -783,7 +802,9 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 - **Heartbeat via callback:** a espera é feita em fatias de no máximo o intervalo informado por quem chama, e um callback roda após cada fatia. Uma exceção lançada pelo callback (claim perdido) interrompe a espera e se propaga sem nova tentativa. A espera é injetável (`Sleeper`), e os testes controlam o tempo sem dormir. Interrupção da thread encerra a espera com a última falha.
 - **Mensagens e logs** trazem só tipo, status HTTP, quantidades e duração; a exceção do SDK não é guardada como causa.
 
-**Códigos do job (F3):** `UNAUTHORIZED` → `EMBEDDING_PROVIDER_UNAUTHORIZED`; `QUOTA_EXCEEDED` → `EMBEDDING_QUOTA_EXCEEDED`; `RATE_LIMITED` esgotado → `EMBEDDING_RATE_LIMITED`; `UNAVAILABLE` esgotado → `EMBEDDING_PROVIDER_UNAVAILABLE`; `INVALID_REQUEST` → `EMBEDDING_REQUEST_REJECTED`. Falhas permanentes encerram o job na hora e não voltam à fila (D-040). O mapeamento para a busca fica para a F4. No job, a espera é fatiada em `app.indexing.heartbeat-interval` e cada fatia renova o lease; claim perdido interrompe a espera e o worker para sem tocar no job. As mensagens pt-BR ficam em `index.error.<CODE>`, sem detalhes do provedor.  
+**Códigos do job (F3):** `UNAUTHORIZED` → `EMBEDDING_PROVIDER_UNAUTHORIZED`; `QUOTA_EXCEEDED` → `EMBEDDING_QUOTA_EXCEEDED`; `RATE_LIMITED` esgotado → `EMBEDDING_RATE_LIMITED`; `UNAVAILABLE` esgotado → `EMBEDDING_PROVIDER_UNAVAILABLE`; `INVALID_REQUEST` → `EMBEDDING_REQUEST_REJECTED`. Falhas permanentes encerram o job na hora e não voltam à fila (D-040). No job, a espera é fatiada em `app.indexing.heartbeat-interval` e cada fatia renova o lease; claim perdido interrompe a espera e o worker para sem tocar no job. As mensagens pt-BR ficam em `index.error.<CODE>`, sem detalhes do provedor.
+
+**Na busca (F4):** `UNAVAILABLE` → `502 EMBEDDING_PROVIDER_UNAVAILABLE`; `UNAUTHORIZED` → `502 EMBEDDING_PROVIDER_UNAUTHORIZED`; `QUOTA_EXCEEDED` → `502 EMBEDDING_QUOTA_EXCEEDED` (decidido em 16/10/2026: o problema é da conta no provedor, não do cliente da API); `INVALID_REQUEST` → `502 EMBEDDING_REQUEST_REJECTED` (acrescentado na F4, o plano não o previa); `RATE_LIMITED` → `429 EMBEDDING_RATE_LIMITED`. A busca não repete chamadas, porque há uma pessoa esperando; a mensagem não traz detalhes do provedor. O `Retry-After` do provedor ainda não é repassado na resposta.  
 **Motivo:** repetir só o que pode passar evita custo e espera inúteis; uma só camada de repetição torna o número de chamadas previsível (com 429 e `max-retries=4`, exatamente 5 requisições chegam ao provedor).  
 **Consequências:** o callback é o ponto de integração da F3 com o `Heartbeat`. A classificação de cota depende dos códigos documentados pela OpenAI e deve ser reconferida se a página mudar.  
 **O que levaria à revisão:** novos códigos de erro do provedor, outro provedor com semântica diferente, ou medição mostrando repetições sincronizadas entre workers (o que pediria variação aleatória).
@@ -801,6 +822,19 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Motivo:** o custo de reprocessar fica no que mudou, e o banco não acumula vetores sem uso.  
 **Consequências:** a limpeza percorre `chunk_embeddings` com anti-join pelo índice de `chunks(chunk_hash)` a cada job concluído.  
 **O que levaria à revisão:** limpeza lenta em bancos grandes (medição na Etapa 8) ou bake-off com vários modelos ao mesmo tempo.
+
+### D-053 — Contrato da busca
+**Status:** Aceita (16/10/2026; F4 entregue, a F5 completa o snapshot e `outdatedReasons`)  
+**Decisão:**
+- **`POST /api/v1/projects/{projectId}/search`** com `{ "query": "…", "snapshotId": null, "limit": 10 }`. `snapshotId` ausente = snapshot ativo; informado, precisa ser do projeto, `READY`/`PARTIAL` e não podado. `query` de 1 a 2.000 caracteres e não em branco; `limit` de 1 a 50 (padrão 10).
+- Resposta: `{ snapshotId, model: { provider, name, dimensions }, results: [ { chunkId, path, otherPaths, startLine, endLine, content, score } ] }`, em ordem decrescente de `score` (D-049). O plano previa só `model`; virou objeto porque o provedor também identifica os vetores (D-048).
+- Erros, nesta ordem: `400 VALIDATION_FAILED` (campos `query` e `limit`, antes de qualquer consulta); `404 PROJECT_NOT_FOUND`; `404 SNAPSHOT_NOT_FOUND` (inclusive de outro projeto); `409 SNAPSHOT_NOT_SEARCHABLE` (sem snapshot ativo, `BUILDING`, `FAILED` ou podado); `409 EMBEDDINGS_NOT_AVAILABLE` (`provider=none`); `409 SNAPSHOT_EMBEDDING_MISMATCH` (snapshot sem embeddings ou de outro provedor, modelo ou dimensão); erros do provedor (D-051).
+- Logs da busca trazem snapshot, quantidade de resultados e duração, nunca a pergunta (D-054).
+- A Etapa 5 acrescenta `mode` (`VECTOR`, `LEXICAL`, `HYBRID`) no mesmo endpoint.
+
+**Motivo:** o cliente sempre sabe qual snapshot e qual modelo responderam, e cada erro tem um código estável.  
+**Consequências:** `ProjectService.find` foi acrescentado para a busca ler o snapshot ativo sem montar o resumo completo do projeto.  
+**O que levaria à revisão:** a Etapa 5 (modo híbrido) ou a Etapa 6 (evidências da resposta).
 
 ### D-054 — Privacidade, custo e limites de entrada dos embeddings
 **Status:** Aceita (16/10/2026; F3 entregue, a F6 documenta no README e no `07`)  
