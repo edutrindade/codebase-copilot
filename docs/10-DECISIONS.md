@@ -190,7 +190,14 @@ Projetos ZIP não têm caminho; guardam uma referência ao import correspondente
 - `05-DATA-MODEL.md` (`projects`, `import_jobs`) e `06-API-CONTRACTS.md` (criação de projeto, raízes locais, importação ZIP) atualizados em 15/10/2026.
 - Se a chave de raiz deixar de existir na configuração, o projeto fica indisponível para reindexação, com erro explícito.
 - **Duplicidade (15/10/2026):** um workspace não pode ter dois projetos `LOCAL_FOLDER` com o mesmo `source_root_key` + `source_relative_path` normalizado; a criação responde `409 PROJECT_ALREADY_EXISTS`. Garantido por índice único parcial (`05-DATA-MODEL.md`). Nomes iguais são permitidos; projetos ZIP não são verificados.
-- **Normalização de `source_relative_path`:** caminho canônico (sem seguir links simbólicos) relativizado à raiz, com separador `/`, sem `/` inicial ou final e sem segmentos `.`; string vazia representa a própria raiz. Segmentos `..` que escapem da raiz são rejeitados (`PATH_OUTSIDE_ROOT`). Usar o caminho canônico faz com que variações de maiúsculas em sistemas de arquivos que não diferenciam caixa resultem no mesmo valor.
+- **Normalização de `source_relative_path` (revisada em 15/10/2026):** puramente sintática; a criação do projeto **não acessa o sistema de arquivos** nem usa caminho canônico.
+  - Unicode normalizado para **NFC**;
+  - `/` é o único separador (`\` não é tratado como separador); barras repetidas viram uma só;
+  - barras finais e segmentos `.` são removidos; string vazia representa a própria raiz;
+  - `/` inicial (caminho absoluto) ou qualquer segmento `..` é rejeitado com `400 PATH_OUTSIDE_ROOT`; caracteres de controle, com `400 VALIDATION_FAILED`;
+  - a comparação é **sensível a maiúsculas**.
+- A existência da pasta, o tipo (diretório) e os links simbólicos são verificados na pré-análise da Etapa 2 (D-018), não na criação. A pré-análise também poderá avisar sobre projetos que diferem apenas por maiúsculas/minúsculas e apontam para a mesma pasta em sistemas de arquivos que não diferenciam caixa.
+- **`PROJECT_SOURCE_MISMATCH` (409):** operação incompatível com o `source_type` do projeto. Uso atual: upload de ZIP (`POST /projects/{id}/imports/zip`) em projeto `LOCAL_FOLDER`. Não há hoje operação exclusiva de pasta local por projeto; se surgir uma (por exemplo, reindexar a partir da pasta), ela usa o mesmo código para projetos `ZIP`.
 
 **O que levaria à revisão:** necessidade de importar pastas fora das raízes configuradas ou de executar o backend remotamente.
 
@@ -336,7 +343,9 @@ Projetos ZIP não têm caminho; guardam uma referência ao import correspondente
 
 **Motivo:** mantém o caso comum em uma variável e permite várias raízes sem inventar formato próprio; validar na inicialização evita falhas tardias em uso.  
 **Consequências:**
-- Na Etapa 1: mapear `PROJECTS_ROOT`/`PROJECTS_ROOT_LABEL` em `application.yml`, implementar a validação e adicionar `apps/backend/config/` ao `.gitignore`.
+- Na Etapa 1: mapear `PROJECTS_ROOT`/`PROJECTS_ROOT_LABEL` em `application.yml` e implementar a validação.
+- O arquivo local `apps/backend/config/application.yml` é ignorado pelo Git; o formato é documentado no arquivo versionado `apps/backend/config/application.yml.example`, que o Spring não carrega.
+- **Testes declaram suas próprias raízes** em `app.local-roots` (por exemplo, diretórios temporários registrados como propriedades do teste). Como o Spring carrega `config/application.yml` a partir do diretório de execução (`apps/backend`), a configuração local de quem roda os testes, ou a ausência dela, não pode influenciar o resultado.
 - `DATA_DIR` não pode estar dentro de nenhuma raiz (D-028).
 - Uma raiz removida da configuração torna indisponíveis os projetos que a usam (D-020).
 

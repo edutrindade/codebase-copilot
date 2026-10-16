@@ -40,6 +40,7 @@
 - Validar caminhos, links e limites.
 - Implementar exclusões padrão e customizadas.
 - Gerar inventário por linguagem, diretório e estado.
+- Na pré-análise, verificar existência da pasta e links simbólicos e avisar sobre projetos que diferem apenas por maiúsculas/minúsculas (D-020).
 - Não executar conteúdo importado.
 
 **Aceite:** testes de segurança demonstram que arquivos não escapam da raiz e ZIPs maliciosos são rejeitados.

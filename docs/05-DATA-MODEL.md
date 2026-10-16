@@ -27,7 +27,7 @@
 - `name` (nome de exibição)
 - `source_type` (`LOCAL_FOLDER`, `ZIP`)
 - `source_root_key` nullable: chave da raiz permitida configurada no backend (`app.local-roots[n].key`), nunca caminho absoluto (D-018, D-020, D-029)
-- `source_relative_path` nullable: caminho relativo à raiz, normalizado (D-020); string vazia representa a própria raiz
+- `source_relative_path` nullable: caminho relativo à raiz, com normalização sintática (NFC, separador `/`, sem barras finais nem segmentos `.`; sem acesso ao sistema de arquivos) e comparação sensível a maiúsculas (D-020); string vazia representa a própria raiz
 - `current_import_job_id` nullable, FK para `import_jobs`: último import ZIP concluído com sucesso; sem relação com snapshots (D-020)
 - `created_at`
 - `updated_at`

@@ -35,18 +35,13 @@ A porta do banco é definida uma única vez, em `DB_PORT` no `.env`, e usada em 
 
 O backend só lê pastas locais dentro das raízes permitidas; a UI navega nelas e envia apenas caminhos relativos (D-018). Na inicialização, a aplicação valida cada raiz (caminho absoluto, existente, diretório legível; key única no formato `[a-z0-9-]+`) e não inicia se alguma for inválida.
 
-Para configurar **várias raízes**, defina a lista completa em `apps/backend/config/application.yml` (carregado automaticamente pelo Spring ao executar a partir de `apps/backend`; não versionado). O Spring substitui listas por inteiro, então repita a raiz `default` se ainda quiser usá-la:
+Para configurar **várias raízes**, copie o exemplo versionado e ajuste os caminhos:
 
-```yaml
-app:
-  local-roots:
-    - key: default
-      label: Projetos
-      path: /Users/voce/projetos
-    - key: trabalho
-      label: Trabalho
-      path: /Users/voce/trabalho
+```bash
+cp apps/backend/config/application.yml.example apps/backend/config/application.yml
 ```
+
+O `config/application.yml` é carregado automaticamente pelo Spring ao executar a partir de `apps/backend` e é ignorado pelo Git. A lista substitui por inteiro a raiz `default` gerada por `PROJECTS_ROOT`; o exemplo já a repete. Os testes não dependem desse arquivo: cada teste declara as próprias raízes.
 
 O `DATA_DIR` precisa ficar **fora** de todas as raízes permitidas e fora deste repositório; caso contrário, a aplicação não inicia.
 

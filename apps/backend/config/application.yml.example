@@ -1,0 +1,22 @@
+# Exemplo de configuração local de raízes permitidas (D-018, D-029).
+#
+# Para usar: copie para apps/backend/config/application.yml (ignorado pelo Git).
+# O Spring carrega config/application.yml a partir do diretório de execução,
+# por isso o backend deve rodar a partir de apps/backend.
+#
+# A lista substitui por inteiro a raiz "default" gerada por PROJECTS_ROOT;
+# repita-a aqui se ainda quiser usá-la.
+#
+# Regras validadas na inicialização:
+# - key: única, formato [a-z0-9-]+
+# - path: absoluto, existente, diretório legível (nunca exposto pela API)
+# - label: opcional; ausente, usa a key
+# - DATA_DIR não pode estar dentro de nenhuma raiz (D-028)
+app:
+  local-roots:
+    - key: default
+      label: Projetos
+      path: /Users/seu-usuario/projetos
+    - key: trabalho
+      label: Trabalho
+      path: /Users/seu-usuario/trabalho

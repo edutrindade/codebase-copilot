@@ -151,14 +151,15 @@ ZIP (o arquivo é enviado depois, em `POST /projects/{projectId}/imports/zip`):
 
 Response: `201 Created` com o projeto.
 
-`relativePath` é normalizado pelo backend (caminho canônico relativo à raiz, separador `/`; vazio = a própria raiz), e o valor normalizado é o que a resposta devolve (D-020).
+`relativePath` passa por normalização **sintática** e o valor normalizado é o que a resposta devolve (D-020): Unicode NFC, `/` como único separador, barras repetidas e finais e segmentos `.` removidos; vazio = a própria raiz. `/` inicial ou segmento `..` são rejeitados. A comparação é sensível a maiúsculas.
+
+A criação **não acessa o sistema de arquivos**: a existência da pasta, o tipo e os links simbólicos são verificados na pré-análise da Etapa 2 (D-018), que também poderá avisar sobre projetos que diferem apenas por maiúsculas/minúsculas.
 
 Erros:
 - `404 WORKSPACE_NOT_FOUND`;
 - `409 LOCAL_ROOTS_NOT_CONFIGURED`: `LOCAL_FOLDER` sem nenhuma raiz configurada (D-029);
 - `404 ROOT_NOT_FOUND`;
-- `400 PATH_OUTSIDE_ROOT`;
-- `404 DIRECTORY_NOT_FOUND`;
+- `400 PATH_OUTSIDE_ROOT`: `/` inicial ou segmento `..`;
 - `409 PROJECT_ALREADY_EXISTS`: o workspace já tem projeto com a mesma `rootKey` e o mesmo `relativePath` normalizado. Nomes iguais são permitidos; projetos ZIP não são verificados (D-020);
 - `400 VALIDATION_FAILED` (por exemplo, `rootKey` informado para `ZIP`).
 
@@ -215,7 +216,7 @@ Regras:
 
 Erros:
 - `404 PROJECT_NOT_FOUND`;
-- `409 PROJECT_SOURCE_MISMATCH`;
+- `409 PROJECT_SOURCE_MISMATCH`: o projeto é `LOCAL_FOLDER` (operação incompatível com o tipo de origem, D-020);
 - `409 PROJECT_BUSY`: já existe import em andamento no projeto;
 - `413 UPLOAD_TOO_LARGE`: arquivo acima de `app.import.max-zip-bytes` ou dos limites do multipart;
 - `400 VALIDATION_FAILED`: requisição sem arquivo.
