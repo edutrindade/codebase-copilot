@@ -46,6 +46,12 @@ Política implementada na Etapa 2 (D-037):
 
 **Limitações conhecidas:** links físicos e pontos de montagem dentro da raiz não são detectados, e uma troca concorrente de diretório por link durante a varredura (TOCTOU) não é totalmente evitável sem `openat`. O modelo de ameaça é conteúdo malicioso, não um atacante concorrente no disco local.
 
+Leitura do conteúdo na indexação (Etapa 3, D-042):
+- só os arquivos incluídos pela varredura são lidos, cada um uma única vez, sem seguir links e só se ainda for um arquivo regular (um FIFO ou link colocado no lugar depois da varredura não é aberto);
+- a leitura é limitada ao tamanho máximo do arquivo; atributos diferentes antes e depois da leitura marcam o arquivo como `FAILED` (`CHANGED_DURING_READ`), e ele não é indexado;
+- o conteúdo é tratado apenas como texto UTF-8; nada é interpretado nem executado;
+- logs da indexação trazem apenas ids, contagens, códigos e durações, nunca caminhos ou conteúdo.
+
 ## 4. Importação ZIP
 
 Mitigações obrigatórias:
@@ -133,6 +139,8 @@ Se o provedor não informar tokens ou se o preço não estiver configurado, most
 ## 10. Exclusão e retenção
 
 Ao excluir projeto, remover chunks, embeddings, snapshots e histórico associado conforme a política escolhida. Documentar se backups locais ou logs mantêm dados residuais e por quanto tempo.
+
+Desde a Etapa 3, o conteúdo dos arquivos indexados fica no PostgreSQL (`file_contents` e `chunks`), deduplicado por projeto. A remoção do projeto apaga tudo em cascata; snapshots antigos são podados e o conteúdo sem snapshot é removido ao fim de cada indexação (D-039, D-044). Backups do banco mantêm cópias desse conteúdo; isso fica a cargo de quem opera o ambiente.
 
 ## 11. Checklist antes de lançar
 

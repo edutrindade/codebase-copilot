@@ -576,6 +576,12 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Consequências:** a D-034 (imports) não muda. O MVP assume um processo do backend por banco; dois processos funcionariam, mas não são cenário testado.  
 **O que levaria à revisão:** medições de recurso ou confiabilidade que justifiquem um worker separado (D-005).
 
+#### Atualização de 16/10/2026 — implementação
+- Um erro inesperado durante o job devolve-o para `PENDING` na hora (a tentativa já foi contada), sem esperar o lease; na última tentativa, o job termina `FAILED` com `INDEX_IO_ERROR`. `INDEX_ATTEMPTS_EXHAUSTED` fica para jobs cujo worker morreu em todas as tentativas.
+- O heartbeat é renovado a cada lote e também durante a varredura, no máximo uma vez por `heartbeat-interval`, para que árvores grandes não percam o lease.
+- Um despachante retira os jobs e os entrega a um pool fixo; o sinal após o commit o acorda sem esperar a sondagem.
+- A retomada apaga os `snapshot_files` parciais do snapshot e recomeça pela varredura; conteúdo e chunks já gravados são reaproveitados.
+
 ### D-041 — Um job ativo por projeto
 **Status:** Aceita (16/10/2026)  
 **Contexto:** um import ZIP que conclui apaga a pasta do import anterior, que pode ser a origem de uma indexação em andamento; e a D-021 pede `409 PROJECT_BUSY` também para indexação.  
@@ -622,6 +628,11 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Motivo:** valores conservadores e determinísticos, fáceis de comparar no corpus.  
 **Consequências:** a O-010 continua aberta para ajustar os valores na Etapa 5.  
 **O que levaria à revisão:** resultados do corpus de avaliação.
+
+#### Atualização de 16/10/2026 — detalhes do `lines-v1`
+- Chunks nunca começam nem terminam em linha em branco, e o texto do chunk junta as linhas com `\n`.
+- Depois de um corte em linha em branco não há sobreposição; depois de um corte pelo limite, a sobreposição é de até 10 linhas, mas o chunk seguinte começa pelo menos na metade do anterior.
+- Comprimentos de linha e de chunk são contados em unidades UTF-16.
 
 ### D-044 — Ciclo de vida do snapshot, ativação e poda
 **Status:** Aceita (16/10/2026)  

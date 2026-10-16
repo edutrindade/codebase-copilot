@@ -211,7 +211,7 @@ Lista os projetos do workspace. Paginada (§1, D-030).
 Erros: `404 WORKSPACE_NOT_FOUND`.
 
 ### `GET /projects/{projectId}`
-Retorna metadados, origem, snapshot ativo e estado de indexação. Os campos `activeSnapshot`, `indexing` e `outdatedReasons` entram na Etapa 3 (F6); até lá, a resposta traz apenas metadados e origem:
+Retorna metadados, origem, snapshot ativo e estado de indexação (D-044). A listagem de projetos traz os mesmos campos, obtidos em lote por página:
 
 ```json
 {

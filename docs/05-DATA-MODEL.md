@@ -79,7 +79,7 @@ Criada na migração V4 (Etapa 2). `CHECK import_jobs_state_consistency`: jobs e
 O nome original do arquivo enviado não é persistido. O diretório de trabalho é derivado do ID (`DATA_DIR/imports/<importJobId>`, D-028) e não é armazenado.
 
 ### `snapshots`
-Um por job de indexação (D-044).
+Um por job de indexação (D-044). As tabelas `snapshots`, `index_jobs`, `file_contents`, `snapshot_files` e `chunks` são criadas na migração V7 (Etapa 3).
 - `id` UUID, PK
 - `project_id` FK (`ON DELETE CASCADE`)
 - `status` (`BUILDING`, `READY`, `PARTIAL`, `FAILED`)

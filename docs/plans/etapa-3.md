@@ -1,6 +1,6 @@
 # Plano — Etapa 3: Snapshots, hashes e chunking
 
-**Status:** em andamento (branch `etapa-3`). Propostas P1 a P7 aprovadas em 16/10/2026, com ajustes, e registradas como D-039 a D-046.
+**Status:** concluído em 16/10/2026 (branch `etapa-3`). Propostas P1 a P7 aprovadas em 16/10/2026, com ajustes, e registradas como D-039 a D-046. Ver "Resultado e desvios" ao final.
 **Referências:** `09-IMPLEMENTATION-ROADMAP.md` (Etapa 3), `docs/plans/etapa-2.md` (pendências), `04-RAG-PIPELINE.md` §4 e §11, `05-DATA-MODEL.md`, D-009, D-012, D-016, D-021, D-027, D-031, D-033 a D-036, O-010.
 
 ## Escopo
@@ -546,7 +546,21 @@ Padrões em `IndexingProperties`, sem entradas no `application.yml`, como `Impor
 
 ## Resultado e desvios
 
-A preencher no fechamento (F7). Desvios registrados durante as fatias:
+**Aceite:** arquivos novos, alterados e removidos são refletidos corretamente, com idempotência e recuperação de falhas:
+- `IndexingAcceptanceIT` (F4): arquivos novos, alterados, removidos, movidos, duplicados, excluídos e reincluídos por configuração, com o resumo de mudanças esperado; conteúdo inalterado não é regravado (o id do chunk não muda); arquivos não suportados; projeto ZIP acompanhando o import atual; chunks iguais às linhas do conteúdo guardado; nenhum caminho absoluto nas respostas nem caminho relativo nos logs;
+- `IndexingEdgeCasesIT` (F4): falhas de leitura deixam o snapshot `PARTIAL` e ativo, e são relidas no job seguinte; poda e limpeza de conteúdo;
+- `IndexingRecoveryIT` (F5): job interrompido termina igual a uma execução sem falha; worker morto é substituído quando o lease vence; tentativas esgotadas; worker que perdeu o claim não altera nada;
+- `IndexSchemaIT`, `IndexStoreIT`, `ProjectJobSchemaIT` (F0, F2): estados, FKs, um job ativo por projeto e cascata.
+
+**Commits:** planejamento `0cd9bdc`, F0 `1196435`, F1 `345f939`, F2 `2980cc4`, F3 `a1854ca`, F4 `134a880`, F5 `a585cc7`, F6 `dd7cf30`, F7 (documentação de fechamento).
+
+**Pendências para as próximas etapas:**
+- Etapa 4: etapa `EMBEDDING` antes da finalização; colunas de provedor em `snapshots`; tokenizador real no lugar da estimativa; busca vetorial filtrada por snapshot sobre HNSW (risco da D-039); embeddings órfãos na limpeza.
+- Etapa 5: colunas lexicais e índices `pg_trgm`; comparação dos parâmetros de chunking (O-010).
+- Etapa 6: `answer_evidence` com cópia da evidência (D-046); endpoint de conteúdo para o visualizador; revisão da poda quando respostas referenciarem snapshots.
+- Etapa 8: medir os limites e intervalos de `app.indexing.*`; outras codificações além de UTF-8; pular o hash por tamanho e data de modificação, se a medição justificar.
+
+**Desvios e acréscimos em relação ao plano, por fatia:**
 
 **F0**
 - `ProjectService.finishJobs(Collection<UUID>)` em vez de `finishJob(UUID)`: a recuperação de imports encerra vários jobs numa transação.

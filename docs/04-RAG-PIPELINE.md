@@ -33,18 +33,25 @@ A ausência de adaptador não deve impedir indexação textual.
 
 > Modelo decidido na D-039: o chunk pertence à versão do conteúdo (`content_hash`), e o snapshot liga caminhos a hashes em `snapshot_files`. Parâmetros iniciais na D-043. Ver `05-DATA-MODEL.md`.
 
-Cada chunk deve conter:
+Cada chunk contém:
 - `project_id`;
-- referência à versão do arquivo (`content_hash`); snapshot e caminho vêm de `snapshot_files` (D-039);
+- referência à versão do arquivo (`content_hash`); snapshot, caminho e linguagem vêm de `snapshot_files` (D-039);
 - hash do chunk (texto + versão de chunking), usado como chave do cache de embeddings;
 - `start_line` e `end_line`;
 - conteúdo;
-- linguagem detectada, quando disponível;
-- tipo de chunk e símbolos, quando disponíveis;
 - contagem de tokens estimada;
 - versão da estratégia de chunking.
 
+Tipo de chunk e símbolos entram com os adaptadores AST (Etapa 9, D-027).
+
 Preferir limites semânticos quando houver parser confiável. Caso contrário, dividir por linhas e limites de tamanho, com sobreposição controlada. Evitar chunks enormes e preservar contexto suficiente para entendimento.
+
+**Implementado na Etapa 3 (`lines-v1`, D-043, provisório até a avaliação da O-010):**
+- antes do chunking, o arquivo é lido uma vez, tem o hash SHA-256 calculado e é classificado (D-042): UTF-8 válido vira texto; byte NUL, UTF-8 inválido ou linha acima de 4.000 caracteres deixam o arquivo `UNSUPPORTED`, sem chunks;
+- janelas de até 60 linhas e 4.000 caracteres, com corte preferencial em linha em branco nas últimas 15 linhas;
+- sobreposição de até 10 linhas quando o corte é pelo limite, e nenhuma quando é em linha em branco;
+- chunks nunca começam nem terminam em linha em branco; o texto do chunk junta as linhas com `\n`;
+- tokens estimados como ⌈caracteres / 4⌉, até existir o tokenizador do provedor.
 
 ## 5. Embeddings
 
@@ -121,6 +128,14 @@ Comparar hashes do snapshot anterior e atual:
 - modelo/estratégia incompatível: reprocessar conforme a política de versão.
 
 Operações devem ser idempotentes e recuperar-se de interrupções.
+
+**Implementado na Etapa 3 (D-039, D-040, D-044, D-045):**
+- toda indexação é incremental por conteúdo: cada arquivo incluído é lido e tem o hash calculado; só conteúdos novos (ou sem chunks da versão atual) geram `file_contents` e chunks, e o snapshot novo aponta caminho → hash;
+- arquivos removidos ou excluídos simplesmente não aparecem no snapshot novo; mudar exclusões, limites ou a versão de chunking é coberto pelo mesmo mecanismo;
+- arquivos `FAILED` no snapshot anterior são lidos de novo no próximo job;
+- o snapshot só vira ativo quando o job conclui; ele traz o resumo `added`, `modified`, `removed` e `unchanged` em relação ao anterior;
+- jobs ficam numa fila em tabela, com heartbeat e limite de tentativas; um job interrompido é retomado e chega ao mesmo resultado de uma execução sem falha;
+- snapshots antigos são podados, e conteúdo e chunks sem snapshot são removidos ao fim de cada job.
 
 ## 12. Pipeline resumido
 
