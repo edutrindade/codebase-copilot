@@ -42,4 +42,13 @@ class ArchitectureTest {
                     .should()
                     .dependOnClassesThat()
                     .resideInAPackage("com.codebasecopilot.project..");
+
+    @ArchTest
+    static final ArchRule projectDoesNotDependOnImportJob =
+            noClasses()
+                    .that()
+                    .resideInAPackage("com.codebasecopilot.project..")
+                    .should()
+                    .dependOnClassesThat()
+                    .resideInAPackage("com.codebasecopilot.importjob..");
 }

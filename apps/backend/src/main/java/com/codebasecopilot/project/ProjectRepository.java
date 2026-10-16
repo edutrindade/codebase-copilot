@@ -3,7 +3,9 @@ package com.codebasecopilot.project;
 import com.codebasecopilot.shared.pagination.PageRequestParams;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -41,7 +43,8 @@ class ProjectRepository {
         return jdbc.sql(
                         """
                         SELECT id, workspace_id, name, source_type, source_root_key,
-                               source_relative_path, created_at, updated_at
+                               source_relative_path, current_import_job_id, created_at,
+                               updated_at
                         FROM projects
                         WHERE workspace_id = :workspaceId
                         ORDER BY created_at DESC, id DESC
@@ -52,6 +55,35 @@ class ProjectRepository {
                 .param("offset", params.offset())
                 .query(ProjectRepository::map)
                 .list();
+    }
+
+    // Blocks concurrent uploads, whose insert into import_jobs takes a KEY SHARE lock here.
+    Optional<Project> findByIdForUpdate(UUID id) {
+        return jdbc.sql(
+                        """
+                        SELECT id, workspace_id, name, source_type, source_root_key,
+                               source_relative_path, current_import_job_id, created_at,
+                               updated_at
+                        FROM projects
+                        WHERE id = :id
+                        FOR UPDATE
+                        """)
+                .param("id", id)
+                .query(ProjectRepository::map)
+                .optional();
+    }
+
+    void updateCurrentImport(UUID id, UUID importJobId, Instant now) {
+        jdbc.sql(
+                        """
+                        UPDATE projects
+                        SET current_import_job_id = :importJobId, updated_at = :now
+                        WHERE id = :id
+                        """)
+                .param("id", id)
+                .param("importJobId", importJobId)
+                .param("now", OffsetDateTime.ofInstant(now, ZoneOffset.UTC))
+                .update();
     }
 
     long countByWorkspace(UUID workspaceId) {
@@ -94,6 +126,7 @@ class ProjectRepository {
                 SourceType.valueOf(rs.getString("source_type")),
                 rs.getString("source_root_key"),
                 rs.getString("source_relative_path"),
+                rs.getObject("current_import_job_id", UUID.class),
                 rs.getObject("created_at", OffsetDateTime.class).toInstant(),
                 rs.getObject("updated_at", OffsetDateTime.class).toInstant());
     }

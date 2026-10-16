@@ -47,7 +47,8 @@ class ProjectController {
     ResponseEntity<ProjectResponse> create(
             @PathVariable UUID workspaceId, @RequestBody CreateProjectRequest request) {
         ProjectResponse project =
-                ProjectResponse.of(service.create(workspaceId, request.toCommand()));
+                ProjectResponse.of(
+                        new ProjectSummary(service.create(workspaceId, request.toCommand()), null));
         return ResponseEntity.created(URI.create("/api/v1/projects/" + project.id())).body(project);
     }
 
@@ -65,7 +66,7 @@ class ProjectController {
     }
 
     @DeleteMapping("/projects/{projectId}")
-    @ApiErrors(ErrorCode.PROJECT_NOT_FOUND)
+    @ApiErrors({ErrorCode.PROJECT_NOT_FOUND, ErrorCode.PROJECT_BUSY})
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void delete(@PathVariable UUID projectId) {
         service.delete(projectId);
@@ -85,14 +86,20 @@ class ProjectController {
     record ProjectResponse(
             UUID id, UUID workspaceId, String name, SourceResponse source, Instant createdAt) {
 
-        static ProjectResponse of(Project project) {
+        static ProjectResponse of(ProjectSummary summary) {
+            Project project = summary.project();
+            ProjectImports.CurrentImport current = summary.currentImport();
             SourceResponse source =
                     switch (project.sourceType()) {
                         case LOCAL_FOLDER ->
                                 new LocalFolderSourceResponse(
                                         project.sourceRootKey(), project.sourceRelativePath());
-                        // currentImport is filled once ZIP imports exist (Etapa 2).
-                        case ZIP -> new ZipSourceResponse(null);
+                        case ZIP ->
+                                new ZipSourceResponse(
+                                        current == null
+                                                ? null
+                                                : new CurrentImportResponse(
+                                                        current.id(), current.status()));
                     };
             return new ProjectResponse(
                     project.id(),

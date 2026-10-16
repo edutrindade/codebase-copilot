@@ -566,3 +566,7 @@ Preenchido ao longo da implementação e fechado na F6.
 - **Nomes na navegação (F1):** os nomes de diretório são devolvidos em NFC, igual ao que o cliente envia de volta. Diretórios cujo nome tem `\` ou caracteres de controle são omitidos, porque o caminho seria recusado como entrada. Limitação: em sistemas que diferenciam formas Unicode (Linux), um diretório gravado em NFD aparece na lista, mas não pode ser aberto.
 - **Mensagem de `path` inválido (F1):** reusa a chave `validation.project.relative-path-chars`, cujo texto já é genérico.
 - **Árvore de teste (F1):** `target/test-roots/default` ganhou a estrutura descrita no comentário do `TestFileSystemInitializer`, e a remoção da árvore entre execuções desbloqueia diretórios sem permissão antes de apagá-los.
+- **Agregado `ImportJob` (F2):** o record, o insert e as transições de estado ficam para a F3, que é quem os usa. A F2 entrega só as consultas de que a porta precisa (`ImportJobRepository`) e o enum `ImportStatus`.
+- **Porta `ProjectImports` (F2):** `CurrentImport.status` é `String`, porque `project` não pode ver o enum de `importjob` (D-031).
+- **Remoção de pastas (F2):** `shared.fs.Directories.deleteRecursively` (apaga links sem segui-los) e `ImportFiles`, que agenda a remoção para depois do commit e loga só o `importJobId` e a classe da exceção, porque a mensagem pode conter nomes vindos do conteúdo importado.
+- **Sem N+1 (F2):** coberto pela consulta em lote do serviço (uma chamada à porta por página); não há teste que conte consultas.

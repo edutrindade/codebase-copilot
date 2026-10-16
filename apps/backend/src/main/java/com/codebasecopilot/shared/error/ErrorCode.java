@@ -17,7 +17,8 @@ public enum ErrorCode {
     PATH_OUTSIDE_ROOT(HttpStatus.BAD_REQUEST),
     PROJECT_ALREADY_EXISTS(HttpStatus.CONFLICT),
     DIRECTORY_NOT_FOUND(HttpStatus.NOT_FOUND),
-    DIRECTORY_NOT_READABLE(HttpStatus.CONFLICT);
+    DIRECTORY_NOT_READABLE(HttpStatus.CONFLICT),
+    PROJECT_BUSY(HttpStatus.CONFLICT);
 
     private final HttpStatus status;
 
