@@ -747,8 +747,24 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Consequências:** toda consulta filtra por provedor, modelo e dimensão. Um índice aproximado futuro precisa ser parcial por modelo, sobre `embedding::vector(N)`. O limite de 2.000 dimensões continua validado na inicialização (D-047) e no `CHECK`.  
 **O que levaria à revisão:** necessidade de mais de 2.000 dimensões (`halfvec`) ou índice aproximado que não funcione bem como índice parcial.
 
+### D-050 — Etapa `EMBEDDING` no job e ativação do snapshot
+**Status:** Aceita (16/10/2026; F3 entregue, a F5 completa o estado e a troca de modelo)  
+**Contexto:** o snapshot ativo precisa ser sempre pesquisável, e uma falha do provedor não pode deixar o projeto sem snapshot utilizável (D-044).  
+**Decisão:**
+- Nova etapa `EMBEDDING` entre `PROCESSING_FILES` e `FINALIZING`. Ela lista os `chunk_hash` do snapshot sem embedding do modelo configurado (D-048), envia em lotes de `app.embeddings.batch-size` (padrão 64) e grava com `ON CONFLICT DO NOTHING`. O progresso do job passa a contar chunks (`total` = chunks a enviar), e cada lote grava progresso e renova o heartbeat na mesma transação da inserção.
+- O texto de cada lote é lido por uma consulta por lote (texto de um chunk por hash, no projeto), sem carregar o texto de todos os chunks de uma vez.
+- **O snapshot só é ativado com todos os seus chunks com embedding.** Se o provedor falhar, o job termina `FAILED` e o ativo anterior continua valendo.
+- A finalização grava `embedding_provider`, `embedding_model`, `embedding_dimensions` e `embedding_tokens` no snapshot, na mesma transação da ativação.
+- Reindexar com o mesmo modelo não chama o provedor para chunks inalterados (cache por hash); `embedding_tokens` fica `0` nesse caso.
+- Com `app.embeddings.provider=none`, a etapa é pulada e o snapshot é ativado sem metadados de modelo.
+- Troca de modelo, `EMBEDDING_MODEL_CHANGED`, `EMBEDDINGS_MISSING` e `SNAPSHOT_EMBEDDING_MISMATCH`: F4 e F5.
+
+**Motivo:** a busca vetorial nunca encontra um snapshot ativo pela metade, e o cache evita pagar duas vezes pelo mesmo texto.  
+**Consequências:** um job com muitos chunks novos fica mais longo e depende do provedor; falhas são tratadas pela D-051. O valor `EMBEDDING` aparece em `stage` na API.  
+**O que levaria à revisão:** necessidade de ativar snapshots sem vetores quando o provedor estiver fora (busca só lexical, Etapa 5).
+
 ### D-051 — Falhas do provedor de embeddings e repetição
-**Status:** Aceita (16/10/2026; F1 entregue, a F3 completa os códigos do job)  
+**Status:** Aceita (16/10/2026; F1 e F3 entregues)  
 **Contexto:** chamadas ao provedor falham por credencial, limite de taxa, cota, indisponibilidade ou pedido recusado. Algumas falhas passam com o tempo, outras não, e um job esperando o provedor não pode perder o lease (D-040).  
 **Decisão:**
 - **Classificação na porta** (`EmbeddingFailure.Type`, sem tipos do Spring AI nem do SDK):
@@ -767,10 +783,42 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 - **Heartbeat via callback:** a espera é feita em fatias de no máximo o intervalo informado por quem chama, e um callback roda após cada fatia. Uma exceção lançada pelo callback (claim perdido) interrompe a espera e se propaga sem nova tentativa. A espera é injetável (`Sleeper`), e os testes controlam o tempo sem dormir. Interrupção da thread encerra a espera com a última falha.
 - **Mensagens e logs** trazem só tipo, status HTTP, quantidades e duração; a exceção do SDK não é guardada como causa.
 
-**Códigos do job (a F3 implementa):** `UNAUTHORIZED` → `EMBEDDING_PROVIDER_UNAUTHORIZED`; `QUOTA_EXCEEDED` → `EMBEDDING_QUOTA_EXCEEDED`; `RATE_LIMITED` esgotado → `EMBEDDING_RATE_LIMITED`; `UNAVAILABLE` esgotado → `EMBEDDING_PROVIDER_UNAVAILABLE`; `INVALID_REQUEST` → `EMBEDDING_REQUEST_REJECTED`. Falhas permanentes encerram o job na hora e não voltam à fila (D-040). O mapeamento para a busca fica para a F4.  
+**Códigos do job (F3):** `UNAUTHORIZED` → `EMBEDDING_PROVIDER_UNAUTHORIZED`; `QUOTA_EXCEEDED` → `EMBEDDING_QUOTA_EXCEEDED`; `RATE_LIMITED` esgotado → `EMBEDDING_RATE_LIMITED`; `UNAVAILABLE` esgotado → `EMBEDDING_PROVIDER_UNAVAILABLE`; `INVALID_REQUEST` → `EMBEDDING_REQUEST_REJECTED`. Falhas permanentes encerram o job na hora e não voltam à fila (D-040). O mapeamento para a busca fica para a F4. No job, a espera é fatiada em `app.indexing.heartbeat-interval` e cada fatia renova o lease; claim perdido interrompe a espera e o worker para sem tocar no job. As mensagens pt-BR ficam em `index.error.<CODE>`, sem detalhes do provedor.  
 **Motivo:** repetir só o que pode passar evita custo e espera inúteis; uma só camada de repetição torna o número de chamadas previsível (com 429 e `max-retries=4`, exatamente 5 requisições chegam ao provedor).  
 **Consequências:** o callback é o ponto de integração da F3 com o `Heartbeat`. A classificação de cota depende dos códigos documentados pela OpenAI e deve ser reconferida se a página mudar.  
 **O que levaria à revisão:** novos códigos de erro do provedor, outro provedor com semântica diferente, ou medição mostrando repetições sincronizadas entre workers (o que pediria variação aleatória).
+
+### D-052 — Cache de embeddings e limpeza de órfãos
+**Status:** Aceita (16/10/2026; F3 entregue)  
+**Contexto:** `chunk_embeddings` é global e sem FK para `chunks` (D-048); sem limpeza, vetores de conteúdos removidos ficariam para sempre.  
+**Decisão:**
+- Cache pela PK `(chunk_hash, provider, model, dimensions)`: o mesmo texto nunca é enviado duas vezes para o mesmo modelo, em qualquer projeto.
+- **Limpeza de órfãos ao fim de cada job concluído**, na transação da finalização, depois da limpeza de chunks da D-039: apagam-se os embeddings cujo `chunk_hash` não existe mais em nenhum chunk.
+- **Job com falha não limpa:** os embeddings já gravados ficam no cache, e o job seguinte retoma de onde o anterior parou, sem pagar de novo. A limpeza de um job concluído (de qualquer projeto) ou a varredura na inicialização pode apagá-los antes disso, porque os chunks do snapshot com falha são removidos.
+- **Varredura na inicialização** (`ApplicationReadyEvent`): cobre a remoção de projetos sem nenhum job posterior.
+- Embeddings de um modelo que deixou de ser o configurado só somem quando seus chunks somem; limpeza por modelo fica para quando houver mais de um modelo em uso real.
+
+**Motivo:** o custo de reprocessar fica no que mudou, e o banco não acumula vetores sem uso.  
+**Consequências:** a limpeza percorre `chunk_embeddings` com anti-join pelo índice de `chunks(chunk_hash)` a cada job concluído.  
+**O que levaria à revisão:** limpeza lenta em bancos grandes (medição na Etapa 8) ou bake-off com vários modelos ao mesmo tempo.
+
+### D-054 — Privacidade, custo e limites de entrada dos embeddings
+**Status:** Aceita (16/10/2026; F3 entregue, a F6 documenta no README e no `07`)  
+**Contexto:** com `provider=openai`, trechos de código saem da máquina e cada token tem custo (D-047).  
+**Decisão:**
+- Só o texto de chunks de arquivos `INDEXED` vai ao provedor; arquivos excluídos, não suportados ou com falha nunca saem da máquina. A pergunta da busca também é enviada (F4).
+- Logs trazem quantidades (chunks, lotes, tokens, duração) e códigos, nunca texto de chunk, pergunta ou chave (coberto por teste com saída capturada).
+- `embedding_tokens` soma o uso **reportado** pelo provedor no job. Se algum lote não reportar uso, fica `null`: uma soma parcial seria um número inventado.
+- **Limite por job:** `app.embeddings.max-chunks-per-job` (padrão 50.000) conta só os chunks a enviar (os do snapshot sem embedding do modelo). Acima dele, o job falha com `EMBEDDING_CHUNK_LIMIT_EXCEEDED` antes de qualquer chamada ao provedor, e o ativo anterior não muda.
+- **Limites de entrada do modelo (fonte oficial, consultada em 16/10/2026):** pelo guia de embeddings (`developers.openai.com/api/docs/guides/embeddings`, coluna "Max input") e pela referência de `POST /v1/embeddings` (`developers.openai.com/api/reference/resources/embeddings/methods/create`), `text-embedding-3-small`, `text-embedding-3-large` e `text-embedding-ada-002` aceitam **8.192 tokens por entrada**; uma requisição aceita **até 2.048 entradas** e **até 300.000 tokens somados**; entrada vazia é recusada.
+- A porta expõe esses limites (`InputLimits`). O adaptador OpenAI conhece só os três modelos acima: outro modelo impede a inicialização. O fake não tem limite.
+- **Validação na inicialização** (com provedor configurado): `4.000` caracteres por chunk (D-043) ≤ tokens por entrada; `batch-size` ≤ entradas por requisição; `batch-size` × 4.000 ≤ tokens por requisição. Para a OpenAI, `batch-size` vai até 75 (o padrão 64 passa).
+- A conta usa **um token por caractere**. Não é um limite rigoroso (texto fora do ASCII pode passar disso), mas código fica em média bem abaixo de um token por caractere. Um chunk que ainda assim exceda o limite é recusado pelo provedor e falha o job com `EMBEDDING_REQUEST_REJECTED` (limitação conhecida, igual à do lote recusado). Os chunks nunca são vazios (o chunker descarta linhas em branco nas pontas).
+- Sem tokenizador exato nesta etapa.
+
+**Motivo:** o custo e o destino dos dados ficam previsíveis, e uma configuração incompatível com o modelo falha na inicialização, não no meio de um job.  
+**Consequências:** modelos novos ou servidores compatíveis exigem acrescentar o limite oficial ao adaptador. `07-SECURITY-PRIVACY-COSTS.md` e o README são atualizados na F6.  
+**O que levaria à revisão:** chunks recusados por tamanho no teste de fumaça ou no uso real (pediria tokenizador exato), ou provedores locais na Etapa 9 (pediria limite configurável).
 
 ---
 

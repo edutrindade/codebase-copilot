@@ -4,7 +4,10 @@ import com.codebasecopilot.providers.ModelInfo;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -55,6 +58,27 @@ class ChunkEmbeddingRepository {
                 .param("dimensions", model.dimensions())
                 .query(String.class)
                 .list();
+    }
+
+    // The hash covers the chunking version and the text, so any chunk with it has the same text.
+    Map<String, String> chunkTexts(UUID projectId, Collection<String> chunkHashes) {
+        if (chunkHashes.isEmpty()) {
+            return Map.of();
+        }
+        Map<String, String> texts = new HashMap<>();
+        jdbc.sql(
+                        """
+                        SELECT DISTINCT ON (chunk_hash) chunk_hash, content
+                        FROM chunks
+                        WHERE project_id = :projectId AND chunk_hash IN (:hashes)
+                        """)
+                .param("projectId", projectId)
+                .param("hashes", chunkHashes)
+                .query(
+                        rs -> {
+                            texts.put(rs.getString("chunk_hash"), rs.getString("content"));
+                        });
+        return texts;
     }
 
     // Returns how many rows were actually inserted; rows already cached are skipped.

@@ -10,4 +10,6 @@ public interface EmbeddingProvider {
     EmbeddingResult embed(List<String> texts);
 
     ModelInfo model();
+
+    InputLimits limits();
 }

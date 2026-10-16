@@ -1,5 +1,6 @@
 package com.codebasecopilot.indexing;
 
+import com.codebasecopilot.providers.ModelInfo;
 import com.codebasecopilot.shared.pagination.PageRequestParams;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -113,6 +114,22 @@ class SnapshotRepository {
                 .param("modified", changes == null ? null : changes.modified())
                 .param("removed", changes == null ? null : changes.removed())
                 .param("unchanged", changes == null ? null : changes.unchanged())
+                .update();
+    }
+
+    void recordEmbedding(UUID id, ModelInfo model, @Nullable Long tokens) {
+        jdbc.sql(
+                        """
+                        UPDATE snapshots
+                        SET embedding_provider = :provider, embedding_model = :model,
+                            embedding_dimensions = :dimensions, embedding_tokens = :tokens
+                        WHERE id = :id AND status = 'BUILDING'
+                        """)
+                .param("id", id)
+                .param("provider", model.provider())
+                .param("model", model.model())
+                .param("dimensions", model.dimensions())
+                .param("tokens", tokens)
                 .update();
     }
 

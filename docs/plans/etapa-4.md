@@ -229,6 +229,17 @@ Um chunk rejeitado pelo provedor (`INVALID_REQUEST`) falha o job inteiro com `EM
 - Finalização grava provedor, modelo, dimensão e tokens no snapshot e limpa embeddings órfãos (P6).
 - `provider=none`: etapa pulada, snapshot ativado sem embedding.
 
+**Como foi entregue (16/10/2026)**
+- **Pré-condição cumprida:** limites conferidos em fonte oficial (guia de embeddings e referência de `POST /v1/embeddings` da OpenAI, 16/10/2026): 8.192 tokens por entrada para `text-embedding-3-small`, `-3-large` e `ada-002`; até 2.048 entradas e 300.000 tokens somados por requisição; entrada vazia recusada. Registrado na D-054.
+- A porta ganhou `InputLimits limits()`. O adaptador OpenAI só aceita os três modelos documentados (outro modelo impede a inicialização); o fake não tem limite.
+- Validação na inicialização (`EmbeddingStage`, em `indexing`, porque depende do tamanho do chunk): 4.000 caracteres ≤ tokens por entrada; `batch-size` ≤ 2.048 e `batch-size` × 4.000 ≤ 300.000 (até 75 para a OpenAI). **Desvio:** a conta usa um token por caractere, que não é um limite rigoroso para texto fora do ASCII; um chunk excedente vira `EMBEDDING_REQUEST_REJECTED` (D-054).
+- `EmbeddingStage` faz a etapa: hashes faltantes, limite por job antes de qualquer chamada, lotes com texto lido por consulta por lote (`chunkTexts`), progresso e heartbeat na transação de cada lote, esperas de repetição fatiadas em `heartbeat-interval` com renovação do lease (`Heartbeat.renew`).
+- `IndexOutcomes.complete` grava os metadados de embedding no snapshot e chama `deleteOrphans()` depois da limpeza de chunks. A falha não limpa órfãos, para preservar o cache (D-052).
+- **Acréscimo:** varredura de órfãos na inicialização (`EmbeddingOrphanSweep`), prevista na P6 mas sem fatia.
+- `embedding_tokens`: soma do uso reportado; `null` se algum lote não reportar; `0` quando nada foi enviado.
+- `stage` na API aceita `EMBEDDING` (`openapi.json` regenerado); seis códigos novos com mensagens pt-BR.
+- Decisões registradas: D-050, D-052 e D-054; D-051 atualizada.
+
 **Testes**
 - Indexação com o fake: todo chunk do snapshot tem embedding do modelo; o snapshot traz os metadados.
 - Reindexação sem mudanças: zero chamadas ao provedor (contador no fake).
@@ -238,6 +249,7 @@ Um chunk rejeitado pelo provedor (`INVALID_REQUEST`) falha o job inteiro com `EM
 - Limite por job: com `max-chunks-per-job` abaixo do número de chunks novos, o job falha com `EMBEDDING_CHUNK_LIMIT_EXCEEDED` e o fake não recebe nenhuma chamada; reindexar sem mudanças (nada a enviar) não esbarra no limite.
 - Heartbeat na espera: com relógio controlado e o fake respondendo `RATE_LIMITED`, o `heartbeat_at` do job avança durante a espera e o job não é retomado por outro worker.
 - Rejeição: `INVALID_REQUEST` falha o job inteiro com `EMBEDDING_REQUEST_REJECTED` (limitação conhecida).
+- Acrescentados na F3: conteúdo repetido em dois arquivos e arquivo binário (só os textos indexados são enviados, uma vez); nenhum texto de chunk nos logs; `QUOTA_EXCEEDED` falha na hora com a mensagem pt-BR da P7; `UNAVAILABLE` chega 5 vezes ao provedor; o limite por job conta só os chunks a enviar (30 chunks no snapshot, limite 20, reindexação sem mudanças passa); a varredura na inicialização remove órfãos; validação dos limites de entrada e do lote; modelo OpenAI sem limite documentado não inicia; `provider=none` pula a etapa. O teste do heartbeat na espera foi conferido com a renovação desligada: o job é retomado por outro worker e o teste falha.
 
 ### F4 — Busca vetorial
 

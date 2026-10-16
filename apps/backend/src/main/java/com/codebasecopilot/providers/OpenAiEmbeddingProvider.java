@@ -21,7 +21,9 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,15 +43,27 @@ final class OpenAiEmbeddingProvider implements EmbeddingProvider, AutoCloseable 
                     "project_spend_limit_exceeded",
                     "organization_usage_limit_exceeded");
 
+    // Embeddings guide and API reference (developers.openai.com, consulted on 16/10/2026):
+    // 8192 tokens per input, 2048 inputs and 300,000 tokens summed per request (D-054).
+    private static final Map<String, Integer> MAX_INPUT_TOKENS =
+            Map.of(
+                    "text-embedding-3-small", 8192,
+                    "text-embedding-3-large", 8192,
+                    "text-embedding-ada-002", 8192);
+    private static final int MAX_INPUTS_PER_REQUEST = 2048;
+    private static final int MAX_TOKENS_PER_REQUEST = 300_000;
+
     private static final Logger log = LoggerFactory.getLogger(OpenAiEmbeddingProvider.class);
 
     private final OpenAIClient client;
     private final ModelInfo model;
+    private final InputLimits limits;
     private final RequestOptions requestOptions;
     private final Clock clock;
 
     OpenAiEmbeddingProvider(ProviderProperties properties, Clock clock) {
         this.model = new ModelInfo(NAME, properties.model(), properties.dimensions());
+        this.limits = limitsOf(properties.model());
         this.clock = clock;
         Duration timeout = properties.timeout();
         this.requestOptions =
@@ -116,8 +130,26 @@ final class OpenAiEmbeddingProvider implements EmbeddingProvider, AutoCloseable 
     }
 
     @Override
+    public InputLimits limits() {
+        return limits;
+    }
+
+    @Override
     public void close() {
         client.close();
+    }
+
+    // Without a documented limit, a chunk could exceed what the model accepts.
+    private static InputLimits limitsOf(String model) {
+        Integer maxInputTokens = MAX_INPUT_TOKENS.get(model);
+        if (maxInputTokens == null) {
+            throw new IllegalStateException(
+                    "app.embeddings.model has no known input limit for provider openai"
+                            + " (supported: "
+                            + String.join(", ", new TreeSet<>(MAX_INPUT_TOKENS.keySet()))
+                            + ")");
+        }
+        return new InputLimits(maxInputTokens, MAX_INPUTS_PER_REQUEST, MAX_TOKENS_PER_REQUEST);
     }
 
     // A wrong vector must never be stored: any mismatch rejects the whole batch.

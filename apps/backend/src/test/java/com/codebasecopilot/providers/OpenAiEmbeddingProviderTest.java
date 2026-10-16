@@ -393,11 +393,37 @@ class OpenAiEmbeddingProviderTest {
                         code == null ? "" : ",\"code\":\"" + code + "\"");
     }
 
+    @ParameterizedTest
+    @ValueSource(
+            strings = {
+                "text-embedding-3-small",
+                "text-embedding-3-large",
+                "text-embedding-ada-002"
+            })
+    void documentedModelsReportTheirInputLimits(String model) {
+        try (OpenAiEmbeddingProvider documented =
+                provider(model, server.baseUrl(), Duration.ofSeconds(5))) {
+            assertThat(documented.limits()).isEqualTo(new InputLimits(8192, 2048, 300_000));
+        }
+    }
+
+    @Test
+    void modelWithoutDocumentedLimitIsRefused() {
+        assertThatThrownBy(() -> provider("other-model", server.baseUrl(), Duration.ofSeconds(5)))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("app.embeddings.model has no known input limit")
+                .hasMessageNotContaining(API_KEY);
+    }
+
     private static OpenAiEmbeddingProvider provider(URI baseUrl, Duration timeout) {
+        return provider("text-embedding-3-small", baseUrl, timeout);
+    }
+
+    private static OpenAiEmbeddingProvider provider(String model, URI baseUrl, Duration timeout) {
         return new OpenAiEmbeddingProvider(
                 new ProviderProperties(
                         Provider.OPENAI,
-                        "text-embedding-3-small",
+                        model,
                         DIMENSIONS,
                         64,
                         4,

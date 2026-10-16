@@ -154,7 +154,7 @@ class IndexingRecoveryIT extends SpiedReaderContext {
                 .update();
         Claim late = new Claim(jobId, projectId, snapshotId, 1);
 
-        assertThat(outcomes.complete(late)).isFalse();
+        assertThat(outcomes.complete(late, null)).isFalse();
         assertThat(outcomes.fail(late, IndexErrorCode.INDEX_IO_ERROR)).isFalse();
         assertThat(jobs.heartbeat(late, IndexStage.SCANNING, null, null, Instant.now())).isFalse();
         assertThat(jobs.requeue(late)).isFalse();

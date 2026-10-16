@@ -1948,7 +1948,7 @@
           },
           "stage" : {
             "type" : [ "string", "null" ],
-            "enum" : [ "SCANNING", "PROCESSING_FILES", "FINALIZING" ]
+            "enum" : [ "SCANNING", "PROCESSING_FILES", "EMBEDDING", "FINALIZING" ]
           },
           "startedAt" : {
             "type" : "string",
@@ -1977,7 +1977,7 @@
           },
           "stage" : {
             "type" : [ "string", "null" ],
-            "enum" : [ "SCANNING", "PROCESSING_FILES", "FINALIZING" ]
+            "enum" : [ "SCANNING", "PROCESSING_FILES", "EMBEDDING", "FINALIZING" ]
           },
           "status" : {
             "type" : "string",

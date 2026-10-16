@@ -38,6 +38,11 @@ final class Heartbeat {
         beat();
     }
 
+    // Renews the lease while waiting, for instance between provider retries (D-051).
+    void renew() {
+        beat();
+    }
+
     // Cheap enough to call per file: writes only once per interval.
     void tick() {
         if (Duration.between(last, clock.instant()).compareTo(interval) >= 0) {

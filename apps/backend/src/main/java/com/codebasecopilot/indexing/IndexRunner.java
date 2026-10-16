@@ -44,6 +44,7 @@ class IndexRunner {
     private final IndexStore store;
     private final IndexOutcomes outcomes;
     private final SourceFileReader reader;
+    private final EmbeddingStage embedding;
     private final TransactionTemplate transactions;
     private final ProjectSources sources;
     private final JsonMapper json;
@@ -56,6 +57,7 @@ class IndexRunner {
             IndexStore store,
             IndexOutcomes outcomes,
             SourceFileReader reader,
+            EmbeddingStage embedding,
             TransactionTemplate transactions,
             ProjectSources sources,
             JsonMapper json,
@@ -66,6 +68,7 @@ class IndexRunner {
         this.store = store;
         this.outcomes = outcomes;
         this.reader = reader;
+        this.embedding = embedding;
         this.transactions = transactions;
         this.sources = sources;
         this.json = json;
@@ -83,8 +86,9 @@ class IndexRunner {
             ProjectSources.SourceScan scan = scan(claim, heartbeat);
             check(scan);
             processFiles(claim, scan, heartbeat);
+            EmbeddingStage.Result embedded = embedding.run(claim, heartbeat);
             heartbeat.stage(IndexStage.FINALIZING, scan.files().size(), scan.files().size());
-            if (outcomes.complete(claim)) {
+            if (outcomes.complete(claim, embedded)) {
                 log.info(
                         "Index job {} completed with {} files", claim.jobId(), scan.files().size());
             }

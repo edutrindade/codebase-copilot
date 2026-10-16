@@ -52,15 +52,22 @@ final class IndexingTestClient {
 
     // Runs one index job to completion and returns its snapshot id.
     String index(String projectId) {
+        DocumentContext job = runJob(projectId);
+        assertThat((String) job.read("$.status"))
+                .as("job %s", job.jsonString())
+                .isEqualTo("COMPLETED");
+        return job.read("$.snapshotId");
+    }
+
+    // Runs one index job until it ends, successfully or not, and returns it.
+    DocumentContext runJob(String projectId) {
         MvcTestResult created =
                 mvc.post().uri("/api/v1/projects/{id}/index-jobs", projectId).exchange();
         assertThat(created).hasStatus(HttpStatus.ACCEPTED);
         String jobId = json(created).read("$.id");
-        String status =
-                await().atMost(Duration.ofSeconds(20))
-                        .until(() -> job(jobId).read("$.status"), TERMINAL::contains);
-        assertThat(status).as("job %s", job(jobId).jsonString()).isEqualTo("COMPLETED");
-        return json(created).read("$.snapshotId");
+        await().atMost(Duration.ofSeconds(20))
+                .until(() -> job(jobId).read("$.status"), TERMINAL::contains);
+        return job(jobId);
     }
 
     DocumentContext job(String jobId) {

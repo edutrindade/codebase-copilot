@@ -52,4 +52,18 @@ class ProvidersConfigurationTest {
                                         .getBean(EmbeddingProvider.class)
                                         .isInstanceOf(OpenAiEmbeddingProvider.class));
     }
+
+    @Test
+    void openAiModelWithoutDocumentedLimitDoesNotStart() {
+        runner.withPropertyValues(
+                        "app.embeddings.provider=openai",
+                        "app.embeddings.api-key=sk-test",
+                        "app.embeddings.model=unknown-model")
+                .run(
+                        context ->
+                                assertThat(context)
+                                        .getFailure()
+                                        .rootCause()
+                                        .hasMessageContaining("no known input limit"));
+    }
 }

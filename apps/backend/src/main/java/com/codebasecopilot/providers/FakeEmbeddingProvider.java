@@ -46,6 +46,11 @@ final class FakeEmbeddingProvider implements EmbeddingProvider {
         return model;
     }
 
+    @Override
+    public InputLimits limits() {
+        return InputLimits.UNBOUNDED;
+    }
+
     // String.hashCode is specified, so vectors are stable across JVMs; the mix spreads it.
     private int dimension(String term) {
         int h = term.hashCode();

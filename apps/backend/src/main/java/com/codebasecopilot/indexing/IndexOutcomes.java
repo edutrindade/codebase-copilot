@@ -7,6 +7,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -17,6 +18,7 @@ class IndexOutcomes {
     private final IndexJobRepository jobs;
     private final SnapshotRepository snapshots;
     private final IndexStore store;
+    private final ChunkEmbeddingRepository embeddings;
     private final ProjectService projects;
     private final TransactionTemplate transactions;
     private final IndexingProperties properties;
@@ -26,6 +28,7 @@ class IndexOutcomes {
             IndexJobRepository jobs,
             SnapshotRepository snapshots,
             IndexStore store,
+            ChunkEmbeddingRepository embeddings,
             ProjectService projects,
             TransactionTemplate transactions,
             IndexingProperties properties,
@@ -33,13 +36,15 @@ class IndexOutcomes {
         this.jobs = jobs;
         this.snapshots = snapshots;
         this.store = store;
+        this.embeddings = embeddings;
         this.projects = projects;
         this.transactions = transactions;
         this.properties = properties;
         this.clock = clock;
     }
 
-    // Returns false when the claim was lost and nothing changed.
+    // Returns false when the claim was lost and nothing changed. Embeddings already stored stay
+    // cached, so the next job does not pay for them again (D-051).
     boolean fail(Claim claim, IndexErrorCode code) {
         return Boolean.TRUE.equals(
                 transactions.execute(
@@ -57,8 +62,9 @@ class IndexOutcomes {
     }
 
     // Activation, change summary, pruning and cleanup in one transaction, so a retried job
-    // never sees a half-finished snapshot (D-044).
-    boolean complete(Claim claim) {
+    // never sees a half-finished snapshot (D-044). Every chunk of the snapshot already has a
+    // vector of the embedding model, or embeddings are off (D-050).
+    boolean complete(Claim claim, EmbeddingStage.@Nullable Result embedding) {
         return Boolean.TRUE.equals(
                 transactions.execute(
                         tx -> {
@@ -71,6 +77,10 @@ class IndexOutcomes {
                                             claim.snapshotId(),
                                             claim.projectId(),
                                             LineChunker.VERSION);
+                            if (embedding != null) {
+                                snapshots.recordEmbedding(
+                                        claim.snapshotId(), embedding.model(), embedding.tokens());
+                            }
                             UUID previous =
                                     projects.activateSnapshot(
                                             claim.projectId(), claim.snapshotId());
@@ -90,6 +100,7 @@ class IndexOutcomes {
                                     properties.retainedSnapshots(),
                                     now);
                             snapshots.removeUnreferencedContent(claim.projectId());
+                            embeddings.deleteOrphans();
                             projects.finishJobs(List.of(claim.jobId()));
                             return true;
                         }));
