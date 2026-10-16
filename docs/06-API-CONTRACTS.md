@@ -8,6 +8,8 @@
 - Erros em ProblemDetail (RFC 9457) com `code` estável em inglês e mensagem segura em pt-BR (D-022, D-025).
 - OpenAPI code-first como contrato principal; o contrato gerado é versionado em `apps/backend/openapi.json` (D-023).
 - Validar entrada com Bean Validation.
+- Identificador malformado no caminho (ex.: `/projects/abc`) responde `400 VALIDATION_FAILED`, com `field` igual ao nome do parâmetro (`projectId`).
+- Toda resposta, de sucesso ou de erro, traz o cabeçalho `X-Request-Id` com o mesmo `requestId` usado nos logs. O `requestId` é sempre gerado pelo backend (UUID v7); um `X-Request-Id` enviado pelo cliente é ignorado.
 - Não devolver caminhos absolutos do sistema operacional.
 - Endpoints de consulta devem operar sobre um snapshot explícito ou sobre o snapshot ativo claramente indicado.
 
@@ -64,6 +66,20 @@ Erros de validação acrescentam `errors`, com itens contendo **apenas** `field`
 
 Não incluir stack traces, credenciais, conteúdo sensível, valores rejeitados ou caminhos internos nos erros destinados ao frontend.
 
+### Códigos genéricos
+
+Além dos códigos de cada recurso, qualquer endpoint pode responder (D-022):
+
+| Status | `code` | Quando |
+|---|---|---|
+| 400 | `MALFORMED_REQUEST` | Corpo ilegível: JSON inválido, tipo incompatível ou valor de enum desconhecido. |
+| 404 | `RESOURCE_NOT_FOUND` | Rota inexistente. |
+| 405 | `METHOD_NOT_ALLOWED` | Método HTTP não suportado pela rota. |
+| 415 | `UNSUPPORTED_MEDIA_TYPE` | `Content-Type` não suportado. |
+| 500 | `INTERNAL_ERROR` | Falha inesperada. |
+
+`INTERNAL_ERROR` **nunca** devolve detalhes da exceção (mensagem, classe, causa ou stack trace): `title` e `detail` são textos fixos, e o `requestId` é a única informação para correlacionar com o log.
+
 ## 3. Workspaces
 
 ### `POST /workspaces`
@@ -74,7 +90,11 @@ Request:
 { "name": "Meus projetos" }
 ```
 
+`name` é opcional. Ausente, `null` ou vazio após o `trim`, assume "Meus projetos". O valor passa por `trim` e normalização NFC; depois disso, tem no máximo 100 caracteres e não contém caracteres de controle. Nomes repetidos são permitidos (D-032).
+
 Response: `201 Created`, objeto com `id`, `name`, `createdAt`.
+
+Erros: `400 VALIDATION_FAILED`.
 
 ### `GET /workspaces`
 Lista workspaces com a contagem de projetos. Paginada (§1, D-030).
@@ -151,17 +171,28 @@ ZIP (o arquivo é enviado depois, em `POST /projects/{projectId}/imports/zip`):
 
 Response: `201 Created` com o projeto.
 
-`relativePath` passa por normalização **sintática** e o valor normalizado é o que a resposta devolve (D-020): Unicode NFC, `/` como único separador, barras repetidas e finais e segmentos `.` removidos; vazio = a própria raiz. `/` inicial ou segmento `..` são rejeitados. A comparação é sensível a maiúsculas.
+`name` é obrigatório: passa por `trim` e normalização NFC; depois disso, não pode ser vazio, tem no máximo 100 caracteres e não contém caracteres de controle. Nomes repetidos são permitidos (D-032).
+
+Em `LOCAL_FOLDER`, `rootKey` e `relativePath` são obrigatórios (`null` responde `400 VALIDATION_FAILED`). Em `ZIP`, ambos devem estar ausentes.
+
+`relativePath` passa por normalização **sintática** e o valor normalizado é o que a resposta devolve (D-020, D-032):
+- Unicode NFC;
+- `/` é o único separador; barras repetidas viram uma só;
+- barras finais e segmentos `.` são removidos;
+- `""` e `"."` (e equivalentes como `"./"`) representam **a própria raiz** e são devolvidos como `""`;
+- `/` inicial (caminho absoluto) ou qualquer segmento `..` → `400 PATH_OUTSIDE_ROOT`;
+- NUL, barra invertida (`\`) ou outros caracteres de controle → `400 VALIDATION_FAILED`;
+- a comparação é sensível a maiúsculas.
 
 A criação **não acessa o sistema de arquivos**: a existência da pasta, o tipo e os links simbólicos são verificados na pré-análise da Etapa 2 (D-018), que também poderá avisar sobre projetos que diferem apenas por maiúsculas/minúsculas.
 
-Erros:
-- `404 WORKSPACE_NOT_FOUND`;
-- `409 LOCAL_ROOTS_NOT_CONFIGURED`: `LOCAL_FOLDER` sem nenhuma raiz configurada (D-029);
-- `404 ROOT_NOT_FOUND`;
-- `400 PATH_OUTSIDE_ROOT`: `/` inicial ou segmento `..`;
-- `409 PROJECT_ALREADY_EXISTS`: o workspace já tem projeto com a mesma `rootKey` e o mesmo `relativePath` normalizado. Nomes iguais são permitidos; projetos ZIP não são verificados (D-020);
-- `400 VALIDATION_FAILED` (por exemplo, `rootKey` informado para `ZIP`).
+Erros, na ordem em que são verificados (D-032). Para `ZIP`, apenas os passos 1 e 2 se aplicam:
+1. `400 VALIDATION_FAILED`: campos obrigatórios, regras de `name`, `rootKey`/`relativePath` informados para `ZIP`, NUL, `\` ou caracteres de controle em `relativePath`;
+2. `404 WORKSPACE_NOT_FOUND`;
+3. `409 LOCAL_ROOTS_NOT_CONFIGURED`: `LOCAL_FOLDER` sem nenhuma raiz configurada (D-029);
+4. `404 ROOT_NOT_FOUND`;
+5. `400 PATH_OUTSIDE_ROOT`: `/` inicial ou segmento `..`;
+6. `409 PROJECT_ALREADY_EXISTS`: o workspace já tem projeto com a mesma `rootKey` e o mesmo `relativePath` normalizado. Nomes iguais são permitidos; projetos ZIP não são verificados (D-020).
 
 ### `GET /workspaces/{workspaceId}/projects`
 Lista os projetos do workspace. Paginada (§1, D-030).
@@ -169,7 +200,7 @@ Lista os projetos do workspace. Paginada (§1, D-030).
 Erros: `404 WORKSPACE_NOT_FOUND`.
 
 ### `GET /projects/{projectId}`
-Retorna metadados, origem, snapshot ativo e estado de indexação.
+Retorna metadados, origem, snapshot ativo e estado de indexação. Os campos de snapshot e de indexação entram na Etapa 3; até lá, a resposta traz apenas metadados e origem.
 
 Origem:
 ```json

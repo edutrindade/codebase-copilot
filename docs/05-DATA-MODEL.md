@@ -17,18 +17,18 @@
 
 ### `workspaces`
 - `id` UUID, PK
-- `name`
+- `name` (padrão "Meus projetos"; até 100 caracteres após `trim` e NFC, D-032)
 - `created_at`
 - `updated_at`
 
 ### `projects`
 - `id` UUID, PK
 - `workspace_id` FK
-- `name` (nome de exibição)
+- `name` (nome de exibição; obrigatório, até 100 caracteres após `trim` e NFC, D-032)
 - `source_type` (`LOCAL_FOLDER`, `ZIP`)
 - `source_root_key` nullable: chave da raiz permitida configurada no backend (`app.local-roots[n].key`), nunca caminho absoluto (D-018, D-020, D-029)
-- `source_relative_path` nullable: caminho relativo à raiz, com normalização sintática (NFC, separador `/`, sem barras finais nem segmentos `.`; sem acesso ao sistema de arquivos) e comparação sensível a maiúsculas (D-020); string vazia representa a própria raiz
-- `current_import_job_id` nullable, FK para `import_jobs`: último import ZIP concluído com sucesso; sem relação com snapshots (D-020)
+- `source_relative_path` nullable: caminho relativo à raiz, com normalização sintática (NFC, separador `/`, sem barras finais nem segmentos `.`; `\` e caracteres de controle rejeitados; sem acesso ao sistema de arquivos) e comparação sensível a maiúsculas (D-020, D-032); string vazia representa a própria raiz (entradas `""` e `"."` são gravadas como `""`)
+- `current_import_job_id` nullable, FK para `import_jobs`: último import ZIP concluído com sucesso; sem relação com snapshots (D-020). **Entra na migração da Etapa 2**, junto com `import_jobs`.
 - `created_at`
 - `updated_at`
 
