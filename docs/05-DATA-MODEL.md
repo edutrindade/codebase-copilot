@@ -28,26 +28,29 @@
 - `source_type` (`LOCAL_FOLDER`, `ZIP`)
 - `source_root_key` nullable: chave da raiz permitida configurada no backend (`app.local-roots[n].key`), nunca caminho absoluto (D-018, D-020, D-029)
 - `source_relative_path` nullable: caminho relativo à raiz, com normalização sintática (NFC, separador `/`, sem barras finais nem segmentos `.`; `\` e caracteres de controle rejeitados; sem acesso ao sistema de arquivos) e comparação sensível a maiúsculas (D-020, D-032); string vazia representa a própria raiz (entradas `""` e `"."` são gravadas como `""`)
-- `current_import_job_id` nullable, FK para `import_jobs`: último import ZIP concluído com sucesso; sem relação com snapshots (D-020). **Entra na migração da Etapa 2**, junto com `import_jobs`.
+- `current_import_job_id` nullable: último import ZIP concluído com sucesso; sem relação com snapshots (D-020). Criado na migração V4 (Etapa 2), com FK composta `(id, current_import_job_id)` → `import_jobs (project_id, id)`, que garante que o import pertence ao próprio projeto.
 - `created_at`
 - `updated_at`
 
 Restrições:
 - `LOCAL_FOLDER`: `source_root_key` e `source_relative_path` obrigatórios; `current_import_job_id` nulo.
-- `ZIP`: `source_root_key` e `source_relative_path` nulos; `current_import_job_id` nulo até o primeiro upload concluído.
+- `ZIP`: `source_root_key` e `source_relative_path` nulos; `current_import_job_id` nulo até o primeiro upload concluído (`CHECK projects_current_import_zip_only`). Só o worker de importação o preenche, na mesma transação que marca o job `COMPLETED`.
 - Índice único parcial `(workspace_id, source_root_key, source_relative_path) WHERE source_type = 'LOCAL_FOLDER'`: impede projeto duplicado no mesmo workspace (`409 PROJECT_ALREADY_EXISTS`, D-020). Nomes iguais são permitidos; projetos ZIP não são verificados.
-- `projects.current_import_job_id` e `import_jobs.project_id` formam uma referência circular: `current_import_job_id` usa `ON DELETE SET NULL` para que a remoção em cascata do projeto (D-021) funcione.
+- `projects.current_import_job_id` e `import_jobs.project_id` formam uma referência circular: a FK do import atual usa `ON DELETE SET NULL (current_import_job_id)` (PostgreSQL 15+), que anula só essa coluna, para que a remoção em cascata do projeto (D-021) funcione.
 
 `active_snapshot_id` (FK para `snapshots`) **não entra na migração da Etapa 1**; será adicionada na migração da Etapa 3, junto com o modelo de snapshots (O-008).
 
 ### `project_settings`
-- `project_id` PK/FK
-- `include_patterns` JSONB
-- `exclude_patterns` JSONB
-- `max_file_bytes`
-- `max_project_bytes`
-- `settings_version`
+Criada na migração V5 (Etapa 2, D-036). Linha opcional: sem linha, o projeto usa os padrões.
+- `project_id` PK/FK (`ON DELETE CASCADE`)
+- `exclude_patterns` `text[]`: padrões customizados, somados às regras padrão
+- `disabled_default_rules` `text[]`: ids de regras padrão desativáveis
+- `max_file_bytes` nullable: `null` usa `app.inventory.max-file-bytes`
+- `max_project_bytes` nullable: `null` usa `app.inventory.max-project-bytes`
+- `settings_version`: incrementada a cada `PUT`; a Etapa 3 a usa para decidir a reindexação
 - `updated_at`
+
+As regras padrão vivem no código (`DefaultExclusionRules`), não no banco. Não há `include_patterns` (D-036).
 
 ### `import_jobs`
 - `id` UUID, PK
@@ -56,10 +59,11 @@ Restrições:
 - `compressed_bytes`
 - `uncompressed_bytes` nullable
 - `entry_count` nullable
-- `error_code` nullable
-- `error_message_sanitized` nullable
+- `error_code` nullable: código estável (`ZIP_INVALID`, `ZIP_UNSAFE_PATH`, `ZIP_DUPLICATE_ENTRY`, `ZIP_TOO_MANY_ENTRIES`, `ZIP_ENTRY_TOO_LARGE`, `ZIP_UNCOMPRESSED_TOO_LARGE`, `ZIP_COMPRESSION_RATIO_EXCEEDED`, `ZIP_TOO_DEEP`, `IMPORT_INTERRUPTED`, `IMPORT_IO_ERROR`)
 - `created_at`
 - `completed_at` nullable
+
+Criada na migração V4 (Etapa 2). `CHECK import_jobs_state_consistency`: jobs em andamento não têm `completed_at` nem `error_code`; `COMPLETED` tem `completed_at`, `uncompressed_bytes` e `entry_count`; `REJECTED` e `FAILED` têm `completed_at` e `error_code`. A mensagem exibida vem do `MessageSource` (`import.error.<CODE>`); não há coluna de mensagem (D-028, atualização de 16/10/2026).
 
 Índice único parcial `(project_id) WHERE status IN ('PENDING', 'EXTRACTING')`: no máximo um import em andamento por projeto (`409 PROJECT_BUSY`, D-028).
 
@@ -236,7 +240,7 @@ Remoção (D-021):
 - Excluir um projeto remove em cascata imports (incluindo diretórios remanescentes em `DATA_DIR/imports`), snapshots, arquivos, chunks, índices, conversas, respostas e evidências.
 - A exclusão de projeto é recusada com `409 PROJECT_BUSY` enquanto houver job de importação ou indexação em execução.
 - Excluir um workspace com projetos é recusado com `409 WORKSPACE_NOT_EMPTY`.
-- Diretórios de importação são apagados quando o job conclui ou falha (D-028).
+- A pasta de um import é apagada quando ele termina `REJECTED` ou `FAILED`, quando um import mais novo do mesmo projeto conclui e na remoção do projeto; a do import atual é retida como origem do projeto ZIP (D-033). Na inicialização, pastas que não pertencem a um import atual são removidas.
 
 Ainda a definir:
 - snapshots antigos;

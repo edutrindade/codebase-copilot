@@ -131,22 +131,31 @@ Sem nenhuma raiz configurada, devolve `[]`. O fluxo ZIP continua disponível.
 ### `GET /local-roots/{rootKey}/directories?path=<relativo>`
 Lista os subdiretórios imediatos de `path` (relativo à raiz; vazio ou ausente = a própria raiz).
 
-Response `200 OK`:
+Response `200 OK` (D-038):
 ```json
-[
-  { "name": "codebase-copilot", "relativePath": "codebase-copilot", "hasChildren": true }
-]
+{
+  "path": "clientes",
+  "directories": [
+    { "name": "api", "relativePath": "clientes/api", "hasChildren": true, "readable": true }
+  ],
+  "truncated": false
+}
 ```
 
 Regras:
-- o backend canonicaliza `path` e valida que permanece dentro da raiz;
-- links simbólicos não são listados nem seguidos;
-- apenas diretórios são listados.
+- `path` passa pela mesma normalização sintática de `relativePath` (§5) e é devolvido normalizado;
+- cada segmento é verificado sem seguir links; um caminho que passa por link é tratado como inexistente (D-037);
+- apenas subdiretórios reais são listados: links e arquivos são omitidos, assim como diretórios cujo nome teria `\` ou caracteres de controle;
+- nomes em NFC, ordenados sem distinção de maiúsculas (desempate pela ordem sensível);
+- `hasChildren` indica se há ao menos um subdiretório real; `readable: false` indica um diretório que o backend não consegue listar;
+- no máximo `app.browse.max-directories` itens (padrão 1000); acima disso, `truncated: true`.
 
-Erros:
-- `404 ROOT_NOT_FOUND`;
-- `400 PATH_OUTSIDE_ROOT`;
-- `404 DIRECTORY_NOT_FOUND`.
+Erros, nesta ordem:
+1. `400 VALIDATION_FAILED` (`field = "path"`): NUL, `\` ou caracteres de controle;
+2. `404 ROOT_NOT_FOUND`, inclusive sem raízes configuradas;
+3. `400 PATH_OUTSIDE_ROOT`: `/` inicial ou segmento `..`;
+4. `404 DIRECTORY_NOT_FOUND`: inexistente, não é diretório ou passa por link;
+5. `409 DIRECTORY_NOT_READABLE`.
 
 ## 5. Projetos
 
@@ -218,15 +227,83 @@ Retorna metadados, origem, snapshot ativo e estado de indexação. Os campos de 
 }
 ```
 
-`source` é polimórfico, com discriminador `type`. Para projetos `ZIP`, traz `type` e `currentImport` (`id` e `status`), `null` até o primeiro upload concluído (Etapa 2).
+`source` é polimórfico, com discriminador `type`. Para projetos `ZIP`, traz `type` e `currentImport` (`id` e `status`), `null` até o primeiro upload concluído. O import atual só muda quando um novo upload conclui com sucesso; um import em andamento aparece em `GET /projects/{projectId}/imports` (§6).
 
 Erros: `404 PROJECT_NOT_FOUND`.
 
 ### `GET /projects/{projectId}/inventory`
-Retorna linguagens, diretórios, contagens e exclusões.
+Pré-análise e inventário (F-02, F-04), calculados a cada chamada e não persistidos (D-035). A origem é a pasta do projeto `LOCAL_FOLDER` ou a árvore extraída do import atual do projeto `ZIP` (D-033). Arquivos são lidos apenas como bytes; links nunca são seguidos e arquivos especiais nunca são abertos (D-037).
 
-### `PATCH /projects/{projectId}/settings`
-Atualiza padrões de inclusão/exclusão e limites. Requer validação e pode exigir reindexação.
+Response `200 OK`:
+```json
+{
+  "projectId": "…",
+  "scannedAt": "2026-10-16T12:00:00Z",
+  "settingsVersion": 0,
+  "truncated": false,
+  "totals": {
+    "files": 1240, "includedFiles": 980, "includedBytes": 7340032,
+    "excludedFiles": 200, "unsupportedFiles": 50, "unreadableFiles": 10,
+    "excludedDirectories": 4
+  },
+  "byLanguage": [ { "language": "java", "files": 420, "bytes": 3145728 } ],
+  "byDirectory": [
+    { "path": "src", "includedFiles": 900, "excludedFiles": 12, "unsupportedFiles": 3, "unreadableFiles": 0 }
+  ],
+  "exclusions": [
+    { "reason": "DEFAULT_RULE", "ruleId": "node-modules", "pattern": null,
+      "files": 0, "directories": 1, "examples": ["web/node_modules"] }
+  ],
+  "warnings": [
+    { "code": "CASE_VARIANT_PROJECT", "message": "…", "relatedProjectIds": ["…"] }
+  ]
+}
+```
+
+- **Estados dos arquivos:** incluído, excluído, não suportado (binário) ou ilegível.
+- **`reason`:** `DEFAULT_RULE` (com `ruleId`), `CUSTOM_PATTERN` (com `pattern`), `SYMLINK`, `SPECIAL_FILE`, `DEPTH_LIMIT`, `TOO_LARGE`, `BINARY` (byte NUL nos primeiros 8 KB) e `UNREADABLE`.
+- `byDirectory` agrega pelo primeiro nível (`""` = arquivos da raiz). Diretórios excluídos não são percorridos; seus arquivos não entram nas contagens.
+- `examples`: até 20 caminhos relativos por grupo, em ordem lexicográfica.
+- `language`: id estável em minúsculas, detectado por nome, extensão e shebang; `text` quando não reconhecido.
+- **Avisos:** `CASE_VARIANT_PROJECT` (outro projeto do workspace aponta para a mesma pasta com outras maiúsculas, D-020), `SCAN_LIMIT_REACHED`, `PROJECT_SIZE_LIMIT_EXCEEDED` e `NO_INCLUDED_FILES`.
+- Limites: `app.inventory.max-entries` (200.000), `max-depth` (64), `max-file-bytes` (1 MB) e `max-project-bytes` (500 MB), os dois últimos ajustáveis por projeto.
+
+Erros, nesta ordem:
+1. `404 PROJECT_NOT_FOUND`;
+2. `LOCAL_FOLDER`: `409 SOURCE_ROOT_NOT_CONFIGURED` (a `rootKey` saiu da configuração, D-020); depois `409 SOURCE_DIRECTORY_NOT_FOUND`, `409 SOURCE_IS_SYMLINK` ou `409 SOURCE_NOT_READABLE`, na ordem dos segmentos;
+3. `ZIP`: `409 SOURCE_NOT_IMPORTED`, se não houver import atual.
+
+### `GET /projects/{projectId}/settings`
+Exclusões e limites do projeto (D-036). Sem configuração salva, devolve os padrões, com `version = 0` e `updatedAt = null`.
+
+```json
+{
+  "excludePatterns": ["docs/generated/"],
+  "disabledDefaultRules": ["vendor"],
+  "maxFileBytes": null,
+  "maxProjectBytes": null,
+  "effectiveMaxFileBytes": 1048576,
+  "effectiveMaxProjectBytes": 524288000,
+  "defaultRules": [
+    { "id": "vendor", "category": "DEPENDENCIES", "patterns": ["vendor/"], "exceptions": [],
+      "overridable": true, "disabled": true }
+  ],
+  "version": 1,
+  "updatedAt": "2026-10-16T12:00:00Z"
+}
+```
+
+Erros: `404 PROJECT_NOT_FOUND`.
+
+### `PUT /projects/{projectId}/settings`
+Substitui as configurações (D-038). Request: `{ excludePatterns, disabledDefaultRules, maxFileBytes, maxProjectBytes }`; listas ausentes são vazias, e limites `null` voltam ao padrão. Response: o mesmo formato do `GET`, com `version` incrementada.
+
+Validação (todos os erros numa única resposta, com `field` indexado, ex.: `excludePatterns[3]`):
+- até 100 padrões, cada um com 1 a 200 caracteres, na sintaxe da D-036; duplicados são removidos, preservando a ordem;
+- `disabledDefaultRules`: ids existentes e desativáveis (regras `SENSITIVE`, `VCS` e `MEDIA_BINARY` não podem ser desativadas);
+- limites entre 1 KB e os tetos `app.inventory.max-file-bytes-limit` (10 MB) e `max-project-bytes-limit` (2 GB).
+
+Erros, nesta ordem: `400 VALIDATION_FAILED`, `404 PROJECT_NOT_FOUND`. A mudança vale para o próximo inventário e, a partir da Etapa 3, pode exigir reindexação.
 
 ### `DELETE /projects/{projectId}`
 Remove projeto, imports, índices, snapshots e histórico em cascata (D-021).
@@ -234,35 +311,59 @@ Remove projeto, imports, índices, snapshots e histórico em cascata (D-021).
 Responses:
 - `204 No Content`;
 - `404 PROJECT_NOT_FOUND`;
-- `409 PROJECT_BUSY` se houver job de importação ou indexação em execução. Cancelamento de job é evolução futura.
+- `409 PROJECT_BUSY` se houver job de importação em execução (os de indexação entram na Etapa 3). Cancelamento de job é evolução futura.
+
+A remoção trava a linha do projeto antes de verificar os jobs, o que a serializa com uploads concorrentes. As pastas dos imports são apagadas depois do commit.
 
 ## 6. Importação ZIP
 
 O projeto `ZIP` é criado primeiro (seção 5) e o arquivo é enviado depois.
 
 ### `POST /projects/{projectId}/imports/zip`
-Upload multipart com limites rígidos de tamanho.
+Upload `multipart/form-data`, com o arquivo na parte `file`.
 
-Response: `202 Accepted` com `importJobId` e estado inicial.
+Response: `202 Accepted` com o import no formato de `GET /imports/{importJobId}` (estado `PENDING`) e cabeçalho `Location`. A extração roda em segundo plano depois do commit (D-034).
 
 Regras:
-- válido apenas para projetos com `sourceType` `ZIP`; caso contrário, `409 PROJECT_SOURCE_MISMATCH`;
-- tamanho máximo do arquivo em `app.import.max-zip-bytes` (padrão 100 MB, hipótese a ajustar); os limites do multipart do Spring são coerentes com ele (D-028);
-- no máximo um import em andamento por projeto;
+- válido apenas para projetos com `sourceType` `ZIP`;
+- tamanho máximo do arquivo em `app.import.max-zip-bytes` (padrão 100 MB, hipótese a ajustar); os limites do multipart do Spring derivam dele, e a aplicação não inicia se forem menores (D-028);
+- no máximo um import em andamento por projeto, garantido por índice único (seguro sob concorrência);
 - cada upload cria um novo import em `DATA_DIR/imports/<importJobId>` (D-028);
-- `current_import_job_id` do projeto só é substituído quando o novo import conclui com sucesso.
+- `current_import_job_id` do projeto só é substituído quando o novo import conclui com sucesso; a pasta do anterior é então apagada (D-033);
+- o nome original do arquivo não é persistido nem logado.
 
-Erros:
-- `404 PROJECT_NOT_FOUND`;
-- `409 PROJECT_SOURCE_MISMATCH`: o projeto é `LOCAL_FOLDER` (operação incompatível com o tipo de origem, D-020);
-- `409 PROJECT_BUSY`: já existe import em andamento no projeto;
-- `413 UPLOAD_TOO_LARGE`: arquivo acima de `app.import.max-zip-bytes` ou dos limites do multipart;
-- `400 VALIDATION_FAILED`: requisição sem arquivo.
+Erros, nesta ordem:
+1. `400 VALIDATION_FAILED` (`field = "file"`): parte ausente ou vazia;
+2. `413 UPLOAD_TOO_LARGE`: arquivo acima de `app.import.max-zip-bytes` (o limite do multipart responde o mesmo código antes de a requisição chegar ao serviço);
+3. `404 PROJECT_NOT_FOUND`;
+4. `409 PROJECT_SOURCE_MISMATCH`: o projeto é `LOCAL_FOLDER` (D-020);
+5. `409 PROJECT_BUSY`: já existe import em andamento no projeto.
 
-O serviço precisa validar path traversal, quantidade de entradas, tamanho descompactado e tipos permitidos.
+**Extração segura** (`07-SECURITY-PRIVACY-COSTS.md` §4): limites contados pelos bytes realmente gravados (`max-entries` 50.000, `max-uncompressed-bytes` 1 GB, `max-entry-bytes` 100 MB, `max-compression-ratio` 100 a partir de `compression-ratio-min-bytes` 1 MB, `max-depth` 64, `max-path-length` 1.024); nomes absolutos, com `..`, `\`, letra de unidade ou caracteres de controle são recusados; entradas repetidas (inclusive por maiúsculas em FS sem distinção de caixa) são recusadas; links nunca são criados. Violações terminam o job como `REJECTED`; falhas de E/S, como `FAILED`.
 
 ### `GET /imports/{importJobId}`
-Retorna estado, tamanhos, contagem de entradas, erros sanitizados e timestamps.
+```json
+{
+  "id": "…",
+  "projectId": "…",
+  "status": "REJECTED",
+  "compressedBytes": 2048,
+  "uncompressedBytes": null,
+  "entryCount": null,
+  "error": { "code": "ZIP_UNSAFE_PATH", "message": "O ZIP contém caminhos inseguros (…)." },
+  "createdAt": "2026-10-16T12:00:00Z",
+  "completedAt": "2026-10-16T12:00:01Z"
+}
+```
+
+`status`: `PENDING`, `EXTRACTING`, `COMPLETED`, `REJECTED` ou `FAILED`. `error.code` é um código estável (`05-DATA-MODEL.md`, `import_jobs`); `error.message` vem em pt-BR e nunca contém nomes tirados do arquivo. Jobs interrompidos por um encerramento da aplicação terminam como `FAILED` com `IMPORT_INTERRUPTED` na próxima inicialização.
+
+Erros: `404 IMPORT_NOT_FOUND`.
+
+### `GET /projects/{projectId}/imports`
+Lista os imports do projeto, do mais novo para o mais antigo, no formato acima. Paginada (§1, D-030).
+
+Erros: `404 PROJECT_NOT_FOUND`.
 
 ## 7. Indexação
 

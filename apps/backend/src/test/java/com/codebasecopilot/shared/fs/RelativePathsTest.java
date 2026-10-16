@@ -1,4 +1,4 @@
-package com.codebasecopilot.project;
+package com.codebasecopilot.shared.fs;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

@@ -4,6 +4,7 @@ import com.codebasecopilot.shared.IdGenerator;
 import com.codebasecopilot.shared.error.ApiException;
 import com.codebasecopilot.shared.error.ErrorCode;
 import com.codebasecopilot.shared.error.FieldViolation;
+import com.codebasecopilot.shared.fs.RelativePaths;
 import com.codebasecopilot.shared.localroots.LocalRoots;
 import com.codebasecopilot.shared.pagination.PageRequestParams;
 import com.codebasecopilot.shared.pagination.PageResponse;
@@ -14,8 +15,13 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
+import org.jspecify.annotations.Nullable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +35,7 @@ public class ProjectService {
     private final ProjectRepository repository;
     private final WorkspaceService workspaces;
     private final LocalRoots localRoots;
+    private final ProjectImports imports;
     private final IdGenerator idGenerator;
     private final Clock clock;
 
@@ -36,11 +43,13 @@ public class ProjectService {
             ProjectRepository repository,
             WorkspaceService workspaces,
             LocalRoots localRoots,
+            ProjectImports imports,
             IdGenerator idGenerator,
             Clock clock) {
         this.repository = repository;
         this.workspaces = workspaces;
         this.localRoots = localRoots;
+        this.imports = imports;
         this.idGenerator = idGenerator;
         this.clock = clock;
     }
@@ -71,6 +80,7 @@ public class ProjectService {
                         command.sourceType(),
                         rootKey,
                         relativePath,
+                        null,
                         now,
                         now);
         try {
@@ -90,24 +100,75 @@ public class ProjectService {
     }
 
     @Transactional(readOnly = true)
-    public Project get(UUID id) {
-        return repository.findById(id).orElseThrow(ProjectService::notFound);
+    public ProjectSummary get(UUID id) {
+        Project project = repository.findById(id).orElseThrow(ProjectService::notFound);
+        return summarize(List.of(project)).getFirst();
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<Project> list(UUID workspaceId, PageRequestParams params) {
+    public PageResponse<ProjectSummary> list(UUID workspaceId, PageRequestParams params) {
         workspaces.requireExists(workspaceId);
         return PageResponse.of(
-                repository.findPageByWorkspace(workspaceId, params),
+                summarize(repository.findPageByWorkspace(workspaceId, params)),
                 params,
                 repository.countByWorkspace(workspaceId));
     }
 
+    // The row lock serializes the busy check with concurrent uploads (D-021, D-028).
     @Transactional
     public void delete(UUID id) {
-        if (!repository.deleteById(id)) {
-            throw notFound();
+        repository.findByIdForUpdate(id).orElseThrow(ProjectService::notFound);
+        if (imports.hasActiveImport(id)) {
+            throw new ApiException(ErrorCode.PROJECT_BUSY);
         }
+        imports.onProjectDeleted(id);
+        repository.deleteById(id);
+    }
+
+    // Returns the previous current import, whose files the caller may now remove.
+    @Transactional
+    public @Nullable UUID replaceCurrentImport(UUID projectId, UUID importJobId) {
+        Project project =
+                repository.findByIdForUpdate(projectId).orElseThrow(ProjectService::notFound);
+        repository.updateCurrentImport(
+                projectId, importJobId, clock.instant().truncatedTo(ChronoUnit.MICROS));
+        return project.currentImportJobId();
+    }
+
+    // LOCAL_FOLDER projects of the same workspace and root whose path differs only by case;
+    // on case-insensitive file systems they point to the same folder (D-020).
+    @Transactional(readOnly = true)
+    public List<Project> findCaseVariants(Project project) {
+        if (project.sourceType() != SourceType.LOCAL_FOLDER) {
+            return List.of();
+        }
+        return repository.findCaseVariants(project);
+    }
+
+    // Which of the given imports are still the current import of some project.
+    @Transactional(readOnly = true)
+    public Set<UUID> currentImportsAmong(Collection<UUID> importJobIds) {
+        return repository.findCurrentImportIds(importJobIds);
+    }
+
+    // One batch lookup per page, never one per project.
+    private List<ProjectSummary> summarize(List<Project> projects) {
+        List<UUID> importIds =
+                projects.stream()
+                        .map(Project::currentImportJobId)
+                        .filter(Objects::nonNull)
+                        .toList();
+        Map<UUID, ProjectImports.CurrentImport> current =
+                importIds.isEmpty() ? Map.of() : imports.find(importIds);
+        return projects.stream()
+                .map(
+                        p ->
+                                new ProjectSummary(
+                                        p,
+                                        p.currentImportJobId() == null
+                                                ? null
+                                                : current.get(p.currentImportJobId())))
+                .toList();
     }
 
     private static String validate(CreateProjectCommand command) {

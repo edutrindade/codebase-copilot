@@ -9,6 +9,167 @@
     "description" : "Generated server url"
   } ],
   "paths" : {
+    "/api/v1/imports/{importJobId}" : {
+      "get" : {
+        "operationId" : "get_3",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "importJobId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ImportResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: VALIDATION_FAILED."
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: IMPORT_NOT_FOUND."
+          },
+          "500" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
+          }
+        },
+        "tags" : [ "import-controller" ]
+      }
+    },
+    "/api/v1/local-roots" : {
+      "get" : {
+        "operationId" : "list_3",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/LocalRootResponse"
+                  }
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "500" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
+          }
+        },
+        "tags" : [ "local-roots-controller" ]
+      }
+    },
+    "/api/v1/local-roots/{rootKey}/directories" : {
+      "get" : {
+        "operationId" : "directories",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "rootKey",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "path",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DirectoryListingResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: VALIDATION_FAILED, PATH_OUTSIDE_ROOT."
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: ROOT_NOT_FOUND, DIRECTORY_NOT_FOUND."
+          },
+          "409" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: DIRECTORY_NOT_READABLE."
+          },
+          "500" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
+          }
+        },
+        "tags" : [ "local-roots-controller" ]
+      }
+    },
     "/api/v1/projects/{projectId}" : {
       "delete" : {
         "operationId" : "delete_1",
@@ -45,6 +206,16 @@
             },
             "description" : "Erro (ProblemDetail). Códigos: PROJECT_NOT_FOUND."
           },
+          "409" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: PROJECT_BUSY."
+          },
           "500" : {
             "content" : {
               "application/problem+json" : {
@@ -59,7 +230,7 @@
         "tags" : [ "project-controller" ]
       },
       "get" : {
-        "operationId" : "get_1",
+        "operationId" : "get_2",
         "parameters" : [ {
           "in" : "path",
           "name" : "projectId",
@@ -112,6 +283,385 @@
           }
         },
         "tags" : [ "project-controller" ]
+      }
+    },
+    "/api/v1/projects/{projectId}/imports" : {
+      "get" : {
+        "operationId" : "list_2",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 0,
+            "minimum" : 0
+          }
+        }, {
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 20,
+            "maximum" : 100,
+            "minimum" : 1
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PageResponseImportResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: VALIDATION_FAILED."
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: PROJECT_NOT_FOUND."
+          },
+          "500" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
+          }
+        },
+        "tags" : [ "import-controller" ]
+      }
+    },
+    "/api/v1/projects/{projectId}/imports/zip" : {
+      "post" : {
+        "operationId" : "uploadZip",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "file" : {
+                    "type" : "string",
+                    "format" : "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ImportResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: VALIDATION_FAILED, MALFORMED_REQUEST."
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: PROJECT_NOT_FOUND."
+          },
+          "409" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: PROJECT_BUSY, PROJECT_SOURCE_MISMATCH."
+          },
+          "413" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: UPLOAD_TOO_LARGE."
+          },
+          "415" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: UNSUPPORTED_MEDIA_TYPE."
+          },
+          "500" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
+          }
+        },
+        "tags" : [ "import-controller" ]
+      }
+    },
+    "/api/v1/projects/{projectId}/inventory" : {
+      "get" : {
+        "operationId" : "inventory",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/InventoryResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: VALIDATION_FAILED."
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: PROJECT_NOT_FOUND."
+          },
+          "409" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: SOURCE_ROOT_NOT_CONFIGURED, SOURCE_DIRECTORY_NOT_FOUND, SOURCE_IS_SYMLINK, SOURCE_NOT_READABLE, SOURCE_NOT_IMPORTED."
+          },
+          "500" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
+          }
+        },
+        "tags" : [ "inventory-controller" ]
+      }
+    },
+    "/api/v1/projects/{projectId}/settings" : {
+      "get" : {
+        "operationId" : "get",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SettingsResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: VALIDATION_FAILED."
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: PROJECT_NOT_FOUND."
+          },
+          "500" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
+          }
+        },
+        "tags" : [ "project-settings-controller" ]
+      },
+      "put" : {
+        "operationId" : "update",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateSettingsRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SettingsResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: VALIDATION_FAILED, MALFORMED_REQUEST."
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: PROJECT_NOT_FOUND."
+          },
+          "415" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: UNSUPPORTED_MEDIA_TYPE."
+          },
+          "500" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
+          }
+        },
+        "tags" : [ "project-settings-controller" ]
       }
     },
     "/api/v1/workspaces" : {
@@ -290,7 +840,7 @@
         "tags" : [ "workspace-controller" ]
       },
       "get" : {
-        "operationId" : "get",
+        "operationId" : "get_1",
         "parameters" : [ {
           "in" : "path",
           "name" : "workspaceId",
@@ -550,6 +1100,128 @@
         },
         "required" : [ "id", "status" ]
       },
+      "DefaultRuleResponse" : {
+        "type" : "object",
+        "properties" : {
+          "category" : {
+            "type" : "string",
+            "enum" : [ "SENSITIVE", "VCS", "DEPENDENCIES", "BUILD_OUTPUT", "IDE_CACHE", "GENERATED", "MEDIA_BINARY" ]
+          },
+          "disabled" : {
+            "type" : "boolean"
+          },
+          "exceptions" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "overridable" : {
+            "type" : "boolean"
+          },
+          "patterns" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        },
+        "required" : [ "category", "disabled", "exceptions", "id", "overridable", "patterns" ]
+      },
+      "DirectoryCountResponse" : {
+        "type" : "object",
+        "properties" : {
+          "excludedFiles" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "includedFiles" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "path" : {
+            "type" : "string"
+          },
+          "unreadableFiles" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "unsupportedFiles" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [ "excludedFiles", "includedFiles", "path", "unreadableFiles", "unsupportedFiles" ]
+      },
+      "DirectoryListingResponse" : {
+        "type" : "object",
+        "properties" : {
+          "directories" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/DirectoryResponse"
+            }
+          },
+          "path" : {
+            "type" : "string"
+          },
+          "truncated" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "directories", "path", "truncated" ]
+      },
+      "DirectoryResponse" : {
+        "type" : "object",
+        "properties" : {
+          "hasChildren" : {
+            "type" : "boolean"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "readable" : {
+            "type" : "boolean"
+          },
+          "relativePath" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "hasChildren", "name", "readable", "relativePath" ]
+      },
+      "ExclusionGroupResponse" : {
+        "type" : "object",
+        "properties" : {
+          "directories" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "examples" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "files" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "pattern" : {
+            "type" : "string"
+          },
+          "reason" : {
+            "type" : "string",
+            "enum" : [ "DEFAULT_RULE", "CUSTOM_PATTERN", "SYMLINK", "SPECIAL_FILE", "DEPTH_LIMIT", "TOO_LARGE", "BINARY", "UNREADABLE" ]
+          },
+          "ruleId" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "directories", "examples", "files", "pattern", "reason", "ruleId" ]
+      },
       "FieldError" : {
         "type" : "object",
         "properties" : {
@@ -561,6 +1233,162 @@
           }
         },
         "required" : [ "field", "message" ]
+      },
+      "ImportErrorResponse" : {
+        "type" : "object",
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "code", "message" ]
+      },
+      "ImportResponse" : {
+        "type" : "object",
+        "properties" : {
+          "completedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "compressedBytes" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "entryCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "error" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/ImportErrorResponse"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "projectId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "PENDING", "EXTRACTING", "COMPLETED", "REJECTED", "FAILED" ]
+          },
+          "uncompressedBytes" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [ "completedAt", "compressedBytes", "createdAt", "entryCount", "error", "id", "projectId", "status", "uncompressedBytes" ]
+      },
+      "InventoryResponse" : {
+        "type" : "object",
+        "properties" : {
+          "byDirectory" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/DirectoryCountResponse"
+            }
+          },
+          "byLanguage" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/LanguageCountResponse"
+            }
+          },
+          "exclusions" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ExclusionGroupResponse"
+            }
+          },
+          "projectId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "scannedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "settingsVersion" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "totals" : {
+            "$ref" : "#/components/schemas/InventoryTotalsResponse"
+          },
+          "truncated" : {
+            "type" : "boolean"
+          },
+          "warnings" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/WarningResponse"
+            }
+          }
+        },
+        "required" : [ "byDirectory", "byLanguage", "exclusions", "projectId", "scannedAt", "settingsVersion", "totals", "truncated", "warnings" ]
+      },
+      "InventoryTotalsResponse" : {
+        "type" : "object",
+        "properties" : {
+          "excludedDirectories" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "excludedFiles" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "files" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "includedBytes" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "includedFiles" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "unreadableFiles" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "unsupportedFiles" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [ "excludedDirectories", "excludedFiles", "files", "includedBytes", "includedFiles", "unreadableFiles", "unsupportedFiles" ]
+      },
+      "LanguageCountResponse" : {
+        "type" : "object",
+        "properties" : {
+          "bytes" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "files" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "language" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "bytes", "files", "language" ]
       },
       "LocalFolderSourceResponse" : {
         "allOf" : [ {
@@ -577,6 +1405,46 @@
           },
           "required" : [ "relativePath", "rootKey" ]
         } ]
+      },
+      "LocalRootResponse" : {
+        "type" : "object",
+        "properties" : {
+          "key" : {
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "key", "label" ]
+      },
+      "PageResponseImportResponse" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ImportResponse"
+            }
+          },
+          "page" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "size" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "totalItems" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "totalPages" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "items", "page", "size", "totalItems", "totalPages" ]
       },
       "PageResponseProjectResponse" : {
         "type" : "object",
@@ -639,7 +1507,7 @@
         "properties" : {
           "code" : {
             "type" : "string",
-            "enum" : [ "VALIDATION_FAILED", "MALFORMED_REQUEST", "RESOURCE_NOT_FOUND", "METHOD_NOT_ALLOWED", "UNSUPPORTED_MEDIA_TYPE", "INTERNAL_ERROR", "WORKSPACE_NOT_FOUND", "WORKSPACE_NOT_EMPTY", "PROJECT_NOT_FOUND", "LOCAL_ROOTS_NOT_CONFIGURED", "ROOT_NOT_FOUND", "PATH_OUTSIDE_ROOT", "PROJECT_ALREADY_EXISTS" ]
+            "enum" : [ "VALIDATION_FAILED", "MALFORMED_REQUEST", "RESOURCE_NOT_FOUND", "METHOD_NOT_ALLOWED", "UNSUPPORTED_MEDIA_TYPE", "INTERNAL_ERROR", "WORKSPACE_NOT_FOUND", "WORKSPACE_NOT_EMPTY", "PROJECT_NOT_FOUND", "LOCAL_ROOTS_NOT_CONFIGURED", "ROOT_NOT_FOUND", "PATH_OUTSIDE_ROOT", "PROJECT_ALREADY_EXISTS", "DIRECTORY_NOT_FOUND", "DIRECTORY_NOT_READABLE", "PROJECT_BUSY", "PROJECT_SOURCE_MISMATCH", "UPLOAD_TOO_LARGE", "IMPORT_NOT_FOUND", "SOURCE_ROOT_NOT_CONFIGURED", "SOURCE_DIRECTORY_NOT_FOUND", "SOURCE_IS_SYMLINK", "SOURCE_NOT_READABLE", "SOURCE_NOT_IMPORTED" ]
           },
           "detail" : {
             "type" : "string"
@@ -698,6 +1566,54 @@
         },
         "required" : [ "createdAt", "id", "name", "source", "workspaceId" ]
       },
+      "SettingsResponse" : {
+        "type" : "object",
+        "properties" : {
+          "defaultRules" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/DefaultRuleResponse"
+            }
+          },
+          "disabledDefaultRules" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "effectiveMaxFileBytes" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "effectiveMaxProjectBytes" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "excludePatterns" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "maxFileBytes" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "maxProjectBytes" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "updatedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "version" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "defaultRules", "disabledDefaultRules", "effectiveMaxFileBytes", "effectiveMaxProjectBytes", "excludePatterns", "maxFileBytes", "maxProjectBytes", "updatedAt", "version" ]
+      },
       "SourceResponse" : {
         "discriminator" : {
           "mapping" : {
@@ -712,6 +1628,50 @@
           }
         },
         "required" : [ "type" ]
+      },
+      "UpdateSettingsRequest" : {
+        "type" : "object",
+        "properties" : {
+          "disabledDefaultRules" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "excludePatterns" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "maxFileBytes" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
+          },
+          "maxProjectBytes" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
+          }
+        }
+      },
+      "WarningResponse" : {
+        "type" : "object",
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "relatedProjectIds" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "format" : "uuid"
+            }
+          }
+        },
+        "required" : [ "code", "message", "relatedProjectIds" ]
       },
       "WorkspaceResponse" : {
         "type" : "object",

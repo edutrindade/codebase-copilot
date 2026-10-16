@@ -9,6 +9,11 @@ spring:
     password: ${DB_PASSWORD}
   flyway:
     enabled: true
+  servlet:
+    multipart:
+      # Derived from app.import.max-zip-bytes so both limits answer 413 UPLOAD_TOO_LARGE.
+      max-file-size: ${app.import.max-zip-bytes}
+      max-request-size: ${app.import.max-zip-bytes}
   messages:
     # User-facing messages are pt-BR only (D-025); never fall back to the OS locale.
     fallback-to-system-locale: false
@@ -23,6 +28,13 @@ app:
   # (e.g. in config/application.yml) replaces it entirely.
   projects-root: ${PROJECTS_ROOT:}
   projects-root-label: ${PROJECTS_ROOT_LABEL:Projetos}
+  # Application data (D-028); "~" is expanded by the application. Must be outside
+  # every local root and outside this repository, or the application does not start.
+  data-dir: ${DATA_DIR:~/.codebase-copilot}
+  # ZIP upload limit (D-028); the multipart limits below derive from it. The other
+  # app.import.* limits and their defaults are in ImportProperties.
+  import:
+    max-zip-bytes: 100MB
 
 springdoc:
   default-produces-media-type: application/json

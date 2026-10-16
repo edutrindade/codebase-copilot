@@ -46,6 +46,7 @@ class ProjectRepositoryIT {
                         SourceType.LOCAL_FOLDER,
                         "default",
                         "",
+                        null,
                         T0,
                         T0);
 
@@ -198,6 +199,7 @@ class ProjectRepositoryIT {
                 workspaceId,
                 "Projeto " + id,
                 SourceType.ZIP,
+                null,
                 null,
                 null,
                 createdAt,

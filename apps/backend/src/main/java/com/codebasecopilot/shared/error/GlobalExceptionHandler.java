@@ -32,6 +32,8 @@ import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
@@ -60,6 +62,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                         .sorted(comparing(FieldErrorItem::field))
                         .toList();
         return problem(ex.code(), errors, new HttpHeaders(), request);
+    }
+
+    // MaxUploadSizeExceededException is more specific and handled by the base class.
+    @ExceptionHandler(MultipartException.class)
+    ResponseEntity<Object> handleMultipart(MultipartException ex, WebRequest request) {
+        return problem(ErrorCode.MALFORMED_REQUEST, List.of(), new HttpHeaders(), request);
     }
 
     @ExceptionHandler(Exception.class)
@@ -99,6 +107,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                     ErrorCode.RESOURCE_NOT_FOUND;
             case HttpRequestMethodNotSupportedException _ -> ErrorCode.METHOD_NOT_ALLOWED;
             case HttpMediaTypeNotSupportedException _ -> ErrorCode.UNSUPPORTED_MEDIA_TYPE;
+            case MaxUploadSizeExceededException _ -> ErrorCode.UPLOAD_TOO_LARGE;
             // Remaining framework errors keep a generic code for their status class.
             default ->
                     status.is5xxServerError()

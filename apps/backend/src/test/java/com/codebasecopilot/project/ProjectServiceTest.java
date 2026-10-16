@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -23,10 +24,12 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.mockito.InOrder;
 import org.springframework.dao.DataIntegrityViolationException;
 
 class ProjectServiceTest {
@@ -39,6 +42,7 @@ class ProjectServiceTest {
 
     private final ProjectRepository repository = mock(ProjectRepository.class);
     private final WorkspaceService workspaces = mock(WorkspaceService.class);
+    private final ProjectImports imports = mock(ProjectImports.class);
     private final ProjectService service =
             service(LocalRoots.from(new LocalRootsProperties(rootDir.toString(), null, List.of())));
 
@@ -54,6 +58,7 @@ class ProjectServiceTest {
                                 WORKSPACE,
                                 "Meu ZIP",
                                 SourceType.ZIP,
+                                null,
                                 null,
                                 null,
                                 micros,
@@ -164,7 +169,7 @@ class ProjectServiceTest {
     @Test
     void getAndDeleteMissingProjectAreNotFound() {
         when(repository.findById(ID)).thenReturn(Optional.empty());
-        when(repository.deleteById(ID)).thenReturn(false);
+        when(repository.findByIdForUpdate(ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.get(ID))
                 .isInstanceOfSatisfying(
@@ -174,6 +179,68 @@ class ProjectServiceTest {
                 .isInstanceOfSatisfying(
                         ApiException.class,
                         ex -> assertThat(ex.code()).isEqualTo(ErrorCode.PROJECT_NOT_FOUND));
+    }
+
+    @Test
+    void deleteIsRefusedWhileImportIsActive() {
+        when(repository.findByIdForUpdate(ID)).thenReturn(Optional.of(zipProject(null)));
+        when(imports.hasActiveImport(ID)).thenReturn(true);
+
+        assertCode(() -> service.delete(ID), ErrorCode.PROJECT_BUSY);
+        verify(imports, never()).onProjectDeleted(any());
+        verify(repository, never()).deleteById(any());
+    }
+
+    @Test
+    void deleteLocksChecksAndSchedulesCleanupBeforeDeleting() {
+        when(repository.findByIdForUpdate(ID)).thenReturn(Optional.of(zipProject(null)));
+
+        service.delete(ID);
+
+        InOrder order = inOrder(repository, imports);
+        order.verify(repository).findByIdForUpdate(ID);
+        order.verify(imports).hasActiveImport(ID);
+        order.verify(imports).onProjectDeleted(ID);
+        order.verify(repository).deleteById(ID);
+    }
+
+    @Test
+    void replaceCurrentImportReturnsPrevious() {
+        UUID previous = UUID.randomUUID();
+        UUID next = UUID.randomUUID();
+        when(repository.findByIdForUpdate(ID)).thenReturn(Optional.of(zipProject(previous)));
+
+        assertThat(service.replaceCurrentImport(ID, next)).isEqualTo(previous);
+        verify(repository)
+                .updateCurrentImport(ID, next, Instant.parse("2026-10-15T12:00:00.123456Z"));
+    }
+
+    @Test
+    void replaceCurrentImportOfMissingProjectIsNotFound() {
+        when(repository.findByIdForUpdate(ID)).thenReturn(Optional.empty());
+
+        assertCode(
+                () -> service.replaceCurrentImport(ID, UUID.randomUUID()),
+                ErrorCode.PROJECT_NOT_FOUND);
+    }
+
+    @Test
+    void getFillsCurrentImportFromPort() {
+        UUID importId = UUID.randomUUID();
+        ProjectImports.CurrentImport current =
+                new ProjectImports.CurrentImport(importId, "COMPLETED");
+        when(repository.findById(ID)).thenReturn(Optional.of(zipProject(importId)));
+        when(imports.find(List.of(importId))).thenReturn(Map.of(importId, current));
+
+        assertThat(service.get(ID).currentImport()).isEqualTo(current);
+    }
+
+    @Test
+    void getWithoutCurrentImportDoesNotQueryPort() {
+        when(repository.findById(ID)).thenReturn(Optional.of(zipProject(null)));
+
+        assertThat(service.get(ID).currentImport()).isNull();
+        verifyNoInteractions(imports);
     }
 
     @Test
@@ -258,7 +325,7 @@ class ProjectServiceTest {
 
     private ProjectService service(LocalRoots roots) {
         return new ProjectService(
-                repository, workspaces, roots, () -> ID, Clock.fixed(NOW, ZoneOffset.UTC));
+                repository, workspaces, roots, imports, () -> ID, Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
     private static void assertCode(Runnable call, ErrorCode code) {
@@ -269,6 +336,11 @@ class ProjectServiceTest {
 
     private static CreateProjectCommand local(String rootKey, String relativePath) {
         return new CreateProjectCommand("Local", SourceType.LOCAL_FOLDER, rootKey, relativePath);
+    }
+
+    private static Project zipProject(UUID currentImportJobId) {
+        return new Project(
+                ID, WORKSPACE, "ZIP", SourceType.ZIP, null, null, currentImportJobId, NOW, NOW);
     }
 
     private static CreateProjectCommand zip(String name) {

@@ -2,7 +2,7 @@
 
 Ferramenta local-first que responde perguntas sobre um repositório com evidências verificáveis (arquivo + linhas). A documentação do produto e da arquitetura está em [`docs/`](docs/README.md), e as decisões técnicas em [`docs/10-DECISIONS.md`](docs/10-DECISIONS.md).
 
-> Estado atual: Etapa 0 do [roadmap](docs/09-IMPLEMENTATION-ROADMAP.md). Só o backend existe; o frontend (`apps/web`) entra na Etapa 7.
+> Estado atual: Etapa 2 do [roadmap](docs/09-IMPLEMENTATION-ROADMAP.md) concluída (importação e inventário seguro). Só o backend existe; o frontend (`apps/web`) entra na Etapa 7.
 
 ## Pré-requisitos
 
@@ -27,7 +27,7 @@ cp .env.example .env
 | `DB_PORT` | Porta do PostgreSQL no host |
 | `PROJECTS_ROOT` | Opcional (a partir da Etapa 1). Caminho absoluto da pasta sob a qual ficam os repositórios que podem ser importados; gera a raiz permitida de key `default` (D-029). Vazio: só o fluxo ZIP fica disponível. |
 | `PROJECTS_ROOT_LABEL` | Opcional. Rótulo da raiz `default` na UI. Padrão: "Projetos". |
-| `DATA_DIR` | Opcional (a partir da Etapa 2). Diretório de dados da aplicação; imports ZIP são extraídos em `DATA_DIR/imports/<id>` (D-028). Padrão: `~/.codebase-copilot`; um `~` inicial é expandido pela aplicação. |
+| `DATA_DIR` | Opcional. Diretório de dados da aplicação; imports ZIP são extraídos em `DATA_DIR/imports/<id>/source` (D-028, D-033). Padrão: `~/.codebase-copilot`; um `~` inicial é expandido pela aplicação. |
 
 A porta do banco é definida uma única vez, em `DB_PORT` no `.env`, e usada em dois lugares: o Compose publica o container em `127.0.0.1:${DB_PORT}`, e o backend se conecta em `localhost:${DB_PORT}` (`application.yml`). Se a porta 5432 já estiver ocupada, altere apenas `DB_PORT`.
 
@@ -43,7 +43,26 @@ cp apps/backend/config/application.yml.example apps/backend/config/application.y
 
 O `config/application.yml` é carregado automaticamente pelo Spring ao executar a partir de `apps/backend` e é ignorado pelo Git. A lista substitui por inteiro a raiz `default` gerada por `PROJECTS_ROOT`; o exemplo já a repete. Os testes não dependem desse arquivo: cada teste declara as próprias raízes.
 
-O `DATA_DIR` precisa ficar **fora** de todas as raízes permitidas e fora deste repositório; caso contrário, a aplicação não inicia.
+O `DATA_DIR` precisa ficar **fora** de todas as raízes permitidas (sem estar dentro de uma delas nem contê-la) e fora deste repositório; caso contrário, a aplicação não inicia. Se não existir, é criado na inicialização.
+
+Cada import ZIP usa a pasta `DATA_DIR/imports/<importJobId>`. A árvore extraída do import atual de cada projeto é mantida como origem do projeto; as demais são apagadas quando o import falha, é substituído ou o projeto é removido, e pastas órfãs são limpas na inicialização (D-033).
+
+### Limites de importação e inventário
+
+Os padrões são hipóteses a ajustar com medições e podem ser alterados por propriedades do Spring (por exemplo, em `config/application.yml`):
+
+| Propriedade | Padrão | Uso |
+|---|---|---|
+| `app.import.max-zip-bytes` | 100MB | Tamanho máximo do ZIP enviado; os limites do multipart derivam dele (`413 UPLOAD_TOO_LARGE`). |
+| `app.import.max-entries` | 50000 | Entradas por ZIP. |
+| `app.import.max-uncompressed-bytes` | 1GB | Total descompactado por ZIP. |
+| `app.import.max-entry-bytes` | 100MB | Tamanho descompactado por entrada. |
+| `app.import.max-compression-ratio` | 100 | Razão de compressão máxima, verificada a partir de `app.import.compression-ratio-min-bytes` (1MB). |
+| `app.import.max-depth` / `max-path-length` | 64 / 1024 | Profundidade e comprimento dos caminhos no ZIP. |
+| `app.import.max-concurrent` | 2 | Extrações simultâneas. |
+| `app.inventory.max-entries` / `max-depth` | 200000 / 64 | Limites da varredura do inventário. |
+| `app.inventory.max-file-bytes` / `max-project-bytes` | 1MB / 500MB | Padrões por projeto, ajustáveis em `PUT /projects/{id}/settings` até `max-file-bytes-limit` (10MB) e `max-project-bytes-limit` (2GB). |
+| `app.browse.max-directories` | 1000 | Itens por listagem de diretórios. |
 
 O `.env` está no `.gitignore` e nunca deve ser commitado.
 
