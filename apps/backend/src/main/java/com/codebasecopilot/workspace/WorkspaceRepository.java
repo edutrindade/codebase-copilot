@@ -49,6 +49,13 @@ class WorkspaceRepository {
         return jdbc.sql("SELECT count(*) FROM workspaces").query(Long.class).single();
     }
 
+    boolean existsById(UUID id) {
+        return jdbc.sql("SELECT EXISTS (SELECT 1 FROM workspaces WHERE id = :id)")
+                .param("id", id)
+                .query(Boolean.class)
+                .single();
+    }
+
     boolean deleteById(UUID id) {
         return jdbc.sql("DELETE FROM workspaces WHERE id = :id").param("id", id).update() == 1;
     }

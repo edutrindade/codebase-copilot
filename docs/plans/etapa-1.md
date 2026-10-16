@@ -164,7 +164,7 @@
 
 **Testes**
 - Unitário do normalizador, com tabela de casos:
-  - `a//b/` → `a/b`; `./a/./b` → `a/b`; `""`, `"."`, `"./"` e `"//"` → `""`;
+  - `a//b/` → `a/b`; `./a/./b` → `a/b`; `""`, `"."`, `"./"` e `".//"` → `""` (`"//"` começa com `/` e é `PATH_OUTSIDE_ROOT`);
   - NFD e NFC equivalentes → mesma saída;
   - `Foo` e `foo` continuam diferentes;
   - `/abs`, `..`, `a/../b` e `a/..` → `PATH_OUTSIDE_ROOT`;

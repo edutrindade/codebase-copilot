@@ -46,6 +46,13 @@ public class WorkspaceService {
     }
 
     @Transactional(readOnly = true)
+    public void requireExists(UUID id) {
+        if (!repository.existsById(id)) {
+            throw notFound();
+        }
+    }
+
+    @Transactional(readOnly = true)
     public PageResponse<Workspace> list(PageRequestParams params) {
         return PageResponse.of(repository.findPage(params), params, repository.count());
     }

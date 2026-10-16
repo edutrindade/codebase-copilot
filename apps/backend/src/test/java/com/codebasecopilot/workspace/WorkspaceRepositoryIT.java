@@ -38,6 +38,8 @@ class WorkspaceRepositoryIT {
 
         assertThat(repository.findById(workspace.id())).contains(workspace);
         assertThat(repository.findById(UUID.randomUUID())).isEmpty();
+        assertThat(repository.existsById(workspace.id())).isTrue();
+        assertThat(repository.existsById(UUID.randomUUID())).isFalse();
     }
 
     @Test

@@ -59,12 +59,35 @@ class OpenApiConfiguration {
                     .getSchemas()
                     .forEach(
                             (name, schema) -> {
-                                if (name.endsWith("Response") && schema.getProperties() != null) {
-                                    schema.setRequired(
-                                            new ArrayList<>(schema.getProperties().keySet()));
+                                if (name.endsWith("Response")) {
+                                    requireAllProperties(schema);
                                 }
                             });
         };
+    }
+
+    // Subtypes of a polymorphic response declare their own fields inside allOf.
+    private static void requireAllProperties(Schema<?> schema) {
+        if (schema.getProperties() != null) {
+            schema.setRequired(new ArrayList<>(schema.getProperties().keySet()));
+            schema.getProperties().replaceAll((name, property) -> nullableRef(property));
+        }
+        if (schema.getAllOf() != null) {
+            schema.getAllOf().forEach(OpenApiConfiguration::requireAllProperties);
+        }
+    }
+
+    // springdoc renders a nullable $ref as {"type": "null", "$ref": ...}, which no value
+    // satisfies in OpenAPI 3.1; oneOf expresses "the referenced object or null".
+    private static Schema nullableRef(Schema property) {
+        boolean nullable =
+                "null".equals(property.getType())
+                        || (property.getTypes() != null && property.getTypes().contains("null"));
+        if (property.get$ref() == null || !nullable) {
+            return property;
+        }
+        return new Schema<>()
+                .oneOf(List.of(new Schema<>().$ref(property.get$ref()), typed("null")));
     }
 
     private static Set<ErrorCode> errorCodes(Operation operation, HandlerMethod handlerMethod) {

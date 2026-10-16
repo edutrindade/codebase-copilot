@@ -66,4 +66,14 @@ class WorkspaceServiceTest {
                         ApiException.class,
                         ex -> assertThat(ex.code()).isEqualTo(ErrorCode.WORKSPACE_NOT_FOUND));
     }
+
+    @Test
+    void requireExistsFailsForMissingWorkspace() {
+        when(repository.existsById(ID)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.requireExists(ID))
+                .isInstanceOfSatisfying(
+                        ApiException.class,
+                        ex -> assertThat(ex.code()).isEqualTo(ErrorCode.WORKSPACE_NOT_FOUND));
+    }
 }

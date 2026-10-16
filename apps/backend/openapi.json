@@ -9,6 +9,111 @@
     "description" : "Generated server url"
   } ],
   "paths" : {
+    "/api/v1/projects/{projectId}" : {
+      "delete" : {
+        "operationId" : "delete_1",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: VALIDATION_FAILED."
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: PROJECT_NOT_FOUND."
+          },
+          "500" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
+          }
+        },
+        "tags" : [ "project-controller" ]
+      },
+      "get" : {
+        "operationId" : "get_1",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProjectResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: VALIDATION_FAILED."
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: PROJECT_NOT_FOUND."
+          },
+          "500" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
+          }
+        },
+        "tags" : [ "project-controller" ]
+      }
+    },
     "/api/v1/workspaces" : {
       "get" : {
         "operationId" : "list",
@@ -229,10 +334,191 @@
         },
         "tags" : [ "workspace-controller" ]
       }
+    },
+    "/api/v1/workspaces/{workspaceId}/projects" : {
+      "get" : {
+        "operationId" : "list_1",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "workspaceId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 0,
+            "minimum" : 0
+          }
+        }, {
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 20,
+            "maximum" : 100,
+            "minimum" : 1
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PageResponseProjectResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: VALIDATION_FAILED."
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: WORKSPACE_NOT_FOUND."
+          },
+          "500" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
+          }
+        },
+        "tags" : [ "project-controller" ]
+      },
+      "post" : {
+        "operationId" : "create_1",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "workspaceId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateProjectRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProjectResponse"
+                }
+              }
+            },
+            "description" : "Created"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: VALIDATION_FAILED, MALFORMED_REQUEST, PATH_OUTSIDE_ROOT."
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: WORKSPACE_NOT_FOUND, ROOT_NOT_FOUND."
+          },
+          "409" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: LOCAL_ROOTS_NOT_CONFIGURED, PROJECT_ALREADY_EXISTS."
+          },
+          "415" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: UNSUPPORTED_MEDIA_TYPE."
+          },
+          "500" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
+          }
+        },
+        "tags" : [ "project-controller" ]
+      }
     }
   },
   "components" : {
     "schemas" : {
+      "CreateProjectRequest" : {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "relativePath" : {
+            "type" : "string"
+          },
+          "rootKey" : {
+            "type" : "string"
+          },
+          "sourceType" : {
+            "type" : "string",
+            "enum" : [ "LOCAL_FOLDER", "ZIP" ]
+          }
+        }
+      },
       "CreateWorkspaceRequest" : {
         "type" : "object",
         "properties" : {
@@ -240,6 +526,19 @@
             "type" : "string"
           }
         }
+      },
+      "CurrentImportResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "status" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "status" ]
       },
       "FieldError" : {
         "type" : "object",
@@ -252,6 +551,50 @@
           }
         },
         "required" : [ "field", "message" ]
+      },
+      "LocalFolderSourceResponse" : {
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/SourceResponse"
+        }, {
+          "type" : "object",
+          "properties" : {
+            "relativePath" : {
+              "type" : "string"
+            },
+            "rootKey" : {
+              "type" : "string"
+            }
+          },
+          "required" : [ "relativePath", "rootKey" ]
+        } ]
+      },
+      "PageResponseProjectResponse" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ProjectResponse"
+            }
+          },
+          "page" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "size" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "totalItems" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "totalPages" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "items", "page", "size", "totalItems", "totalPages" ]
       },
       "PageResponseWorkspaceResponse" : {
         "type" : "object",
@@ -286,7 +629,7 @@
         "properties" : {
           "code" : {
             "type" : "string",
-            "enum" : [ "VALIDATION_FAILED", "MALFORMED_REQUEST", "RESOURCE_NOT_FOUND", "METHOD_NOT_ALLOWED", "UNSUPPORTED_MEDIA_TYPE", "INTERNAL_ERROR", "WORKSPACE_NOT_FOUND" ]
+            "enum" : [ "VALIDATION_FAILED", "MALFORMED_REQUEST", "RESOURCE_NOT_FOUND", "METHOD_NOT_ALLOWED", "UNSUPPORTED_MEDIA_TYPE", "INTERNAL_ERROR", "WORKSPACE_NOT_FOUND", "PROJECT_NOT_FOUND", "LOCAL_ROOTS_NOT_CONFIGURED", "ROOT_NOT_FOUND", "PATH_OUTSIDE_ROOT", "PROJECT_ALREADY_EXISTS" ]
           },
           "detail" : {
             "type" : "string"
@@ -317,6 +660,49 @@
         },
         "required" : [ "code", "detail", "instance", "requestId", "status", "title", "type" ]
       },
+      "ProjectResponse" : {
+        "type" : "object",
+        "properties" : {
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "source" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/LocalFolderSourceResponse"
+            }, {
+              "$ref" : "#/components/schemas/ZipSourceResponse"
+            } ]
+          },
+          "workspaceId" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        },
+        "required" : [ "createdAt", "id", "name", "source", "workspaceId" ]
+      },
+      "SourceResponse" : {
+        "discriminator" : {
+          "mapping" : {
+            "LOCAL_FOLDER" : "#/components/schemas/LocalFolderSourceResponse",
+            "ZIP" : "#/components/schemas/ZipSourceResponse"
+          },
+          "propertyName" : "type"
+        },
+        "properties" : {
+          "type" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "type" ]
+      },
       "WorkspaceResponse" : {
         "type" : "object",
         "properties" : {
@@ -333,6 +719,23 @@
           }
         },
         "required" : [ "createdAt", "id", "name" ]
+      },
+      "ZipSourceResponse" : {
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/SourceResponse"
+        }, {
+          "type" : "object",
+          "properties" : {
+            "currentImport" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/CurrentImportResponse"
+              }, {
+                "type" : "null"
+              } ]
+            }
+          },
+          "required" : [ "currentImport" ]
+        } ]
       }
     }
   }
