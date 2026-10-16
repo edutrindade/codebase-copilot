@@ -33,6 +33,7 @@ public class ProjectService {
     private static final String NOT_ALLOWED_FOR_ZIP = "validation.project.not-allowed-for-zip";
 
     private final ProjectRepository repository;
+    private final ProjectJobRepository jobs;
     private final WorkspaceService workspaces;
     private final LocalRoots localRoots;
     private final ProjectImports imports;
@@ -41,12 +42,14 @@ public class ProjectService {
 
     ProjectService(
             ProjectRepository repository,
+            ProjectJobRepository jobs,
             WorkspaceService workspaces,
             LocalRoots localRoots,
             ProjectImports imports,
             IdGenerator idGenerator,
             Clock clock) {
         this.repository = repository;
+        this.jobs = jobs;
         this.workspaces = workspaces;
         this.localRoots = localRoots;
         this.imports = imports;
@@ -114,15 +117,39 @@ public class ProjectService {
                 repository.countByWorkspace(workspaceId));
     }
 
-    // The row lock serializes the busy check with concurrent uploads (D-021, D-028).
+    // The row lock serializes the busy check with concurrent job creation (D-021, D-041).
     @Transactional
     public void delete(UUID id) {
         repository.findByIdForUpdate(id).orElseThrow(ProjectService::notFound);
-        if (imports.hasActiveImport(id)) {
+        if (jobs.existsActive(id)) {
             throw new ApiException(ErrorCode.PROJECT_BUSY);
         }
         imports.onProjectDeleted(id);
         repository.deleteById(id);
+    }
+
+    // Must run in the transaction that creates the job; the partial unique index makes the busy
+    // check safe under concurrency (D-041).
+    @Transactional
+    public void startJob(UUID projectId, UUID jobId, JobKind kind) {
+        try {
+            jobs.insertActive(
+                    jobId, projectId, kind, clock.instant().truncatedTo(ChronoUnit.MICROS));
+        } catch (DataIntegrityViolationException ex) {
+            if (ConstraintViolations.violates(ex, ProjectJobRepository.ACTIVE_UNIQUE)) {
+                throw new ApiException(ErrorCode.PROJECT_BUSY);
+            }
+            if (ConstraintViolations.violates(ex, ProjectJobRepository.PROJECT_FK)) {
+                throw notFound();
+            }
+            throw ex;
+        }
+    }
+
+    // Must run in the transaction of the job's terminal transition.
+    @Transactional
+    public void finishJobs(Collection<UUID> jobIds) {
+        jobs.deactivate(jobIds);
     }
 
     // Returns the previous current import, whose files the caller may now remove.

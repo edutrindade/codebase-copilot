@@ -1,6 +1,7 @@
 package com.codebasecopilot.importjob;
 
 import static com.codebasecopilot.ImportJobRows.insertJob;
+import static com.codebasecopilot.ImportJobRows.insertProjectJob;
 import static com.codebasecopilot.ImportJobRows.insertWorkspace;
 import static com.codebasecopilot.ImportJobRows.insertZipProject;
 import static com.codebasecopilot.ImportJobRows.setCurrentImport;
@@ -80,16 +81,45 @@ class ImportJobSchemaIT {
                 .hasMessageContaining("violates check constraint");
     }
 
+    // Defense in depth: project_jobs already allows one active job of any kind (D-041).
     @Test
-    void allowsOneActiveJobPerProject() {
+    void allowsOneActiveImportPerProject() {
         insertJob(jdbc, projectId, "COMPLETED");
         insertJob(jdbc, projectId, "FAILED");
         insertJob(jdbc, projectId, "PENDING");
         insertJob(jdbc, insertZipProject(jdbc, insertWorkspace(jdbc)), "EXTRACTING");
+        UUID inactive = insertProjectJob(jdbc, projectId, "IMPORT", false);
 
-        assertThatThrownBy(() -> insertJob(jdbc, projectId, "EXTRACTING"))
+        assertThatThrownBy(
+                        () ->
+                                jdbc.sql(
+                                                """
+                                                INSERT INTO import_jobs (id, project_id, status,
+                                                    compressed_bytes, created_at)
+                                                VALUES (:id, :projectId, 'EXTRACTING', 100, now())
+                                                """)
+                                        .param("id", inactive)
+                                        .param("projectId", projectId)
+                                        .update())
                 .isInstanceOf(DataIntegrityViolationException.class)
                 .hasMessageContaining("import_jobs_active_unique_idx");
+    }
+
+    @Test
+    void importNeedsAJobRegistryRow() {
+        assertThatThrownBy(
+                        () ->
+                                jdbc.sql(
+                                                """
+                                                INSERT INTO import_jobs (id, project_id, status,
+                                                    compressed_bytes, created_at)
+                                                VALUES (:id, :projectId, 'PENDING', 100, now())
+                                                """)
+                                        .param("id", UUID.randomUUID())
+                                        .param("projectId", projectId)
+                                        .update())
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("import_jobs_project_job_fkey");
     }
 
     @Test
@@ -133,6 +163,8 @@ class ImportJobSchemaIT {
         jdbc.sql("DELETE FROM projects WHERE id = :id").param("id", projectId).update();
 
         assertThat(jdbc.sql("SELECT count(*) FROM import_jobs").query(Long.class).single())
+                .isZero();
+        assertThat(jdbc.sql("SELECT count(*) FROM project_jobs").query(Long.class).single())
                 .isZero();
     }
 

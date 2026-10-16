@@ -19,11 +19,6 @@ class ProjectImportsAdapter implements ProjectImports {
     }
 
     @Override
-    public boolean hasActiveImport(UUID projectId) {
-        return repository.existsActiveByProject(projectId);
-    }
-
-    @Override
     public Map<UUID, CurrentImport> find(Collection<UUID> importJobIds) {
         return repository.findStatuses(importJobIds).entrySet().stream()
                 .collect(

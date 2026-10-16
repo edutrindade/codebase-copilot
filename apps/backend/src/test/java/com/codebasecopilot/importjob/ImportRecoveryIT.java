@@ -3,6 +3,7 @@ package com.codebasecopilot.importjob;
 import static com.codebasecopilot.ImportJobRows.insertJob;
 import static com.codebasecopilot.ImportJobRows.insertWorkspace;
 import static com.codebasecopilot.ImportJobRows.insertZipProject;
+import static com.codebasecopilot.ImportJobRows.isJobActive;
 import static com.codebasecopilot.ImportJobRows.setCurrentImport;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -50,6 +51,8 @@ class ImportRecoveryIT {
         assertThat(status(pending)).isEqualTo("FAILED/IMPORT_INTERRUPTED");
         assertThat(status(extracting)).isEqualTo("FAILED/IMPORT_INTERRUPTED");
         assertThat(status(current)).isEqualTo("COMPLETED/null");
+        assertThat(isJobActive(jdbc, pending)).isFalse();
+        assertThat(isJobActive(jdbc, extracting)).isFalse();
         assertThat(dataDirectory.importDir(current)).isDirectory();
         try (var entries = Files.list(dataDirectory.importsDir())) {
             assertThat(entries).containsExactly(dataDirectory.importDir(current));

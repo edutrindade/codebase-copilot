@@ -60,4 +60,16 @@ class ArchitectureTest {
                     .should()
                     .dependOnClassesThat()
                     .resideInAPackage("com.codebasecopilot.importjob..");
+
+    @ArchTest
+    static final ArchRule onlyIndexingDependsOnIndexing =
+            noClasses()
+                    .that()
+                    .resideInAnyPackage(
+                            "com.codebasecopilot.project..",
+                            "com.codebasecopilot.importjob..",
+                            "com.codebasecopilot.codeanalysis..")
+                    .should()
+                    .dependOnClassesThat()
+                    .resideInAPackage("com.codebasecopilot.indexing..");
 }

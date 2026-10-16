@@ -285,6 +285,33 @@ class SafeScannerTest {
                 .endsWith("logs/f19.png");
     }
 
+    @Test
+    void reportsOnlyIncludedFilesToTheListener() throws IOException {
+        write("src/Main.java", "class Main {}");
+        write("README.md", "# X");
+        write(".env", "SECRET=1");
+        write("node_modules/lib/index.js", "module.exports = 1");
+        write("big.txt", "x".repeat(2000));
+        Files.write(root.resolve("data.bin"), new byte[] {1, 0, 2});
+        Files.createSymbolicLink(root.resolve("link.txt"), outside.resolve("secret.txt"));
+        List<String> reported = new ArrayList<>();
+
+        ScanResult result =
+                new SafeScanner()
+                        .scan(
+                                root,
+                                DEFAULTS,
+                                LIMITS,
+                                (relativePath, file, sizeBytes, language) -> {
+                                    assertThat(file).isEqualTo(root.resolve(relativePath));
+                                    reported.add(relativePath + ":" + sizeBytes + ":" + language);
+                                });
+
+        assertThat(reported)
+                .containsExactlyInAnyOrder("src/Main.java:13:java", "README.md:3:markdown");
+        assertThat(result.totals().includedFiles()).isEqualTo(reported.size());
+    }
+
     private ScanResult scan(SafeScanner.Rules rules, SafeScanner.Limits limits) throws IOException {
         SafeScanner scanner =
                 new SafeScanner(

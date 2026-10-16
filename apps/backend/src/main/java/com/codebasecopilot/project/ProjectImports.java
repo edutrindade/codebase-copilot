@@ -7,8 +7,6 @@ import java.util.UUID;
 // Implemented by the importjob module so project never depends on it (D-031).
 public interface ProjectImports {
 
-    boolean hasActiveImport(UUID projectId);
-
     // Imports that no longer exist are absent from the result.
     Map<UUID, CurrentImport> find(Collection<UUID> importJobIds);
 

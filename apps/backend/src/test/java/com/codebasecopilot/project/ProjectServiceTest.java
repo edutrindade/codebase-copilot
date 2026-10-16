@@ -41,6 +41,7 @@ class ProjectServiceTest {
     @TempDir static Path rootDir;
 
     private final ProjectRepository repository = mock(ProjectRepository.class);
+    private final ProjectJobRepository jobs = mock(ProjectJobRepository.class);
     private final WorkspaceService workspaces = mock(WorkspaceService.class);
     private final ProjectImports imports = mock(ProjectImports.class);
     private final ProjectService service =
@@ -182,9 +183,9 @@ class ProjectServiceTest {
     }
 
     @Test
-    void deleteIsRefusedWhileImportIsActive() {
+    void deleteIsRefusedWhileAJobIsActive() {
         when(repository.findByIdForUpdate(ID)).thenReturn(Optional.of(zipProject(null)));
-        when(imports.hasActiveImport(ID)).thenReturn(true);
+        when(jobs.existsActive(ID)).thenReturn(true);
 
         assertCode(() -> service.delete(ID), ErrorCode.PROJECT_BUSY);
         verify(imports, never()).onProjectDeleted(any());
@@ -197,11 +198,47 @@ class ProjectServiceTest {
 
         service.delete(ID);
 
-        InOrder order = inOrder(repository, imports);
+        InOrder order = inOrder(repository, jobs, imports);
         order.verify(repository).findByIdForUpdate(ID);
-        order.verify(imports).hasActiveImport(ID);
+        order.verify(jobs).existsActive(ID);
         order.verify(imports).onProjectDeleted(ID);
         order.verify(repository).deleteById(ID);
+    }
+
+    @Test
+    void startJobRegistersAnActiveJob() {
+        UUID job = UUID.randomUUID();
+
+        service.startJob(ID, job, JobKind.INDEX);
+
+        verify(jobs)
+                .insertActive(job, ID, JobKind.INDEX, Instant.parse("2026-10-15T12:00:00.123456Z"));
+    }
+
+    @Test
+    void startJobTranslatesConstraintViolations() {
+        doThrow(violation("project_jobs_active_unique_idx"))
+                .when(jobs)
+                .insertActive(any(), any(), any(), any());
+        assertCode(
+                () -> service.startJob(ID, UUID.randomUUID(), JobKind.IMPORT),
+                ErrorCode.PROJECT_BUSY);
+
+        doThrow(violation("project_jobs_project_id_fkey"))
+                .when(jobs)
+                .insertActive(any(), any(), any(), any());
+        assertCode(
+                () -> service.startJob(ID, UUID.randomUUID(), JobKind.IMPORT),
+                ErrorCode.PROJECT_NOT_FOUND);
+    }
+
+    @Test
+    void finishJobsDeactivatesTheRegistry() {
+        List<UUID> ids = List.of(UUID.randomUUID(), UUID.randomUUID());
+
+        service.finishJobs(ids);
+
+        verify(jobs).deactivate(ids);
     }
 
     @Test
@@ -325,7 +362,18 @@ class ProjectServiceTest {
 
     private ProjectService service(LocalRoots roots) {
         return new ProjectService(
-                repository, workspaces, roots, imports, () -> ID, Clock.fixed(NOW, ZoneOffset.UTC));
+                repository,
+                jobs,
+                workspaces,
+                roots,
+                imports,
+                () -> ID,
+                Clock.fixed(NOW, ZoneOffset.UTC));
+    }
+
+    private static DataIntegrityViolationException violation(String constraint) {
+        return new DataIntegrityViolationException(
+                "insert failed", new SQLException("violates \"" + constraint + "\""));
     }
 
     private static void assertCode(Runnable call, ErrorCode code) {

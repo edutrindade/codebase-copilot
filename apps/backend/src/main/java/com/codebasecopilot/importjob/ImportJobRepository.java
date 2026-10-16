@@ -136,19 +136,6 @@ class ImportJobRepository {
                 .list();
     }
 
-    boolean existsActiveByProject(UUID projectId) {
-        return jdbc.sql(
-                        """
-                        SELECT EXISTS (
-                            SELECT 1 FROM import_jobs
-                            WHERE project_id = :projectId
-                              AND status IN ('PENDING', 'EXTRACTING'))
-                        """)
-                .param("projectId", projectId)
-                .query(Boolean.class)
-                .single();
-    }
-
     Map<UUID, ImportStatus> findStatuses(Collection<UUID> ids) {
         Map<UUID, ImportStatus> statuses = new HashMap<>();
         if (ids.isEmpty()) {

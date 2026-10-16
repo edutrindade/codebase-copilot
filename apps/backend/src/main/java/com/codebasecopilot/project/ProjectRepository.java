@@ -58,7 +58,7 @@ class ProjectRepository {
                 .list();
     }
 
-    // Blocks concurrent uploads, whose insert into import_jobs takes a KEY SHARE lock here.
+    // Blocks concurrent job creation, whose insert into project_jobs takes a KEY SHARE lock here.
     Optional<Project> findByIdForUpdate(UUID id) {
         return jdbc.sql(
                         """
