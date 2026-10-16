@@ -237,7 +237,7 @@ Retorna metadados, origem, snapshot ativo e estado de indexação (D-044). A lis
 
 - `activeSnapshot`: snapshot usado nas consultas (`READY` ou `PARTIAL`), `null` antes da primeira indexação concluída (D-044).
 - `indexing`: job de indexação ativo `{ id, status, stage, progress: { total, completed } }`, ou `null`.
-- `outdatedReasons`: por que o snapshot ativo pode não refletir a origem: `SETTINGS_CHANGED` (configurações alteradas depois dele), `SOURCE_REIMPORTED` (projeto ZIP com outro import atual) e `CHUNKING_CHANGED` (estratégia de chunking nova). Lista vazia quando está em dia ou sem snapshot. Mudanças no disco de uma pasta local não são detectadas; o usuário reindexa.
+- `outdatedReasons`: por que o snapshot ativo pode não refletir a origem: `SETTINGS_CHANGED` (configurações alteradas depois dele), `SOURCE_REIMPORTED` (projeto ZIP com outro import atual), `CHUNKING_CHANGED` (estratégia de chunking nova), `EMBEDDING_MODEL_CHANGED` (provedor, modelo ou dimensão configurados diferentes dos do snapshot) e `EMBEDDINGS_MISSING` (snapshot indexado sem embeddings, com provedor agora configurado). Os dois últimos só aparecem com provedor configurado (D-050). Lista vazia quando está em dia ou sem snapshot. Mudanças no disco de uma pasta local não são detectadas; o usuário reindexa.
 
 Erros: `404 PROJECT_NOT_FOUND`.
 
@@ -375,7 +375,7 @@ Lista os imports do projeto, do mais novo para o mais antigo, no formato acima. 
 
 Erros: `404 PROJECT_NOT_FOUND`.
 
-## 7. Indexação
+## 7. Indexação e busca
 
 A indexação é sempre incremental por conteúdo (D-039, D-045): todo arquivo incluído é lido e tem o hash calculado; só conteúdos novos geram conteúdo e chunks. Mudanças de configuração ou de estratégia de chunking são cobertas pelo mesmo mecanismo. Um novo job reprocessa os arquivos que estavam `FAILED` no snapshot anterior.
 
@@ -407,9 +407,11 @@ Erros, nesta ordem:
 ```
 
 - `status`: `PENDING`, `RUNNING`, `COMPLETED` ou `FAILED`.
-- `stage`: `SCANNING`, `PROCESSING_FILES` ou `FINALIZING` (`null` antes de começar). `progress` conta arquivos.
+- `stage`: `SCANNING`, `PROCESSING_FILES`, `EMBEDDING` ou `FINALIZING` (`null` antes de começar). `progress` conta arquivos; na etapa `EMBEDDING`, conta os chunks a enviar ao provedor (D-050). Com `provider=none`, a etapa `EMBEDDING` é pulada.
 - `attempts`: quantas vezes o job foi retirado da fila. Um job interrompido (queda da aplicação, por exemplo) volta à fila quando o heartbeat vence e é retomado automaticamente, até `app.indexing.max-attempts` (padrão 3).
 - `error.code` (D-044): `SOURCE_ROOT_NOT_CONFIGURED`, `SOURCE_DIRECTORY_NOT_FOUND`, `SOURCE_IS_SYMLINK`, `SOURCE_NOT_READABLE`, `SOURCE_NOT_IMPORTED`, `SCAN_LIMIT_REACHED`, `PROJECT_SIZE_LIMIT_EXCEEDED`, `NO_INCLUDED_FILES`, `INDEX_IO_ERROR` ou `INDEX_ATTEMPTS_EXHAUSTED`; `error.message` em pt-BR, sem caminhos.
+- Códigos da etapa de embeddings (D-051, D-054): `EMBEDDING_PROVIDER_UNAUTHORIZED`, `EMBEDDING_PROVIDER_UNAVAILABLE`, `EMBEDDING_RATE_LIMITED`, `EMBEDDING_QUOTA_EXCEEDED`, `EMBEDDING_REQUEST_REJECTED` e `EMBEDDING_CHUNK_LIMIT_EXCEEDED`. Nenhuma mensagem traz detalhes do provedor.
+  - `EMBEDDING_QUOTA_EXCEEDED`: créditos, limite de gasto ou limite de uso da conta no provedor esgotados. O job falha sem repetir. Mensagem: "A cota ou o limite de gastos da conta no provedor de embeddings foi atingido. Verifique os créditos e os limites da conta e tente novamente."
 
 Não há `retry`: um job `FAILED` é refeito criando outro, que reaproveita o conteúdo já gravado (D-045).
 
@@ -438,6 +440,7 @@ Erros: `404 PROJECT_NOT_FOUND`.
   "counts": { "files": 980, "indexedFiles": 975, "unsupportedFiles": 4, "failedFiles": 1, "chunks": 4120, "bytes": 7340032 },
   "changes": { "added": 3, "modified": 12, "removed": 1, "unchanged": 959 },
   "inventory": { "…": "formato de GET /projects/{projectId}/inventory" },
+  "embedding": { "provider": "openai", "model": "text-embedding-3-small", "dimensions": 1536, "tokens": 412380 },
   "createdAt": "2026-10-16T12:00:00Z",
   "completedAt": "2026-10-16T12:00:05Z",
   "prunedAt": null
@@ -448,8 +451,52 @@ Erros: `404 PROJECT_NOT_FOUND`.
 - `changes`: comparação dos arquivos `INDEXED` com o snapshot ativo anterior; `null` enquanto `BUILDING`, em `FAILED` e no primeiro snapshot.
 - `inventory`: agregado da varredura que originou o snapshot, sem os avisos que dependem do momento da consulta.
 - `prunedAt`: preenchido quando a poda removeu os arquivos do snapshot (D-044); a lista de arquivos fica vazia.
+- `embedding`: modelo dos vetores do snapshot, ou `null` quando foi indexado com `provider=none` (D-053). `tokens` soma o uso reportado pelo provedor no job; `null` se algum lote não reportou, `0` se todos os chunks já estavam no cache (D-054). Também aparece na listagem.
 
 Erros: `404 SNAPSHOT_NOT_FOUND`.
+
+### `POST /projects/{projectId}/search`
+Busca vetorial exata nos chunks de um snapshot (D-049, D-053). A pergunta é enviada ao provedor de embeddings configurado (D-054).
+
+```json
+{ "query": "como o reembolso é calculado?", "snapshotId": null, "limit": 10 }
+```
+
+- `query`: obrigatório, de 1 a 2.000 caracteres, não em branco.
+- `snapshotId`: opcional; ausente = snapshot ativo. Informado, precisa ser do projeto, `READY` ou `PARTIAL` e não podado.
+- `limit`: opcional, de 1 a 50 (padrão 10).
+
+Response `200`:
+```json
+{
+  "snapshotId": "…",
+  "model": { "provider": "openai", "name": "text-embedding-3-small", "dimensions": 1536 },
+  "results": [
+    {
+      "chunkId": "…",
+      "path": "src/billing/RefundService.java",
+      "otherPaths": [],
+      "startLine": 12,
+      "endLine": 58,
+      "content": "…",
+      "score": 0.4821
+    }
+  ]
+}
+```
+
+- `score` = 1 − distância de cosseno, em ordem decrescente; empates são resolvidos pelo caminho, pela linha inicial e pelo id do chunk.
+- Cada chunk aparece uma vez. Se o mesmo conteúdo está em vários arquivos do snapshot, `path` é o primeiro caminho em ordem lexicográfica e `otherPaths` traz os demais (D-039).
+- A Etapa 5 acrescenta `mode` (`VECTOR`, `LEXICAL`, `HYBRID`) neste endpoint.
+
+Erros, nesta ordem:
+1. `400 VALIDATION_FAILED` (`query` e `limit`, antes de qualquer consulta);
+2. `404 PROJECT_NOT_FOUND`;
+3. `404 SNAPSHOT_NOT_FOUND`, inclusive snapshot de outro projeto;
+4. `409 SNAPSHOT_NOT_SEARCHABLE`: projeto sem snapshot ativo, ou snapshot `BUILDING`, `FAILED` ou podado;
+5. `409 EMBEDDINGS_NOT_AVAILABLE`: `app.embeddings.provider=none`;
+6. `409 SNAPSHOT_EMBEDDING_MISMATCH`: snapshot sem embeddings ou de outro provedor, modelo ou dimensão; reindexe o projeto;
+7. erros do provedor (D-051), sem detalhes do provedor na mensagem: `502 EMBEDDING_PROVIDER_UNAVAILABLE`, `502 EMBEDDING_PROVIDER_UNAUTHORIZED`, `502 EMBEDDING_QUOTA_EXCEEDED`, `502 EMBEDDING_REQUEST_REJECTED` e `429 EMBEDDING_RATE_LIMITED`. A busca não repete chamadas ao provedor.
 
 ## 8. Perguntas e respostas
 

@@ -112,7 +112,9 @@ class ProjectController {
                                             allowableValues = {
                                                 "SETTINGS_CHANGED",
                                                 "SOURCE_REIMPORTED",
-                                                "CHUNKING_CHANGED"
+                                                "CHUNKING_CHANGED",
+                                                "EMBEDDING_MODEL_CHANGED",
+                                                "EMBEDDINGS_MISSING"
                                             }))
                     List<String> outdatedReasons,
             Instant createdAt) {
@@ -190,7 +192,12 @@ class ProjectController {
             @Schema(allowableValues = {"PENDING", "RUNNING"}) String status,
             @Schema(
                             nullable = true,
-                            allowableValues = {"SCANNING", "PROCESSING_FILES", "FINALIZING"})
+                            allowableValues = {
+                                "SCANNING",
+                                "PROCESSING_FILES",
+                                "EMBEDDING",
+                                "FINALIZING"
+                            })
                     @Nullable String stage,
             @Schema(nullable = true) @Nullable ProgressResponse progress) {}
 

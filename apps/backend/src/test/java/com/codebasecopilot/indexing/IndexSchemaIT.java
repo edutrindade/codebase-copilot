@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
@@ -81,7 +82,7 @@ class IndexSchemaIT {
                 "RUNNING,   SCANNING,  false, null,           false",
                 "COMPLETED, null,      true,  null,           false",
                 "FAILED,    null,      true,  null,           true",
-                "RUNNING,   EMBEDDING, true,  null,           false",
+                "RUNNING,   UPLOADING, true,  null,           false",
                 "UNKNOWN,   null,      false, null,           false"
             })
     void indexJobStateChecksRejectInconsistentRows(
@@ -107,6 +108,110 @@ class IndexSchemaIT {
                                 .param("errorCode", errorCode)
                                 .param("completedAt", completed ? OffsetDateTime.now() : null)
                                 .update());
+    }
+
+    @Test
+    void indexJobAcceptsTheEmbeddingStage() {
+        UUID jobId =
+                insertIndexJob(
+                        jdbc, projectId, insertSnapshot(jdbc, projectId, "BUILDING"), "RUNNING");
+
+        jdbc.sql("UPDATE index_jobs SET stage = 'EMBEDDING' WHERE id = :id")
+                .param("id", jobId)
+                .update();
+
+        assertThat(
+                        jdbc.sql("SELECT stage FROM index_jobs WHERE id = :id")
+                                .param("id", jobId)
+                                .query(String.class)
+                                .single())
+                .isEqualTo("EMBEDDING");
+    }
+
+    @ParameterizedTest
+    @CsvSource(
+            nullValues = "null",
+            value = {
+                // provider, model, dimensions
+                "openai, null,                   1536",
+                "null,   text-embedding-3-small, 1536",
+                "openai, text-embedding-3-small, null"
+            })
+    void snapshotEmbeddingMetadataIsAllOrNothing(
+            String provider, String model, Integer dimensions) {
+        UUID snapshotId = insertSnapshot(jdbc, projectId, "READY");
+
+        assertCheckViolation(
+                () ->
+                        jdbc.sql(
+                                        """
+                                        UPDATE snapshots
+                                        SET embedding_provider = :provider,
+                                            embedding_model = :model,
+                                            embedding_dimensions = :dimensions
+                                        WHERE id = :id
+                                        """)
+                                .param("id", snapshotId)
+                                .param("provider", provider)
+                                .param("model", model)
+                                .param("dimensions", dimensions)
+                                .update());
+    }
+
+    @Test
+    void embeddingColumnHasNoFixedDimension() {
+        assertThat(
+                        jdbc.sql(
+                                        """
+                                        SELECT format_type(atttypid, atttypmod)
+                                        FROM pg_attribute
+                                        WHERE attrelid = 'chunk_embeddings'::regclass
+                                          AND attname = 'embedding'
+                                        """)
+                                .query(String.class)
+                                .single())
+                .isEqualTo("vector");
+    }
+
+    @ParameterizedTest
+    @CsvSource(
+            delimiter = '|',
+            value = {
+                // dimensions, vector
+                "3    | [1,2]",
+                "2    | [1,2,3]",
+                "0    | []",
+                "2001 | [1]"
+            })
+    void embeddingChecksRejectInconsistentDimensions(int dimensions, String vector) {
+        assertThatThrownBy(
+                        () ->
+                                jdbc.sql(
+                                                """
+                                                INSERT INTO chunk_embeddings (chunk_hash, provider,
+                                                    model, dimensions, embedding, created_at)
+                                                VALUES ('c', 'fake', 'm', :dimensions,
+                                                    CAST(:vector AS vector), now())
+                                                """)
+                                        .param("dimensions", dimensions)
+                                        .param("vector", vector)
+                                        .update())
+                .isInstanceOf(DataAccessException.class);
+    }
+
+    @Test
+    void embeddingDimensionCheckUsesTheDeclaredConstraint() {
+        assertThatThrownBy(
+                        () ->
+                                jdbc.sql(
+                                                """
+                                                INSERT INTO chunk_embeddings (chunk_hash, provider,
+                                                    model, dimensions, embedding, created_at)
+                                                VALUES ('c', 'fake', 'm', 3, '[1,2]', now())
+                                                """)
+                                        .update())
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("chunk_embeddings_dimensions_match");
     }
 
     @ParameterizedTest

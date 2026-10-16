@@ -27,7 +27,9 @@ import org.springframework.test.context.ContextConfiguration;
             TestProperties.MAX_INVENTORY_FILE_BYTES,
             TestProperties.INDEX_POLL_INTERVAL,
             TestProperties.INDEX_HEARTBEAT_INTERVAL,
-            TestProperties.INDEX_MAX_CONCURRENT
+            TestProperties.INDEX_MAX_CONCURRENT,
+            TestProperties.EMBEDDING_PROVIDER,
+            TestProperties.NO_EMBEDDING_API_KEY
         })
 @AutoConfigureMockMvc
 @ContextConfiguration(initializers = TestFileSystemInitializer.class)

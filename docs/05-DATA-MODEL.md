@@ -93,18 +93,21 @@ Um por job de indexação (D-044). As tabelas `snapshots`, `index_jobs`, `file_c
 - `completed_at` nullable
 - `pruned_at` nullable: preenchido quando a poda remove os `snapshot_files` (D-044)
 
-`READY` e `PARTIAL` (com arquivos `FAILED`) são ativáveis; `FAILED` não. Colunas de provedor e modelo de embedding entram na Etapa 4.
+- `embedding_provider`, `embedding_model`, `embedding_dimensions` nullable: modelo dos vetores do snapshot, todos nulos (indexado com `provider=none`) ou todos preenchidos (`snapshots_embedding_consistency`); V8, Etapa 4 (D-048, D-050)
+- `embedding_tokens` nullable: soma dos tokens reportados pelo provedor no job; `null` se algum lote não reportou, `0` se nada foi enviado (D-054)
+
+`READY` e `PARTIAL` (com arquivos `FAILED`) são ativáveis; `FAILED` não. Com provedor configurado, um snapshot só é ativado com todos os chunks com vetor do modelo (D-050).
 
 ### `index_jobs`
 - `id` UUID, PK; FK para `project_jobs (id)`
 - `project_id` FK
 - `snapshot_id` FK, único (um snapshot por job)
 - `status` (`PENDING`, `RUNNING`, `COMPLETED`, `FAILED`)
-- `stage` nullable (`SCANNING`, `PROCESSING_FILES`, `FINALIZING`; a Etapa 4 acrescenta `EMBEDDING`)
+- `stage` nullable (`SCANNING`, `PROCESSING_FILES`, `EMBEDDING`, `FINALIZING`; `EMBEDDING` desde a V8)
 - `progress_total`, `progress_completed` nullable
 - `attempt_count`: incrementado a cada retirada da fila (D-040)
 - `heartbeat_at` nullable: lease do worker
-- `error_code` nullable: código estável (`SOURCE_*`, `SCAN_LIMIT_REACHED`, `PROJECT_SIZE_LIMIT_EXCEEDED`, `NO_INCLUDED_FILES`, `INDEX_IO_ERROR`, `INDEX_ATTEMPTS_EXHAUSTED`); mensagem via `MessageSource` (`index.error.<CODE>`), sem coluna de mensagem
+- `error_code` nullable: código estável (`SOURCE_*`, `SCAN_LIMIT_REACHED`, `PROJECT_SIZE_LIMIT_EXCEEDED`, `NO_INCLUDED_FILES`, `INDEX_IO_ERROR`, `INDEX_ATTEMPTS_EXHAUSTED` e os `EMBEDDING_*` da D-051 e da D-054); mensagem via `MessageSource` (`index.error.<CODE>`), sem coluna de mensagem
 - `created_at`, `started_at`, `completed_at`
 
 Retirada com `SELECT … FOR UPDATE SKIP LOCKED` sobre jobs `PENDING` ou `RUNNING` com heartbeat vencido; transições condicionadas ao estado e ao `attempt_count` (D-040).
@@ -159,12 +162,13 @@ A tokenização de identificadores (camelCase, snake_case, siglas como `HTTPClie
 - `provider` (parte da PK)
 - `model` (parte da PK)
 - `dimensions` (parte da PK)
-- `embedding` vector(dimensão configurada)
+- `dimensions` entre 1 e 2.000 (`chunk_embeddings_dimensions_valid`)
+- `embedding` `vector` sem dimensão fixa, com `CHECK (vector_dims(embedding) = dimensions)` (`chunk_embeddings_dimensions_match`)
 - `created_at`
 
-PK: `(chunk_hash, provider, model, dimensions)`. Chunks com o mesmo texto e a mesma versão de chunking reutilizam o embedding, o que implementa o cache por hash/modelo (`04-RAG-PIPELINE.md` §5).
+Criada na migração V8 (Etapa 4, D-048). PK: `(chunk_hash, provider, model, dimensions)`, global (sem `project_id`) e sem FK para `chunks`. Chunks com o mesmo texto e a mesma versão de chunking reutilizam o embedding em qualquer projeto, o que implementa o cache por hash/modelo (`04-RAG-PIPELINE.md` §5). Vetores de modelos ou dimensões diferentes convivem; toda consulta filtra por provedor, modelo e dimensão.
 
-**Nota:** a dimensão do `vector` é fixada por migração quando o provedor for escolhido (O-004). Não misturar dimensões incompatíveis. Busca vetorial filtrada por snapshot sobre HNSW pode devolver menos resultados que o pedido; avaliar na Etapa 4 (D-039).
+Sem índice aproximado: a busca é exata sobre os chunks do snapshot (D-049). Um índice HNSW futuro será parcial por modelo, sobre `embedding::vector(N)`, sem migrar dados.
 
 ### `conversations`
 - `id` UUID, PK
@@ -267,9 +271,11 @@ Snapshots, conteúdo e chunks (D-039, D-044), ao fim de cada job de indexação:
 2. **Chunks sem snapshot:** apagam-se os chunks cuja combinação `(content_hash, chunking_version)` não é usada por nenhum snapshot não podado (inclusive `BUILDING`).
 3. **Conteúdo sem snapshot:** apagam-se os `file_contents` sem referência em `snapshot_files`, com os chunks restantes em cascata.
 
+4. **Embeddings órfãos:** apagam-se os `chunk_embeddings` cujo `chunk_hash` não existe em nenhum chunk, de qualquer projeto. Só jobs concluídos limpam; um job com falha preserva os vetores já gravados para o job seguinte. Uma varredura na inicialização cobre projetos removidos sem job posterior (D-052).
+
 Respostas e evidências nunca são apagadas pela poda (D-046).
 
 Ainda a definir:
 - conversas e respostas (fora a remoção do projeto);
-- embeddings órfãos em `chunk_embeddings` (Etapa 4);
+- embeddings de um modelo que deixou de ser o configurado (hoje só somem com seus chunks, D-052);
 - registros de jobs e snapshots podados antigos.

@@ -29,5 +29,9 @@ final class TestProperties {
     static final String INDEX_HEARTBEAT_INTERVAL = "app.indexing.heartbeat-interval=100ms";
     static final String INDEX_MAX_CONCURRENT = "app.indexing.max-concurrent=2";
 
+    // application.yml imports the developer's .env; tests never call a real provider (D-047).
+    static final String EMBEDDING_PROVIDER = "app.embeddings.provider=fake";
+    static final String NO_EMBEDDING_API_KEY = "app.embeddings.api-key=";
+
     private TestProperties() {}
 }

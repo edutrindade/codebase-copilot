@@ -6,8 +6,9 @@ import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
+import java.util.Arrays;
 
-/** Module boundaries (D-005, D-031). */
+/** Module boundaries (D-005, D-006, D-031). */
 @AnalyzeClasses(
         packages = "com.codebasecopilot",
         importOptions = ImportOption.DoNotIncludeTests.class)
@@ -24,6 +25,29 @@ class ArchitectureTest {
         "com.codebasecopilot.providers..",
         "com.codebasecopilot.history..",
     };
+
+    private static final String PROVIDERS = "com.codebasecopilot.providers..";
+
+    @ArchTest
+    static final ArchRule providerLibrariesOnlyInProviders =
+            noClasses()
+                    .that()
+                    .resideOutsideOfPackage(PROVIDERS)
+                    .should()
+                    .dependOnClassesThat()
+                    .resideInAnyPackage("org.springframework.ai..", "com.openai..");
+
+    @ArchTest
+    static final ArchRule providersDoesNotDependOnDomainModules =
+            noClasses()
+                    .that()
+                    .resideInAPackage(PROVIDERS)
+                    .should()
+                    .dependOnClassesThat()
+                    .resideInAnyPackage(
+                            Arrays.stream(DOMAIN_MODULES)
+                                    .filter(module -> !module.equals(PROVIDERS))
+                                    .toArray(String[]::new));
 
     @ArchTest
     static final ArchRule sharedDoesNotDependOnDomainModules =

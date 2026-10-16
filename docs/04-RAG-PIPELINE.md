@@ -63,6 +63,13 @@ Preferir limites semânticos quando houver parser confiável. Caso contrário, d
 
 Spring AI pode fornecer a integração com o provedor, mas a aplicação deve persistir metadados explícitos e não depender de detalhes internos do framework.
 
+**Implementado na Etapa 4:**
+- Porta `EmbeddingProvider` no módulo `providers`, com o adaptador OpenAI (`text-embedding-3-small`, 1.536 dimensões, provisório até o bake-off da Etapa 5) e um provedor fake determinístico para testes (D-047). Com `app.embeddings.provider=none` (padrão), nada é enviado e não há busca vetorial.
+- Vetores em `chunk_embeddings`, coluna `vector` sem dimensão fixa e dimensão na linha; cache global por `(chunk_hash, provider, model, dimensions)` (D-048, D-052).
+- Etapa `EMBEDDING` no job de indexação, entre os arquivos e a finalização: envia em lotes só os chunks do snapshot sem vetor do modelo configurado. O snapshot só é ativado com todos os chunks com vetor; provedor, modelo, dimensão e tokens reportados ficam no snapshot (D-050).
+- Falhas do provedor classificadas na porta e repetidas só quando podem passar, com uma única camada de repetição (D-051).
+- Trocar de modelo: o projeto informa `EMBEDDING_MODEL_CHANGED`, a busca recusa o snapshot até a reindexação, e a reindexação gera vetores só para o modelo novo (D-050).
+
 ## 6. Recuperação híbrida
 
 ### Canal lexical
@@ -70,6 +77,8 @@ Busca por termos, identificadores, nomes de classe/função, caminhos e palavras
 
 ### Canal vetorial
 Busca por similaridade semântica em embeddings.
+
+Na Etapa 4, a busca é **exata** (distância de cosseno sobre todos os chunks do snapshot, sem índice aproximado), filtrada por snapshot, provedor, modelo e dimensão, e exposta em `POST /projects/{projectId}/search` (D-049, D-053). Com 50 mil chunks de 1.536 dimensões, a medição ficou em 213 ms de média e 313 ms de p95. Índice HNSW parcial por modelo com varredura iterativa fica para a comparação da Etapa 5 ou 8.
 
 ### Fusão
 Combinar rankings dos canais. O baseline é Reciprocal Rank Fusion com k=60 (D-017), a ser comparado com alternativas no conjunto de avaliação (O-005).

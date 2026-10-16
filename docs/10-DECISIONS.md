@@ -119,6 +119,21 @@ Este documento registra decisões aceitas e itens que ainda precisam de validaç
 
 **O que levaria à revisão:** incompatibilidade do Spring AI 2.0.x com o Spring Boot 4.1 na Etapa 4, ou atualização da imagem que altere o comportamento do pgvector.
 
+#### Atualização de 16/10/2026 — Spring AI e pgvector na Etapa 4
+**Contexto:** a Etapa 4 adiciona o Spring AI (D-047) e precisa confirmar a compatibilidade prevista acima.  
+**Verificação (16/10/2026):**
+- **Spring AI 2.0.1** é o patch 2.0.x mais recente no Maven Central (há também 2.1.0-M1, que é marco e não entra).
+- start.spring.io (`/actuator/info`, `bom-ranges`) indica o Spring AI 2.0.1 para `Spring Boot >=4.0.0 and <4.2.0-M1`; o 2.1.0-M1 exige Spring Boot 4.2.
+- O POM do `spring-ai-autoconfigure-model-openai` 2.0.1 é construído contra o **Spring Boot 4.1.1**, a mesma versão do projeto.
+- O anúncio oficial do GA (spring.io, 12/06/2026) diz que o Spring AI 2.0 foi feito para Spring Boot 4.0/4.1 e Spring Framework 7.0, e que o módulo OpenAI passou a ter uma única variante, baseada no SDK oficial.
+- **pgvector 0.8.7** na imagem `pgvector/pgvector:pg17` (imagem de 01/10/2026, PostgreSQL 17.11), conferido com `pg_available_extensions`.
+
+**Decisão:** BOM `spring-ai-bom` 2.0.1 e apenas o módulo **`spring-ai-openai`** (core), sem o `spring-ai-starter-model-openai`. O módulo traz `openai-java-core` 4.49.0 e OkHttp 4.12.0; nenhum jar do Spring AI incluído registra autoconfiguração.  
+**Motivo:** o starter traria a autoconfiguração do OpenAI, do `ChatClient` e da memória de chat, com propriedades `spring.ai.*` paralelas às `app.embeddings.*`. Sem ele, o módulo `providers` monta o modelo de embeddings só quando `app.embeddings.provider=openai` (D-006), e não há bean do Spring AI com `none` ou `fake`.  
+**Consequências:**
+- O SDK da OpenAI tem repetição própria; o adaptador da F1 a desliga (D-047), para que a política da D-051 seja a única.
+- A troca para o patch 2.0.x seguinte exige repetir esta verificação.
+
 ### D-015 — Build tool (resolve O-002)
 **Status:** Aceita  
 **Decisão:** **Maven com wrapper (`mvnw`)**.  
@@ -673,6 +688,174 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Consequências:** `05-DATA-MODEL.md` (`answer_evidence`) e `06-API-CONTRACTS.md` §9 atualizados. A remoção do projeto continua apagando o histórico (D-021).  
 **O que levaria à revisão:** volume de evidências copiadas relevante frente ao conteúdo indexado.
 
+### D-047 — Provedor inicial de embeddings (O-004, provisória)
+**Status:** Aceita (provisória, 16/10/2026; bake-off na Etapa 5)  
+**Contexto:** a O-004 pede um provedor de embeddings antes de concluir a Etapa 4, mas a comparação de qualidade depende do corpus da Etapa 5 (O-011).  
+**Opções consideradas:**
+1. OpenAI `text-embedding-3-small`, pelo módulo OpenAI do Spring AI.
+2. Voyage `voyage-code-3`, especializado em código.
+3. Adiar a escolha e entregar a etapa só com um provedor fake.
+
+**Decisão:** opção 1, provisória; a Voyage entra como candidata no bake-off.
+- `app.embeddings.provider`: `none` (padrão), `fake` ou `openai`; `app.embeddings.model` (padrão `text-embedding-3-small`) e `app.embeddings.dimensions` (padrão 1536, entre 1 e 2.000).
+- A chave vem de `EMBEDDING_API_KEY` no `.env`, obrigatória com `openai`; a aplicação não inicia sem ela. A chave nunca aparece em código, logs ou mensagens de erro.
+- `app.embeddings.base-url` (padrão `https://api.openai.com/v1`) decide para onde vão a chave e os trechos de código. Só `https` é aceito; `http` apenas para `localhost` ou `127.0.0.1` (servidor de teste e servidores locais futuros). Endereço com usuário e senha embutidos também é recusado. Fora disso, a aplicação não inicia, e a mensagem de erro não repete o valor.
+- Os testes do `./mvnw verify` usam `fake` e nunca precisam de chave; a chave real só entra no teste manual de fumaça. Uma `ContextCustomizerFactory` de teste, registrada em `META-INF/spring.factories`, impede qualquer contexto de teste de subir com `provider=openai`, inclusive contextos novos que esqueçam de fixar o provedor e herdem o valor do `.env`. A única exceção são classes com a tag JUnit `smoke` (o teste de fumaça, F6), que o Surefire e o Failsafe excluem do `verify`.
+- O SDK da OpenAI tem repetição própria, que o adaptador desliga: a política da D-051 é a única camada de repetição.
+
+**Implementação (F1, 16/10/2026):**
+- Porta `EmbeddingProvider` em `providers` (`embed(textos)` → vetores + tokens; `model()` → provedor, modelo e dimensão), sem tipos do Spring AI nem do SDK da OpenAI na assinatura. O ArchUnit passa a barrar também `com.openai` fora de `providers`.
+- **Cliente montado pelo Spring AI, chamada pelo SDK:** o `OpenAiSetup` do Spring AI cria o cliente (OkHttp, `base-url`, chave, timeout), mas a chamada vai direto a `embeddings().create()` do SDK. O `OpenAiEmbeddingModel` do Spring AI lê o uso de tokens como campo obrigatório e falha quando o provedor não o informa, o que impediria o uso nulo exigido na D-054 com servidores compatíveis.
+- **Nesta etapa, o Spring AI traz só o SDK e a configuração do cliente.** Como o código chama o SDK diretamente, `com.openai:openai-java-core` é declarado explicitamente no `pom.xml`. O `spring-ai-bom` não gerencia essa versão, então ela fica numa propriedade igual à que o `spring-ai-openai` declara (4.49.0 no 2.0.1), e um teste falha se as duas divergirem. A Etapa 5 decide se mantém o `spring-ai-openai` ou passa a usar só o SDK.
+- No cliente: repetição interna em zero e log do SDK desligado, porque `OPENAI_LOG=debug` no ambiente registraria o corpo das requisições. Um teste roda o adaptador numa JVM filha com `OPENAI_LOG=debug` e confirma que nenhum corpo aparece na saída; um teste de controle mostra que, sem o desligamento, o SDK imprime o texto enviado.
+- Timeout de `app.embeddings.timeout` por chamada (conexão e chamada inteira); estouro vira `UNAVAILABLE`.
+- Classificação dos erros e repetição: D-051.
+- Resposta validada antes de devolver qualquer vetor: mesma quantidade de vetores e textos, índices únicos dentro da faixa (o resultado sai na ordem dos índices), dimensão igual à configurada e componentes finitos. Qualquer divergência rejeita o lote inteiro com `INVALID_REQUEST`.
+- Tokens: `total_tokens` reportado, ou `prompt_tokens` na falta dele; sem uso na resposta, `null`. Lote vazio não faz requisição.
+- Mensagens de `EmbeddingFailure` trazem só tipo, status HTTP e quantidades. A exceção do SDK não é guardada como causa, porque a mensagem dela inclui o corpo da resposta do provedor.
+- Com `provider=none` não há bean `EmbeddingProvider`; o provedor `fake` usa o modelo e a dimensão configurados e informa como tokens a contagem de termos.
+
+**Preço e uso de dados (fonte oficial, consultada em 16/10/2026):**
+- Preço: **US$ 0,02 por 1M de tokens de entrada** para `text-embedding-3-small` (tarifa Standard; a página não lista preço Batch para o modelo). Fonte: `developers.openai.com/api/docs/pricing`.
+- Uso de dados: pela tabela de endpoints, `/v1/embeddings` **não usa os dados para treino** (sem opt-in), tem **retenção de 30 dias** para monitoramento de abuso, sem retenção de estado da aplicação, e é elegível a Zero Data Retention (mediante acordo com a OpenAI). Fonte: `developers.openai.com/api/docs/guides/your-data`.
+
+**Motivo:** integração mais madura no Spring AI 2.0 (D-014) e API "compatível com OpenAI" oferecida por outros provedores e servidores locais, o que facilita a Etapa 9 (D-019).  
+**Consequências:** o texto dos chunks indexados e as perguntas de busca saem da máquina quando `provider=openai` (D-054). Preço e política devem ser reconferidos antes de alterar esta decisão.  
+**O que levaria à revisão:** resultado do bake-off da Etapa 5, mudança de preço ou de política de dados, ou integração da Voyage no Spring AI.
+
+### D-048 — Armazenamento dos vetores (revisa a restrição da O-004)
+**Status:** Aceita (16/10/2026; F2 entregue)  
+**Contexto:** a O-004 previa fixar a dimensão do vetor por migração, o que obrigaria uma migração a cada troca de modelo, inclusive no bake-off da Etapa 5.  
+**Opções consideradas:**
+1. Coluna `vector(N)` com a dimensão do modelo escolhido.
+2. Coluna `vector` sem dimensão fixa, com a dimensão na própria linha.
+
+**Decisão:** opção 2, na migração `V8__create_chunk_embeddings.sql`.
+- **`chunk_embeddings`**: PK `(chunk_hash, provider, model, dimensions)`, global (sem `project_id`); `embedding vector` sem dimensão; `CHECK (dimensions BETWEEN 1 AND 2000)` e `CHECK (vector_dims(embedding) = dimensions)` (`chunk_embeddings_dimensions_match`). Sem FK para `chunks` (o embedding é por texto e sobrevive à remoção de um projeto até a limpeza de órfãos) e sem índice aproximado (busca exata, D-049).
+- **`snapshots`** ganha `embedding_provider`, `embedding_model`, `embedding_dimensions` e `embedding_tokens`; os três primeiros são todos nulos ou todos preenchidos (`snapshots_embedding_consistency`).
+- **`index_jobs`**: a constraint `index_jobs_stage_valid` passa a aceitar `EMBEDDING`.
+- Verificado no PostgreSQL dos testes (pgvector 0.8.7): a coluna fica com tipo `vector` sem modificador, o `CHECK` com `vector_dims` rejeita vetor de outra dimensão, e o mesmo `chunk_hash` coexiste com modelos ou dimensões diferentes.
+
+**Implementação (F2, 16/10/2026):** `ChunkEmbeddingRepository` em `indexing`, com `JdbcClient` e SQL explícito.
+- **Vetor como parâmetro:** literal de texto do pgvector (`[0.6,-0.8]`), passado como parâmetro e convertido com `CAST(:embedding AS vector)`, nunca concatenado ao SQL. Os componentes são escritos com `Float.toString`, que não depende do locale (ponto decimal sempre, inclusive com locale padrão pt-BR, coberto por teste). NaN, infinito, vetor vazio e vetor com dimensão diferente da do modelo são rejeitados antes de chegar ao banco.
+- **Hashes sem embedding de um snapshot:** chunks dos arquivos do snapshot na `chunking_version` dele (D-039), sem linha em `chunk_embeddings` para o mesmo provedor, modelo e dimensão. Embedding de outro modelo ou de outra dimensão conta como faltando. Devolve hashes distintos, em ordem.
+- **Inserção em lote idempotente:** `ON CONFLICT DO NOTHING`, devolvendo quantas linhas foram realmente inseridas (soma das contagens do lote; o driver não usa `reWriteBatchedInserts`, e uma contagem não informada falha em vez de virar zero).
+- **Limpeza de órfãos:** apaga embeddings cujo `chunk_hash` não existe em nenhum chunk, de qualquer projeto, e devolve a quantidade.
+- **Plano de execução:** com 200 mil chunks em 100 projetos, o `EXPLAIN` da consulta de hashes sem embedding usa a PK de `snapshot_files`, `chunks_natural_key` e a PK de `chunk_embeddings`, sem varredura sequencial dessas tabelas (`ChunkEmbeddingPlanIT`). Com 40 mil chunks o planejador ainda prefere varrer `chunks` com hash join, o que é mais barato nesse tamanho. Não é preciso índice novo: o índice em `chunks(chunk_hash)` já existe desde a V7 e serve à limpeza de órfãos.
+
+**Motivo:** trocar de modelo, inclusive no bake-off, não exige migração, e vetores de modelos diferentes convivem no cache.  
+**Consequências:** toda consulta filtra por provedor, modelo e dimensão. Um índice aproximado futuro precisa ser parcial por modelo, sobre `embedding::vector(N)`. O limite de 2.000 dimensões continua validado na inicialização (D-047) e no `CHECK`.  
+**O que levaria à revisão:** necessidade de mais de 2.000 dimensões (`halfvec`) ou índice aproximado que não funcione bem como índice parcial.
+
+### D-049 — Busca vetorial exata (trata o risco da D-039)
+**Status:** Aceita (16/10/2026; F4 entregue)  
+**Contexto:** com HNSW, o filtro por snapshot é aplicado depois da busca aproximada e pode devolver menos resultados que o pedido.  
+**Opções consideradas:**
+1. HNSW com varredura iterativa do pgvector (`hnsw.iterative_scan`).
+2. Busca exata (distância de cosseno sobre os chunks do snapshot, sem índice aproximado).
+3. Índice HNSW parcial por projeto.
+
+**Decisão:** opção 2 como baseline.
+- `VectorSearch`, no módulo `retrieval`, em SQL explícito sobre as tabelas da indexação (D-016): chunks dos arquivos do snapshot na `chunking_version` dele (D-039), unidos a `chunk_embeddings` pela PK com provedor, modelo e dimensão do modelo configurado (D-048). Vetores de outros modelos nunca entram.
+- Ordem: distância de cosseno (`<=>`), depois o primeiro caminho em ordem de bytes (`COLLATE "C"`), a linha inicial e o id do chunk. `score` = 1 − distância.
+- Uma linha por chunk: um chunk compartilhado por vários arquivos do snapshot traz todos os caminhos, ordenados; o primeiro vira `path` e os demais `otherPaths`.
+- O vetor da pergunta vai como literal de texto convertido no SQL (`VectorLiteral`, movido para `shared.persistence`, porque agora `indexing` e `retrieval` o usam).
+
+**Medição (16/10/2026, `VectorSearchPerformanceIT`, tag `performance`, fora do `verify`):** 50 mil chunks sintéticos de 1.536 dimensões num snapshot, 50 consultas depois de 5 de aquecimento, `limit` 10: **média de 213 ms, p95 de 313 ms, máximo de 396 ms**, num Apple M4 com 16 GB e o PostgreSQL 17 do Testcontainers (pgvector 0.8.7).  
+**Motivo:** correta por construção (só considera os chunks do snapshot pedido), com custo proporcional ao tamanho do snapshot, limitado por `max-project-bytes`.  
+**Consequências:** a latência cresce linearmente com os chunks do snapshot; 50 mil chunks ficam na casa de 0,2 a 0,3 s, aceitável para uso local e acima do que se quer numa busca híbrida com várias consultas por pergunta.  
+**O que levaria à revisão:** a comparação da Etapa 5 ou 8 com HNSW parcial por modelo e varredura iterativa (mesmos resultados no corpus, menos latência), que a D-048 permite sem migrar dados.
+
+### D-050 — Etapa `EMBEDDING` no job e ativação do snapshot
+**Status:** Aceita (16/10/2026; F3 e F5 entregues)  
+**Contexto:** o snapshot ativo precisa ser sempre pesquisável, e uma falha do provedor não pode deixar o projeto sem snapshot utilizável (D-044).  
+**Decisão:**
+- Nova etapa `EMBEDDING` entre `PROCESSING_FILES` e `FINALIZING`. Ela lista os `chunk_hash` do snapshot sem embedding do modelo configurado (D-048), envia em lotes de `app.embeddings.batch-size` (padrão 64) e grava com `ON CONFLICT DO NOTHING`. O progresso do job passa a contar chunks (`total` = chunks a enviar), e cada lote grava progresso e renova o heartbeat na mesma transação da inserção.
+- O texto de cada lote é lido por uma consulta por lote (texto de um chunk por hash, no projeto), sem carregar o texto de todos os chunks de uma vez.
+- **O snapshot só é ativado com todos os seus chunks com embedding.** Se o provedor falhar, o job termina `FAILED` e o ativo anterior continua valendo.
+- A finalização grava `embedding_provider`, `embedding_model`, `embedding_dimensions` e `embedding_tokens` no snapshot, na mesma transação da ativação.
+- Reindexar com o mesmo modelo não chama o provedor para chunks inalterados (cache por hash); `embedding_tokens` fica `0` nesse caso.
+- Com `app.embeddings.provider=none`, a etapa é pulada e o snapshot é ativado sem metadados de modelo.
+- **Estado do snapshot ativo** em `outdatedReasons`, só com provedor configurado: `EMBEDDINGS_MISSING` quando o snapshot não tem metadados de modelo (indexado com `provider=none`) e `EMBEDDING_MODEL_CHANGED` quando provedor, modelo ou dimensão diferem dos configurados. Com `provider=none`, nenhum dos dois aparece: sem modelo configurado, nada fica faltando. Nos dois casos a busca responde `409 SNAPSHOT_EMBEDDING_MISMATCH` (D-053).
+- Trocar de modelo gera vetores só na próxima indexação, para todos os chunks do snapshot, mesmo sem arquivo alterado; os vetores do modelo anterior continuam no cache até seus chunks sumirem (D-052).
+
+**Motivo:** a busca vetorial nunca encontra um snapshot ativo pela metade, e o cache evita pagar duas vezes pelo mesmo texto.  
+**Consequências:** um job com muitos chunks novos fica mais longo e depende do provedor; falhas são tratadas pela D-051. O valor `EMBEDDING` aparece em `stage` na API.  
+**O que levaria à revisão:** necessidade de ativar snapshots sem vetores quando o provedor estiver fora (busca só lexical, Etapa 5).
+
+### D-051 — Falhas do provedor de embeddings e repetição
+**Status:** Aceita (16/10/2026; F1, F3 e F4 entregues)  
+**Contexto:** chamadas ao provedor falham por credencial, limite de taxa, cota, indisponibilidade ou pedido recusado. Algumas falhas passam com o tempo, outras não, e um job esperando o provedor não pode perder o lease (D-040).  
+**Decisão:**
+- **Classificação na porta** (`EmbeddingFailure.Type`, sem tipos do Spring AI nem do SDK):
+
+  | Tipo | Quando (adaptador OpenAI) | Repete? |
+  |---|---|---|
+  | `UNAUTHORIZED` | 401, 403 | não |
+  | `QUOTA_EXCEEDED` | 429 com `error.code` de cobrança ou `error.type` `insufficient_quota` | não |
+  | `RATE_LIMITED` | demais 429 (por exemplo, sem `code` ou com `slow_down`) | sim |
+  | `UNAVAILABLE` | 408, 409, 5xx, falha de rede, timeout da chamada | sim |
+  | `INVALID_REQUEST` | demais 4xx; resposta ilegível ou divergente (quantidade, índice, dimensão) | não |
+
+- **Cota esgotada é permanente.** Pelo guia oficial de códigos de erro da OpenAI (`developers.openai.com/api/docs/guides/error-codes`, consultado em 16/10/2026), os 429 de cobrança são identificados por `error.code`: `credit_balance_exhausted`, `organization_spend_limit_exceeded`, `project_spend_limit_exceeded` e `organization_usage_limit_exceeded`. O `error.type` ainda pode vir como `insufficient_quota`, e a página afirma que repetir erros de cobrança, gasto ou cota não restaura o acesso. O adaptador lê `code` e `type` do corpo só para classificar; nenhum dos dois vai para log ou mensagem.
+- **Uma única camada de repetição**, `EmbeddingRetry`; o cliente da OpenAI repete zero vezes. Só `RATE_LIMITED` e `UNAVAILABLE` são repetidos, até `app.embeddings.max-retries` (padrão 4, ou seja, até 5 chamadas). Esgotadas as tentativas, a última falha é lançada.
+- **Espera:** 1 s, dobrando a cada tentativa. `Retry-After` (segundos ou data HTTP) ou `retry-after-ms`, quando presentes em `RATE_LIMITED` ou `UNAVAILABLE`, substituem a espera calculada. Nenhuma espera passa de `app.embeddings.max-retry-wait` (padrão 60 s). Sem variação aleatória.
+- **Heartbeat via callback:** a espera é feita em fatias de no máximo o intervalo informado por quem chama, e um callback roda após cada fatia. Uma exceção lançada pelo callback (claim perdido) interrompe a espera e se propaga sem nova tentativa. A espera é injetável (`Sleeper`), e os testes controlam o tempo sem dormir. Interrupção da thread encerra a espera com a última falha.
+- **Mensagens e logs** trazem só tipo, status HTTP, quantidades e duração; a exceção do SDK não é guardada como causa.
+
+**Códigos do job (F3):** `UNAUTHORIZED` → `EMBEDDING_PROVIDER_UNAUTHORIZED`; `QUOTA_EXCEEDED` → `EMBEDDING_QUOTA_EXCEEDED`; `RATE_LIMITED` esgotado → `EMBEDDING_RATE_LIMITED`; `UNAVAILABLE` esgotado → `EMBEDDING_PROVIDER_UNAVAILABLE`; `INVALID_REQUEST` → `EMBEDDING_REQUEST_REJECTED`. Falhas permanentes encerram o job na hora e não voltam à fila (D-040). No job, a espera é fatiada em `app.indexing.heartbeat-interval` e cada fatia renova o lease; claim perdido interrompe a espera e o worker para sem tocar no job. As mensagens pt-BR ficam em `index.error.<CODE>`, sem detalhes do provedor.
+
+**Na busca (F4):** `UNAVAILABLE` → `502 EMBEDDING_PROVIDER_UNAVAILABLE`; `UNAUTHORIZED` → `502 EMBEDDING_PROVIDER_UNAUTHORIZED`; `QUOTA_EXCEEDED` → `502 EMBEDDING_QUOTA_EXCEEDED` (decidido em 16/10/2026: o problema é da conta no provedor, não do cliente da API); `INVALID_REQUEST` → `502 EMBEDDING_REQUEST_REJECTED` (acrescentado na F4, o plano não o previa); `RATE_LIMITED` → `429 EMBEDDING_RATE_LIMITED`. A busca não repete chamadas, porque há uma pessoa esperando; a mensagem não traz detalhes do provedor. O `Retry-After` do provedor ainda não é repassado na resposta.  
+**Motivo:** repetir só o que pode passar evita custo e espera inúteis; uma só camada de repetição torna o número de chamadas previsível (com 429 e `max-retries=4`, exatamente 5 requisições chegam ao provedor).  
+**Consequências:** o callback é o ponto de integração da F3 com o `Heartbeat`. A classificação de cota depende dos códigos documentados pela OpenAI e deve ser reconferida se a página mudar.  
+**O que levaria à revisão:** novos códigos de erro do provedor, outro provedor com semântica diferente, ou medição mostrando repetições sincronizadas entre workers (o que pediria variação aleatória).
+
+### D-052 — Cache de embeddings e limpeza de órfãos
+**Status:** Aceita (16/10/2026; F3 entregue)  
+**Contexto:** `chunk_embeddings` é global e sem FK para `chunks` (D-048); sem limpeza, vetores de conteúdos removidos ficariam para sempre.  
+**Decisão:**
+- Cache pela PK `(chunk_hash, provider, model, dimensions)`: o mesmo texto nunca é enviado duas vezes para o mesmo modelo, em qualquer projeto.
+- **Limpeza de órfãos ao fim de cada job concluído**, na transação da finalização, depois da limpeza de chunks da D-039: apagam-se os embeddings cujo `chunk_hash` não existe mais em nenhum chunk.
+- **Job com falha não limpa:** os embeddings já gravados ficam no cache, e o job seguinte retoma de onde o anterior parou, sem pagar de novo. A limpeza de um job concluído (de qualquer projeto) ou a varredura na inicialização pode apagá-los antes disso, porque os chunks do snapshot com falha são removidos.
+- **Varredura na inicialização** (`ApplicationReadyEvent`): cobre a remoção de projetos sem nenhum job posterior.
+- Embeddings de um modelo que deixou de ser o configurado só somem quando seus chunks somem; limpeza por modelo fica para quando houver mais de um modelo em uso real.
+
+**Motivo:** o custo de reprocessar fica no que mudou, e o banco não acumula vetores sem uso.  
+**Consequências:** a limpeza percorre `chunk_embeddings` com anti-join pelo índice de `chunks(chunk_hash)` a cada job concluído.  
+**O que levaria à revisão:** limpeza lenta em bancos grandes (medição na Etapa 8) ou bake-off com vários modelos ao mesmo tempo.
+
+### D-053 — Contrato da busca
+**Status:** Aceita (16/10/2026; F4 e F5 entregues)  
+**Decisão:**
+- **`POST /api/v1/projects/{projectId}/search`** com `{ "query": "…", "snapshotId": null, "limit": 10 }`. `snapshotId` ausente = snapshot ativo; informado, precisa ser do projeto, `READY`/`PARTIAL` e não podado. `query` de 1 a 2.000 caracteres e não em branco; `limit` de 1 a 50 (padrão 10).
+- Resposta: `{ snapshotId, model: { provider, name, dimensions }, results: [ { chunkId, path, otherPaths, startLine, endLine, content, score } ] }`, em ordem decrescente de `score` (D-049). O plano previa só `model`; virou objeto porque o provedor também identifica os vetores (D-048).
+- Erros, nesta ordem: `400 VALIDATION_FAILED` (campos `query` e `limit`, antes de qualquer consulta); `404 PROJECT_NOT_FOUND`; `404 SNAPSHOT_NOT_FOUND` (inclusive de outro projeto); `409 SNAPSHOT_NOT_SEARCHABLE` (sem snapshot ativo, `BUILDING`, `FAILED` ou podado); `409 EMBEDDINGS_NOT_AVAILABLE` (`provider=none`); `409 SNAPSHOT_EMBEDDING_MISMATCH` (snapshot sem embeddings ou de outro provedor, modelo ou dimensão); erros do provedor (D-051).
+- Logs da busca trazem snapshot, quantidade de resultados e duração, nunca a pergunta (D-054).
+- A Etapa 5 acrescenta `mode` (`VECTOR`, `LEXICAL`, `HYBRID`) no mesmo endpoint.
+- `GET /api/v1/snapshots/{id}` e a listagem de snapshots trazem `embedding: { provider, model, dimensions, tokens }`, ou `null` sem metadados de modelo; `tokens` é `null` quando o provedor não informou o uso (D-054). `outdatedReasons` do projeto ganha `EMBEDDING_MODEL_CHANGED` e `EMBEDDINGS_MISSING` (D-050).
+
+**Motivo:** o cliente sempre sabe qual snapshot e qual modelo responderam, e cada erro tem um código estável.  
+**Consequências:** `ProjectService.find` foi acrescentado para a busca ler o snapshot ativo sem montar o resumo completo do projeto.  
+**O que levaria à revisão:** a Etapa 5 (modo híbrido) ou a Etapa 6 (evidências da resposta).
+
+### D-054 — Privacidade, custo e limites de entrada dos embeddings
+**Status:** Aceita (16/10/2026; F3 entregue, documentada no README e no `07` na F6)  
+**Contexto:** com `provider=openai`, trechos de código saem da máquina e cada token tem custo (D-047).  
+**Decisão:**
+- Só o texto de chunks de arquivos `INDEXED` vai ao provedor; arquivos excluídos, não suportados ou com falha nunca saem da máquina. A pergunta da busca também é enviada (F4).
+- Logs trazem quantidades (chunks, lotes, tokens, duração) e códigos, nunca texto de chunk, pergunta ou chave (coberto por teste com saída capturada).
+- `embedding_tokens` soma o uso **reportado** pelo provedor no job. Se algum lote não reportar uso, fica `null`: uma soma parcial seria um número inventado.
+- **Limite por job:** `app.embeddings.max-chunks-per-job` (padrão 50.000) conta só os chunks a enviar (os do snapshot sem embedding do modelo). Acima dele, o job falha com `EMBEDDING_CHUNK_LIMIT_EXCEEDED` antes de qualquer chamada ao provedor, e o ativo anterior não muda.
+- **Limites de entrada do modelo (fonte oficial, consultada em 16/10/2026):** pelo guia de embeddings (`developers.openai.com/api/docs/guides/embeddings`, coluna "Max input") e pela referência de `POST /v1/embeddings` (`developers.openai.com/api/reference/resources/embeddings/methods/create`), `text-embedding-3-small`, `text-embedding-3-large` e `text-embedding-ada-002` aceitam **8.192 tokens por entrada**; uma requisição aceita **até 2.048 entradas** e **até 300.000 tokens somados**; entrada vazia é recusada.
+- A porta expõe esses limites (`InputLimits`). O adaptador OpenAI conhece só os três modelos acima: outro modelo impede a inicialização. O fake não tem limite.
+- **Validação na inicialização** (com provedor configurado): `4.000` caracteres por chunk (D-043) ≤ tokens por entrada; `batch-size` ≤ entradas por requisição; `batch-size` × 4.000 ≤ tokens por requisição. Para a OpenAI, `batch-size` vai até 75 (o padrão 64 passa).
+- A conta usa **um token por caractere**. Não é um limite rigoroso (texto fora do ASCII pode passar disso), mas código fica em média bem abaixo de um token por caractere. Um chunk que ainda assim exceda o limite é recusado pelo provedor e falha o job com `EMBEDDING_REQUEST_REJECTED` (limitação conhecida, igual à do lote recusado). Os chunks nunca são vazios (o chunker descarta linhas em branco nas pontas).
+- Sem tokenizador exato nesta etapa.
+
+**Motivo:** o custo e o destino dos dados ficam previsíveis, e uma configuração incompatível com o modelo falha na inicialização, não no meio de um job.  
+**Consequências:** modelos novos ou servidores compatíveis exigem acrescentar o limite oficial ao adaptador. `07-SECURITY-PRIVACY-COSTS.md` §7 e §9 e o README documentam o que é enviado, o custo e como desligar (`provider=none`).  
+**O que levaria à revisão:** chunks recusados por tamanho no teste de fumaça ou no uso real (pediria tokenizador exato), ou provedores locais na Etapa 9 (pediria limite configurável).
+
 ---
 
 ## Decisões em aberto
@@ -681,11 +864,11 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Status:** A validar (bake-off na Etapa 5, com o corpus de avaliação)  
 **Restrições já aceitas:**
 - Escolher **um** par embedding/chat por instalação; trocar de modelo implica reindexar.
-- Preferir modelos de embedding com **até 2.000 dimensões**, compatível com índice HNSW sobre `vector` no pgvector (`halfvec` permite mais); a dimensão é fixada por migração.
+- Preferir modelos de embedding com **até 2.000 dimensões**, compatível com índice HNSW sobre `vector` no pgvector (`halfvec` permite mais). A dimensão não é mais fixada por migração: fica na linha (D-048).
 - Provedor de embeddings e de chat podem ser diferentes (a Anthropic, por exemplo, não oferece modelo de embeddings próprio), o que justifica as duas portas separadas.
 
 **Critérios de comparação:** recall@k e MRR no corpus, qualidade em código, custo por 1M de tokens, latência, limites de taxa e política de retenção de dados do provedor.  
-**Prazo:** decidir antes de concluir a Etapa 4, mesmo que provisoriamente, para fixar a dimensão do vetor na migração.
+**Estado (16/10/2026):** embeddings decididos provisoriamente na Etapa 4: OpenAI `text-embedding-3-small`, 1.536 dimensões (D-047), com armazenamento que não exige migração para trocar de modelo (D-048). A escolha definitiva de embeddings, com a Voyage `voyage-code-3` como candidata, sai do bake-off da Etapa 5, com o corpus de avaliação. O provedor de chat é decidido na Etapa 6.
 
 ### O-005 — Comparação final de estratégia lexical e fusão
 **Status:** A validar  
