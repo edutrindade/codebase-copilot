@@ -583,3 +583,9 @@ A preencher no fechamento (F7). Desvios registrados durante as fatias:
 - `inventory` do snapshot usa o schema `ScanResult` no OpenAPI (os mesmos campos de `GET /inventory`) e vem `null` nas listagens.
 - Falhas de leitura e poda são testadas num contexto próprio (`IndexingEdgeCasesIT`): precisam de um spy no leitor e de `retained-snapshots = 1`.
 - "Nenhum insert para arquivo inalterado" é verificado pelas contagens de `file_contents` e pelo id do chunk, que não muda.
+
+**F5**
+- O código de recuperação entrou na F3 e na F4 (retomada que apaga os `snapshot_files` parciais, tentativas, transições condicionadas); a F5 entrega os testes.
+- A queda no meio é simulada por uma exceção não tratada do leitor no quinto arquivo, com lotes de 2: o job volta para a fila na hora (D-040, desvio da F3), e não por heartbeat envelhecido. O worker morto é coberto à parte, com um job `RUNNING` de heartbeat antigo.
+- A reexecução do mesmo lote é coberta pelo `IndexStoreIT` (inserts repetidos não mudam as contagens).
+- Os testes que precisam do spy no leitor herdam de `SpiedReaderContext`, para dividir um único contexto extra: com o `@MockitoSpyBean` declarado em cada classe, o Spring criava um contexto por classe.

@@ -10,7 +10,6 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.reset;
 
 import com.codebasecopilot.DatabaseCleaner;
-import com.codebasecopilot.IntegrationTest;
 import com.codebasecopilot.TestFileSystemInitializer;
 import com.codebasecopilot.shared.fs.Directories;
 import com.jayway.jsonpath.DocumentContext;
@@ -25,19 +24,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.simple.JdbcClient;
-import org.springframework.test.context.TestPropertySource;
-import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 
-// A separate context: read failures need a spy on the file reader, and pruning a retention of
-// one snapshot. Both would change the behavior of the shared context.
-@IntegrationTest
-@TestPropertySource(properties = "app.indexing.retained-snapshots=1")
-class IndexingEdgeCasesIT {
+class IndexingEdgeCasesIT extends SpiedReaderContext {
 
     @Autowired private MockMvcTester mvc;
     @Autowired private JdbcClient jdbc;
-    @MockitoSpyBean private SourceFileReader reader;
 
     private IndexingTestClient client;
     private UUID workspaceId;
