@@ -20,6 +20,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -110,14 +111,16 @@ class IndexSchemaIT {
                                 .update());
     }
 
-    @Test
-    void indexJobAcceptsTheEmbeddingStage() {
+    @ParameterizedTest
+    @ValueSource(strings = {"LEXICAL", "EMBEDDING"})
+    void indexJobAcceptsTheStagesAddedAfterV7(String stage) {
         UUID jobId =
                 insertIndexJob(
                         jdbc, projectId, insertSnapshot(jdbc, projectId, "BUILDING"), "RUNNING");
 
-        jdbc.sql("UPDATE index_jobs SET stage = 'EMBEDDING' WHERE id = :id")
+        jdbc.sql("UPDATE index_jobs SET stage = :stage WHERE id = :id")
                 .param("id", jobId)
+                .param("stage", stage)
                 .update();
 
         assertThat(
@@ -125,7 +128,7 @@ class IndexSchemaIT {
                                 .param("id", jobId)
                                 .query(String.class)
                                 .single())
-                .isEqualTo("EMBEDDING");
+                .isEqualTo(stage);
     }
 
     @ParameterizedTest
@@ -325,6 +328,7 @@ class IndexSchemaIT {
         insertIndexJob(jdbc, projectId, snapshotId, "COMPLETED");
         insertContent(jdbc, projectId, "h", "x");
         insertFile(jdbc, snapshotId, projectId, "a.txt", "INDEXED", null, "h");
+        UUID chunkId = UUID.randomUUID();
         jdbc.sql(
                         """
                         INSERT INTO chunks (id, project_id, content_hash, chunking_version,
@@ -332,8 +336,15 @@ class IndexSchemaIT {
                                             token_count_estimate)
                         VALUES (:id, :projectId, 'h', 'lines-v1', 0, 1, 1, 'x', 'c', 1)
                         """)
-                .param("id", UUID.randomUUID())
+                .param("id", chunkId)
                 .param("projectId", projectId)
+                .update();
+        jdbc.sql(
+                        """
+                        INSERT INTO chunk_lexical (chunk_id, lexical_version, identifier_terms, tsv)
+                        VALUES (:id, 'ident-v1', '', to_tsvector('simple', 'x'))
+                        """)
+                .param("id", chunkId)
                 .update();
         setActiveSnapshot(jdbc, projectId, snapshotId);
 
@@ -346,6 +357,7 @@ class IndexSchemaIT {
                     "file_contents",
                     "snapshot_files",
                     "chunks",
+                    "chunk_lexical",
                     "project_jobs"
                 }) {
             assertThat(count(jdbc, table)).as(table).isZero();

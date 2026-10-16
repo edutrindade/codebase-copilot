@@ -2081,7 +2081,7 @@
           },
           "stage" : {
             "type" : [ "string", "null" ],
-            "enum" : [ "SCANNING", "PROCESSING_FILES", "EMBEDDING", "FINALIZING" ]
+            "enum" : [ "SCANNING", "PROCESSING_FILES", "LEXICAL", "EMBEDDING", "FINALIZING" ]
           },
           "startedAt" : {
             "type" : "string",
@@ -2110,7 +2110,7 @@
           },
           "stage" : {
             "type" : [ "string", "null" ],
-            "enum" : [ "SCANNING", "PROCESSING_FILES", "EMBEDDING", "FINALIZING" ]
+            "enum" : [ "SCANNING", "PROCESSING_FILES", "LEXICAL", "EMBEDDING", "FINALIZING" ]
           },
           "status" : {
             "type" : "string",
@@ -2233,6 +2233,15 @@
           }
         },
         "required" : [ "bytes", "files", "language" ]
+      },
+      "LexicalResponse" : {
+        "type" : "object",
+        "properties" : {
+          "version" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "version" ]
       },
       "LocalFolderSourceResponse" : {
         "allOf" : [ {
@@ -2528,7 +2537,7 @@
             "type" : "array",
             "items" : {
               "type" : "string",
-              "enum" : [ "SETTINGS_CHANGED", "SOURCE_REIMPORTED", "CHUNKING_CHANGED", "EMBEDDING_MODEL_CHANGED", "EMBEDDINGS_MISSING" ]
+              "enum" : [ "SETTINGS_CHANGED", "SOURCE_REIMPORTED", "CHUNKING_CHANGED", "EMBEDDING_MODEL_CHANGED", "EMBEDDINGS_MISSING", "LEXICAL_INDEX_MISSING", "LEXICAL_INDEX_CHANGED" ]
             }
           },
           "source" : {
@@ -2814,6 +2823,13 @@
               "type" : "null"
             } ]
           },
+          "lexical" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/LexicalResponse"
+            }, {
+              "type" : "null"
+            } ]
+          },
           "projectId" : {
             "type" : "string",
             "format" : "uuid"
@@ -2835,7 +2851,7 @@
             "enum" : [ "BUILDING", "READY", "PARTIAL", "FAILED" ]
           }
         },
-        "required" : [ "active", "changes", "chunkingVersion", "completedAt", "counts", "createdAt", "embedding", "id", "inventory", "projectId", "prunedAt", "settingsVersion", "sourceImportId", "status" ]
+        "required" : [ "active", "changes", "chunkingVersion", "completedAt", "counts", "createdAt", "embedding", "id", "inventory", "lexical", "projectId", "prunedAt", "settingsVersion", "sourceImportId", "status" ]
       },
       "SourceResponse" : {
         "discriminator" : {

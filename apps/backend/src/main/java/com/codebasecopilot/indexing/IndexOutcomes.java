@@ -1,5 +1,6 @@
 package com.codebasecopilot.indexing;
 
+import com.codebasecopilot.codeanalysis.IdentifierTokenizer;
 import com.codebasecopilot.indexing.content.LineChunker;
 import com.codebasecopilot.project.ProjectService;
 import java.time.Clock;
@@ -62,8 +63,8 @@ class IndexOutcomes {
     }
 
     // Activation, change summary, pruning and cleanup in one transaction, so a retried job
-    // never sees a half-finished snapshot (D-044). Every chunk of the snapshot already has a
-    // vector of the embedding model, or embeddings are off (D-050).
+    // never sees a half-finished snapshot (D-044). Every chunk of the snapshot already has its
+    // lexical row (D-056) and a vector of the embedding model, or embeddings are off (D-050).
     boolean complete(Claim claim, EmbeddingStage.@Nullable Result embedding) {
         return Boolean.TRUE.equals(
                 transactions.execute(
@@ -77,6 +78,8 @@ class IndexOutcomes {
                                             claim.snapshotId(),
                                             claim.projectId(),
                                             LineChunker.VERSION);
+                            snapshots.recordLexical(
+                                    claim.snapshotId(), IdentifierTokenizer.VERSION);
                             if (embedding != null) {
                                 snapshots.recordEmbedding(
                                         claim.snapshotId(), embedding.model(), embedding.tokens());

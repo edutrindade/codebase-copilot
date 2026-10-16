@@ -51,7 +51,8 @@ class SnapshotRepository {
             inventory::text AS inventory, file_count, indexed_file_count, unsupported_file_count,
             failed_file_count, chunk_count, total_bytes, added_count, modified_count,
             removed_count, unchanged_count, embedding_provider, embedding_model,
-            embedding_dimensions, embedding_tokens, created_at, completed_at, pruned_at
+            embedding_dimensions, embedding_tokens, lexical_version, created_at, completed_at,
+            pruned_at
             """;
 
     void insertBuilding(
@@ -133,6 +134,17 @@ class SnapshotRepository {
                 .param("model", model.model())
                 .param("dimensions", model.dimensions())
                 .param("tokens", tokens)
+                .update();
+    }
+
+    void recordLexical(UUID id, String lexicalVersion) {
+        jdbc.sql(
+                        """
+                        UPDATE snapshots SET lexical_version = :version
+                        WHERE id = :id AND status = 'BUILDING'
+                        """)
+                .param("id", id)
+                .param("version", lexicalVersion)
                 .update();
     }
 
@@ -432,6 +444,7 @@ class SnapshotRepository {
                                 rs.getInt("removed_count"),
                                 rs.getInt("unchanged_count")),
                 embedding(rs),
+                rs.getString("lexical_version"),
                 Objects.requireNonNull(Timestamps.read(rs, "created_at")),
                 Timestamps.read(rs, "completed_at"),
                 Timestamps.read(rs, "pruned_at"));

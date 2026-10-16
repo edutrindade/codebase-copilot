@@ -13,4 +13,5 @@ record IndexingProperties(
         @DefaultValue("60s") Duration leaseTimeout,
         @DefaultValue("3") int maxAttempts,
         @DefaultValue("100") int batchFiles,
+        @DefaultValue("500") int lexicalBatchChunks,
         @DefaultValue("3") int retainedSnapshots) {}

@@ -2,6 +2,7 @@ package com.codebasecopilot.indexing;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.codebasecopilot.codeanalysis.IdentifierTokenizer;
 import com.codebasecopilot.indexing.content.LineChunker;
 import com.codebasecopilot.project.Project;
 import com.codebasecopilot.project.SourceType;
@@ -96,6 +97,18 @@ class ProjectIndexesAdapterTest {
                 .isEmpty();
     }
 
+    @Test
+    void snapshotWithoutLexicalIndexIsMissingIt() {
+        assertThat(ProjectIndexesAdapter.outdatedReasons(zip(IMPORT), lexical(null), 0, null))
+                .containsExactly("LEXICAL_INDEX_MISSING");
+    }
+
+    @Test
+    void anotherTokenizerVersionIsALexicalChange() {
+        assertThat(ProjectIndexesAdapter.outdatedReasons(zip(IMPORT), lexical("ident-v0"), 0, null))
+                .containsExactly("LEXICAL_INDEX_CHANGED");
+    }
+
     private static Project zip(UUID currentImport) {
         return new Project(
                 UUID.randomUUID(),
@@ -111,18 +124,23 @@ class ProjectIndexesAdapterTest {
     }
 
     private static Snapshot snapshot(ModelInfo model) {
-        return snapshot(0, IMPORT, LineChunker.VERSION, model);
+        return snapshot(0, IMPORT, LineChunker.VERSION, model, IdentifierTokenizer.VERSION);
     }
 
     private static Snapshot snapshot(int settingsVersion, @Nullable UUID importId, String version) {
-        return snapshot(settingsVersion, importId, version, null);
+        return snapshot(settingsVersion, importId, version, null, IdentifierTokenizer.VERSION);
+    }
+
+    private static Snapshot lexical(@Nullable String lexicalVersion) {
+        return snapshot(0, IMPORT, LineChunker.VERSION, null, lexicalVersion);
     }
 
     private static Snapshot snapshot(
             int settingsVersion,
             @Nullable UUID importId,
             String version,
-            @Nullable ModelInfo model) {
+            @Nullable ModelInfo model,
+            @Nullable String lexicalVersion) {
         return new Snapshot(
                 UUID.randomUUID(),
                 UUID.randomUUID(),
@@ -134,6 +152,7 @@ class ProjectIndexesAdapterTest {
                 new SnapshotRepository.Counts(0, 0, 0, 0, 0, 0),
                 null,
                 model == null ? null : new SnapshotRepository.Embedding(model, 3L),
+                lexicalVersion,
                 Instant.EPOCH,
                 Instant.EPOCH,
                 null);

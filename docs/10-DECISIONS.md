@@ -871,6 +871,22 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Consequências:** a regra de "encostada" e a de `<…>` emitem a mais (por exemplo, numa comparação `a < b` sem `>` depois, o resto do chunk entra em `identifier_terms`); é inofensivo para o casamento e só desloca peso. Nomes de entidades HTML (`&amp;`) não entram no índice.  
 **O que levaria à revisão:** resultados da avaliação (O-005), um caso em que o teste de alinhamento falhe, ou mudança do parser numa versão nova do PostgreSQL.
 
+### D-056 — Armazenamento do índice lexical (revisa `05` §4)
+**Status:** Aceita (16/10/2026; F2 da Etapa 5 entregue)  
+**Contexto:** `05` §4 previa `identifier_terms` e `lexical_tsv` como colunas de `chunks`. Mas a tokenização é da aplicação (D-055), os chunks existentes não têm termos, uma migração SQL não consegue preenchê-los, e regravar chunks a cada versão do tokenizador mexeria em linhas "imutáveis" (D-039), inclusive de snapshots antigos.  
+**Decisão:**
+- **Tabela `chunk_lexical`** `(chunk_id, lexical_version)` (V9), FK para `chunks` com `ON DELETE CASCADE`, com `identifier_terms` (termos do `IdentifierTokenizer` separados por espaço) e `tsv = setweight(to_tsvector('simple', identifier_terms), 'A') || setweight(to_tsvector('simple', content), 'B')`, calculado no `INSERT` a partir do chunk, na mesma instrução. Índice GIN em `tsv`. Sempre `to_tsvector`: `array_to_tsvector` gera lexemas sem posição, e aí o `setweight` e o `ts_rank_cd` não funcionam (F0).
+- **Etapa `LEXICAL` no job**, entre `PROCESSING_FILES` e `EMBEDDING`: lista os chunks do snapshot sem linha da versão atual, lê o texto por lote (`app.indexing.lexical-batch-chunks`, padrão 500) e grava com `ON CONFLICT DO NOTHING`; cada lote grava progresso e renova o heartbeat na mesma transação da inserção. O progresso conta chunks. Sem chamada externa, então sem política de falha nova: um erro segue a repetição do job (D-044), e a tentativa seguinte só grava o que falta.
+- **`snapshots.lexical_version`**, gravada na ativação. Snapshots anteriores à V9 ficam com `null`.
+- **`outdatedReasons`**: `LEXICAL_INDEX_MISSING` (snapshot sem versão lexical) e `LEXICAL_INDEX_CHANGED` (versão diferente da atual), independentes do provedor. Uma reindexação sem arquivo alterado resolve os dois. A recusa da busca lexical e híbrida nesses casos (`409 SNAPSHOT_LEXICAL_MISMATCH`) entra com o `mode` na F4.
+- `GET /api/v1/snapshots/{id}` e a listagem trazem `lexical: { version }`, ou `null`.
+- Versões convivem (útil para a avaliação comparar tokenizações, O-005); a limpeza vem pela cascata quando os chunks somem (D-039).
+- Índice GIN `gin_trgm_ops` em `snapshot_files.relative_path` (V9), para a busca de caminhos da F3.
+
+**Motivo:** o mesmo desenho dos embeddings (D-048, D-050): o índice é derivado e versionado à parte, chunks continuam imutáveis, e mudar o tokenizador não exige migração.  
+**Consequências:** o texto do chunk fica três vezes no banco (conteúdo, chunk, `tsv`); o tamanho de `chunk_lexical` é medido no teste de desempenho da F4. Com `provider=none` a etapa roda normalmente.  
+**O que levaria à revisão:** tamanho ou tempo da etapa inaceitáveis na medição da F4, ou um índice lexical externo (O-005).
+
 ---
 
 ## Decisões em aberto

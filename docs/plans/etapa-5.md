@@ -242,6 +242,13 @@ Consequências para a P1:
 - Etapa `LEXICAL` no job; `lexical_version` na ativação; `outdatedReasons` com `LEXICAL_INDEX_MISSING`/`LEXICAL_INDEX_CHANGED`; `lexical` no detalhe do snapshot.
 - **Testes:** job novo preenche todos os chunks do snapshot; reindexação sem mudança não regrava nada; snapshot antigo sem índice lexical é preenchido por reindexação sem arquivo alterado; retomada do job no meio da etapa chega ao mesmo resultado; remoção do projeto apaga as linhas em cascata; funciona com `provider=none`.
 
+**Como foi entregue (16/10/2026)**
+- V9 como no esboço; `ChunkLexicalRepository` e `LexicalStage` em `indexing`; `snapshots.lexical_version` gravada na ativação; registrado na D-056.
+- `lexical: { version } | null` no snapshot (detalhe e listagem); `LEXICAL` em `stage`; `LEXICAL_INDEX_MISSING` e `LEXICAL_INDEX_CHANGED` em `outdatedReasons`; `openapi.json` regenerado.
+- Lote da etapa configurável (`app.indexing.lexical-batch-chunks`, padrão 500), para o teste interromper o job entre dois lotes.
+- `LexicalIndexingIT` roda num contexto com `provider=none` e um spy no repositório lexical: cobre todos os testes da fatia (reindexação sem mudança verificada pelo `xmin` das linhas). `IndexSchemaIT` cobre a etapa nova e a cascata.
+- `409 SNAPSHOT_LEXICAL_MISMATCH` fica para a F4, junto com o `mode`.
+
 ### F3 — Busca lexical e caminhos
 - `LexicalSearch` e `PathSearch` em `retrieval`, com o trecho de candidatos compartilhado com `VectorSearch`.
 - **Testes:** `getUserById` encontra pela forma original, por "user by id" e por "get user"; termos com caracteres especiais da `tsquery` (`&`, `|`, `!`, `:`, `'`, `(`) não quebram a consulta; isolamento por projeto e snapshot; um resultado por chunk com `otherPaths`; nome de arquivo na pergunta traz os chunks desse arquivo; desempate estável; plano de execução usa os índices GIN com volume (como o `ChunkEmbeddingPlanIT`).

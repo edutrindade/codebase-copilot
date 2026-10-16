@@ -110,6 +110,7 @@ class SnapshotController {
                                 e.model().model(),
                                 e.model().dimensions(),
                                 e.tokens()),
+                s.lexicalVersion() == null ? null : new LexicalResponse(s.lexicalVersion()),
                 s.createdAt(),
                 s.completedAt(),
                 s.prunedAt());
@@ -137,6 +138,12 @@ class SnapshotController {
                                     "Modelo dos embeddings do snapshot; null quando indexado sem"
                                             + " provedor de embeddings.")
                     @Nullable EmbeddingResponse embedding,
+            @Schema(
+                            nullable = true,
+                            description =
+                                    "Versão do índice lexical do snapshot; null quando indexado"
+                                            + " antes da busca lexical.")
+                    @Nullable LexicalResponse lexical,
             Instant createdAt,
             @Nullable Instant completedAt,
             @Nullable Instant prunedAt) {}
@@ -160,6 +167,8 @@ class SnapshotController {
                             description =
                                     "Tokens informados pelo provedor; null se não informados.")
                     @Nullable Long tokens) {}
+
+    record LexicalResponse(String version) {}
 
     record SnapshotFileResponse(
             String relativePath,
