@@ -92,11 +92,16 @@ function ProjectSummary({ project }: { project: Project }) {
       </Link>
       <div className="page-header">
         <h1>{project.name}</h1>
-        {activeSnapshot && (
-          <Link to={`/projects/${project.id}/ask`} className="button button--primary">
-            {text.ask}
+        <div className="actions">
+          <Link to={`/projects/${project.id}/history`} className="button">
+            {text.history}
           </Link>
-        )}
+          {activeSnapshot && (
+            <Link to={`/projects/${project.id}/ask`} className="button button--primary">
+              {text.ask}
+            </Link>
+          )}
+        </div>
       </div>
       <p>
         <span className="muted">{projectSource(project)}</span>{' '}

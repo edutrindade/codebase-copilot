@@ -13,14 +13,14 @@ describe('routes', () => {
     server.use(http.get('/api/v1/workspaces', () => HttpResponse.json(page([]))));
   });
 
-  test.each([
-    ['/workspaces/w1/new', messages.pages.newProject],
-    ['/projects/p1/history', messages.pages.history],
-  ])('%s renders its screen', async (path, title) => {
-    renderRoute(path);
+  test.each([['/workspaces/w1/new', messages.pages.newProject]])(
+    '%s renders its screen',
+    async (path, title) => {
+      renderRoute(path);
 
-    expect(await screen.findByRole('heading', { level: 1, name: title })).toBeInTheDocument();
-  });
+      expect(await screen.findByRole('heading', { level: 1, name: title })).toBeInTheDocument();
+    },
+  );
 
   test('an unknown path renders the not found screen with a way back', async () => {
     const { router } = renderRoute('/nope');

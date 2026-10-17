@@ -350,6 +350,13 @@ O Vite recusa `Host: evil.example` com `403` no `dev` e no `preview`, e aceita `
 ### F7 — Histórico
 - Lista de conversas paginada e reabertura com todas as respostas, inclusive `FAILED` e `PENDING`.
 
+**Como foi entregue (17/10/2026)**
+- `/projects/:id/history` em `src/features/history`: conversas paginadas (`?page=` na URL, base 1) pela pergunta mais recente, com o título como link para a conversa, a quantidade de perguntas e as datas da última pergunta e do início. Vazio, a explicação e "Fazer uma pergunta" (só com snapshot ativo). Erro com "Tentar de novo"; projeto inexistente, sem.
+- **Reabertura:** a conversa (adiantada na F6) mostra todas as respostas; `FAILED` com a mensagem e a ação, `PENDING` com o estado em texto e sem métricas. Com alguma resposta `PENDING`, a conversa é consultada a cada 2 s até ela terminar (ou o servidor marcá-la `ANSWER_INTERRUPTED`).
+- **Navegação:** "Histórico" no resumo do projeto e no cabeçalho da tela de pergunta, e "Nova conversa" dentro de uma conversa. Uma pergunta nova invalida a lista. A tela provisória (`PendingPage`) saiu, já que todas as rotas da P9 existem.
+- **Verificação real:** backend com provedores `fake` atrás do `vite preview`: duas perguntas em conversas diferentes, o histórico com as duas na ordem certa e a reabertura de uma delas com a resposta e a evidência, sem erro de console.
+- Testes: 110 no frontend (4 novos, e sai o caso da tela provisória em `routes.test.tsx`: lista com links, contagens, datas e paginação, vazio com e sem snapshot, erro com retry e projeto inexistente, resposta `PENDING` que se atualiza, links do cabeçalho, axe).
+
 ### F8 — Aceite de ponta a ponta
 - Teste Playwright e axe da P10; passada manual por teclado.
 

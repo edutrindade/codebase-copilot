@@ -1,13 +1,12 @@
 import type { RouteObject } from 'react-router';
 import { Layout } from '../components/Layout';
 import { ChatPage } from '../features/ask/ChatPage';
+import { HistoryPage } from '../features/history/HistoryPage';
 import { NewProjectPage } from '../features/import/NewProjectPage';
 import { NotFoundPage } from '../features/not-found/NotFoundPage';
 import { ProjectPage } from '../features/project/ProjectPage';
-import { PendingPage } from '../features/pending/PendingPage';
 import { WorkspacePage } from '../features/workspaces/WorkspacePage';
 import { WorkspacesPage } from '../features/workspaces/WorkspacesPage';
-import { messages } from '../messages';
 import { RouteError } from './RouteError';
 
 export const routes: RouteObject[] = [
@@ -23,10 +22,7 @@ export const routes: RouteObject[] = [
           { path: 'projects/:projectId', element: <ProjectPage /> },
           { path: 'projects/:projectId/ask', element: <ChatPage /> },
           { path: 'projects/:projectId/conversations/:conversationId', element: <ChatPage /> },
-          {
-            path: 'projects/:projectId/history',
-            element: <PendingPage title={messages.pages.history} />,
-          },
+          { path: 'projects/:projectId/history', element: <HistoryPage /> },
           { path: '*', element: <NotFoundPage /> },
         ],
       },

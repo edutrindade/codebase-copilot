@@ -25,6 +25,8 @@ import { CodeViewer } from './CodeViewer';
 import { EvidencePanel } from './EvidencePanel';
 
 const WIDE_LAYOUT = '(min-width: 64rem)';
+// An answer is PENDING only while another request generates it, or until the server marks it interrupted.
+const PENDING_POLL_MS = 2000;
 const VECTOR_BLOCKERS = new Set<Project['outdatedReasons'][number]>([
   'EMBEDDING_MODEL_CHANGED',
   'EMBEDDINGS_MISSING',
@@ -46,6 +48,10 @@ export function ChatPage() {
     queryKey: askKeys.conversation(conversationId ?? ''),
     queryFn: ({ signal }) => getConversation(conversationId ?? '', signal),
     enabled: conversationId !== undefined,
+    refetchInterval: (query) =>
+      query.state.data?.answers.some((answer) => answer.status === 'PENDING')
+        ? PENDING_POLL_MS
+        : false,
   });
   const title = conversationId
     ? (conversation.data?.conversation.title ?? messages.pages.conversation)
@@ -232,7 +238,7 @@ function Chat({ title, project, providers, conversation }: ChatProps) {
 
   return (
     <section className="stack chat">
-      <ChatHeader title={title} project={project} />
+      <ChatHeader title={title} project={project} inConversation={conversation !== null} />
       {wide ? (
         <div className="chat__columns">
           {conversationPane}
@@ -271,7 +277,13 @@ function TabPane({ value, children }: { value: Pane; children: ReactNode }) {
   );
 }
 
-function ChatHeader({ title, project }: { title: string; project: Project }) {
+interface ChatHeaderProps {
+  title: string;
+  project: Project;
+  inConversation: boolean;
+}
+
+function ChatHeader({ title, project, inConversation }: ChatHeaderProps) {
   const text = messages.ask;
   const { activeSnapshot } = project;
   return (
@@ -279,7 +291,19 @@ function ChatHeader({ title, project }: { title: string; project: Project }) {
       <Link to={`/projects/${project.id}`} className="back-link">
         {text.backToProject}
       </Link>
-      <h1>{title}</h1>
+      <div className="page-header">
+        <h1>{title}</h1>
+        <div className="actions">
+          <Link to={`/projects/${project.id}/history`} className="button">
+            {text.history}
+          </Link>
+          {inConversation && activeSnapshot && (
+            <Link to={`/projects/${project.id}/ask`} className="button">
+              {text.newConversation}
+            </Link>
+          )}
+        </div>
+      </div>
       <p>
         <span className="muted">{project.name}</span>
         {activeSnapshot?.completedAt && (

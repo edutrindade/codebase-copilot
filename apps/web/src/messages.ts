@@ -12,7 +12,6 @@ export const messages = {
     conversation: 'Conversa',
     history: 'Histórico',
   },
-  pending: 'Esta tela ainda está em construção.',
   loading: 'Carregando…',
   notFound: {
     title: 'Página não encontrada',
@@ -260,6 +259,7 @@ export const messages = {
   project: {
     backToWorkspace: 'Voltar para o workspace',
     ask: 'Perguntar',
+    history: 'Histórico',
     awaitingUpload: 'Este projeto ainda não tem um ZIP. Envie o arquivo para fazer a pré-análise.',
     sendZip: 'Enviar o ZIP',
     notIndexed: 'Ainda não há snapshot. Revise a pré-análise e indexe para poder fazer perguntas.',
@@ -365,6 +365,8 @@ export const messages = {
   },
   ask: {
     backToProject: 'Voltar para o projeto',
+    history: 'Histórico de conversas',
+    newConversation: 'Nova conversa',
     snapshot: (date: string) => `Respostas a partir do snapshot de ${date}.`,
     outdated: 'O snapshot pode estar desatualizado.',
     outdatedLink: 'Ver os motivos e indexar de novo',
@@ -429,7 +431,7 @@ export const messages = {
       ABSTAINED: 'Sem resposta: evidência insuficiente',
       FAILED: 'Falhou',
     },
-    pending: 'A resposta ainda está sendo gerada. Volte a esta conversa em instantes.',
+    pending: 'A resposta ainda está sendo gerada; esta tela se atualiza quando ela ficar pronta.',
     failed: 'Não foi possível gerar a resposta.',
     warningHints: {
       NO_EVIDENCE:
@@ -508,6 +510,16 @@ export const messages = {
         `${language}, ${lines === 1 ? '1 linha' : `${lines} linhas`}, ${size}`,
       codeLabel: (path: string) => `Conteúdo de ${path}`,
     },
+  },
+  history: {
+    detail: 'Conversas deste projeto, da pergunta mais recente para a mais antiga.',
+    emptyTitle: 'Nenhuma conversa ainda',
+    emptyDetail:
+      'As perguntas feitas sobre este projeto ficam guardadas aqui, com as respostas e as evidências.',
+    ask: 'Fazer uma pergunta',
+    questionCount: (count: number) => (count === 1 ? '1 pergunta' : `${count} perguntas`),
+    updatedAt: (date: string) => `Última pergunta em ${date}`,
+    createdAt: (date: string) => `Iniciada em ${date}`,
   },
   indexing: {
     start: 'Indexar',

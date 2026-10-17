@@ -389,6 +389,47 @@ describe('ChatPage', () => {
     expect(screen.getByText(text.evidence.none)).toBeInTheDocument();
   });
 
+  test('a pending answer refreshes until it is ready, and the header links to the history', async () => {
+    let reads = 0;
+    server.use(...handlers());
+    server.use(
+      http.get(conversationUrl, () => {
+        reads++;
+        return HttpResponse.json(
+          conversation([
+            reads === 1
+              ? answer({
+                  status: 'PENDING',
+                  answer: null,
+                  evidence: [],
+                  model: null,
+                  completedAt: null,
+                })
+              : answer(),
+          ]),
+        );
+      }),
+    );
+    renderRoute(`/projects/${base.id}/conversations/${conversationId}`);
+
+    expect(await screen.findByText(text.pending)).toBeInTheDocument();
+    expect(screen.getByText(text.status.PENDING)).toBeInTheDocument();
+    expect(screen.queryByText(text.metrics.title)).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: text.history })).toHaveAttribute(
+      'href',
+      `/projects/${base.id}/history`,
+    );
+    expect(screen.getByRole('link', { name: text.newConversation })).toHaveAttribute(
+      'href',
+      `/projects/${base.id}/ask`,
+    );
+
+    expect(
+      await screen.findByRole('button', { name: citationName }, { timeout: 4000 }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(text.pending)).not.toBeInTheDocument();
+  });
+
   test('a follow-up question goes to the same conversation and is appended', async () => {
     let body: unknown;
     const followUp = answer({
