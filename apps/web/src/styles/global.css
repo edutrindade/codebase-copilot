@@ -520,3 +520,48 @@ h3 {
   color: var(--color-text-muted);
   overflow-wrap: anywhere;
 }
+
+.stage-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding-left: var(--space-6);
+}
+
+.stage-list__item--done {
+  color: var(--color-text-muted);
+}
+
+.stage-list__item--current {
+  font-weight: 600;
+}
+
+.stage-list__progress {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-weight: normal;
+}
+
+.stage-list__progress progress {
+  width: min(20rem, 100%);
+}
+
+.segmented {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.notice h2 {
+  font-size: 1rem;
+}
+
+.notice ul {
+  margin: 0;
+  padding-left: var(--space-6);
+}

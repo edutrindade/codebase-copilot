@@ -15,7 +15,6 @@ describe('routes', () => {
 
   test.each([
     ['/workspaces/w1/new', messages.pages.newProject],
-    ['/projects/p1', messages.pages.project],
     ['/projects/p1/ask', messages.pages.ask],
     ['/projects/p1/conversations/c1', messages.pages.conversation],
     ['/projects/p1/history', messages.pages.history],

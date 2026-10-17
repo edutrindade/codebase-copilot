@@ -7,7 +7,7 @@ import { Pagination, pageFromSearch } from '../../components/Pagination';
 import { ProblemAlert } from '../../components/ProblemAlert';
 import { messages } from '../../messages';
 import { deleteProject, getWorkspace, listProjects, workspaceKeys, type Project } from './api';
-import { projectStatus } from './projectStatus';
+import { projectSource, projectStatus } from './projectStatus';
 
 const ACTIVE_JOB_POLL_MS = 1000;
 
@@ -99,13 +99,6 @@ export function WorkspacePage() {
   );
 }
 
-function sourceText(project: Project): string {
-  const { source } = project;
-  return source.type === 'LOCAL_FOLDER'
-    ? messages.projects.sourceLocal(source.rootKey ?? '', source.relativePath ?? '')
-    : messages.projects.sourceZip;
-}
-
 function ProjectItem({ project }: { project: Project }) {
   const queryClient = useQueryClient();
   const status = projectStatus(project);
@@ -122,7 +115,7 @@ function ProjectItem({ project }: { project: Project }) {
         <Link to={`/projects/${project.id}`} className="card__title">
           {project.name}
         </Link>
-        <p className="muted">{sourceText(project)}</p>
+        <p className="muted">{projectSource(project)}</p>
         <p>
           <span className={`status status--${status.toLowerCase()}`}>
             {messages.projects.status[status]}

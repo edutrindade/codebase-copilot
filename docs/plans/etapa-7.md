@@ -318,11 +318,23 @@ O Vite recusa `Host: evil.example` com `403` no `dev` e no `preview`, e aceita `
 - Progresso por etapa (`stage`, `progress`), falha com a mensagem e a ação, `PARTIAL` com os arquivos `FAILED`/`UNSUPPORTED` (filtros de `GET /files`).
 - Lista de snapshots com `changes`.
 
+**Como foi entregue (17/10/2026)**
+- `/projects/:id` em `src/features/project`: nome, origem, estado em texto, "Perguntar" (só com snapshot ativo) e link de volta ao workspace. O projeto é consultado a cada 1 s com job ativo; quando um job começa ou termina, o projeto, o último job, os snapshots e as listas de workspaces são invalidados.
+- **Progresso:** as etapas do `03` §3 etapa 4 (`SCANNING` a `FINALIZING`) com "concluída", "em andamento" ou "pendente" em texto, `aria-current="step"`, e uma barra com "N de M arquivos" ou "trechos", conforme a etapa. Com `provider=none`, a etapa de embeddings não aparece. `PENDING` sem etapa mostra "Na fila".
+- **Falha:** o último job (`GET /index-jobs?size=1`) `FAILED` aparece com a `error.message`, a data, o aviso de que o snapshot anterior continua em uso e a ação pelo código do job (`jobRecovery.ts`; nova ação `reviewExclusions`, com link para a pré-análise). Códigos desconhecidos caem em "tentar de novo".
+- **Snapshot ativo:** estado, contagens, modelo de embeddings ou "só busca lexical", linguagens dos arquivos incluídos (do `inventory` do snapshot) e os `outdatedReasons` em texto, com "Indexar de novo". O painel de indexação da F4 (`IndexPanel`) foi generalizado e reaproveitado, com o mesmo aviso de privacidade; o link "rever exclusões" leva à pré-análise (`/workspaces/:id/new?project=<id>`), que serve a projetos existentes. Para pasta local, o aviso de que mudanças no disco não são detectadas.
+- **Arquivos não indexados:** com `FAILED` ou `UNSUPPORTED` no snapshot ativo, a lista paginada de `GET /files?status=` com filtro, caminho, motivo em texto e tamanho.
+- **Snapshots:** tabela paginada com data, estado, "ativo", "podado" e as `changes`.
+- Projeto ZIP sem upload: link para o envio, sem o botão de indexar. Projeto sem snapshot: link para a pré-análise e o botão "Indexar".
+- **Verificação real:** backend com provedores `fake` atrás do `vite preview`, pasta com um arquivo `LINE_TOO_LONG`: a tela mostrou o snapshot, o arquivo não suportado com o motivo, a reindexação até o fim e o novo snapshot com "0 novos, 0 alterados, 0 removidos, 1 iguais", sem erro de console. O teste levou a dois ajustes de texto: o título "Linguagens dos arquivos incluídos" (o inventário conta arquivos incluídos, não indexados) e o espaço antes de "ativo".
+- Testes: 86 no frontend (14 novos: resumo com snapshot parcial, motivos, filtro e histórico; progresso por etapa até o fim; falha com ação; sem snapshot com indexação; ZIP sem upload; projeto inexistente; tabela de ações dos jobs).
+
 ### F6 — Chat, evidências e visualizador
 - Pergunta, estado de espera (P6), resposta com marcadores, avisos (`NO_EVIDENCE`, `INVALID_CITATIONS_REMOVED`, `NO_VALID_CITATIONS`), `FAILED`.
 - Painel de evidências (citadas primeiro; `NOT_CITED` e `INVALID_RANGE` distinguidos por texto), métricas da resposta com custo `ESTIMATED`/`UNKNOWN`.
 - Visualizador (P7) com `activeVersion` e `PRUNED`.
 - Modo de recuperação e `maxEvidence` num painel "avançado" recolhido; modos indisponíveis desabilitados pela P4.
+
 
 ### F7 — Histórico
 - Lista de conversas paginada e reabertura com todas as respostas, inclusive `FAILED` e `PENDING`.

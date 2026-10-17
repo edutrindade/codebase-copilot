@@ -1,20 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useId, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { Loading } from '../../components/Loading';
 import { ProblemAlert } from '../../components/ProblemAlert';
 import { messages } from '../../messages';
 import { workspaceKeys } from '../workspaces/api';
-import { getProviders, importKeys, startIndexing, type Inventory, type Providers } from './api';
+import { getProviders, importKeys, startIndexing, type Providers } from './api';
 import { acknowledgePrivacy, hasAcknowledgedPrivacy } from './privacy';
-import { SETTINGS_SECTION_ID } from './SettingsForm';
-
-// The index job would fail with these same codes, so the button is blocked up front.
-const BLOCKING_WARNINGS = new Set([
-  'NO_INCLUDED_FILES',
-  'PROJECT_SIZE_LIMIT_EXCEEDED',
-  'SCAN_LIMIT_REACHED',
-]);
 
 const PROVIDER_NAMES: Record<Providers['embeddings']['provider'], string> = {
   openai: 'OpenAI',
@@ -24,11 +16,22 @@ const PROVIDER_NAMES: Record<Providers['embeddings']['provider'], string> = {
 
 interface IndexPanelProps {
   projectId: string;
-  inventory: Inventory | undefined;
-  settingsDirty: boolean;
+  title: string;
+  startLabel: string;
+  // Same page anchor ("#…") or a route to the exclusions.
+  reviewHref: string;
+  ready: boolean;
+  blockedReason: string | null;
 }
 
-export function IndexPanel({ projectId, inventory, settingsDirty }: IndexPanelProps) {
+export function IndexPanel({
+  projectId,
+  title,
+  startLabel,
+  reviewHref,
+  ready,
+  blockedReason,
+}: IndexPanelProps) {
   const reasonId = useId();
   const [acknowledged, setAcknowledged] = useState(() => hasAcknowledgedPrivacy(projectId));
   const queryClient = useQueryClient();
@@ -50,22 +53,17 @@ export function IndexPanel({ projectId, inventory, settingsDirty }: IndexPanelPr
     },
   });
 
-  const blocked = inventory?.warnings.some((warning) => BLOCKING_WARNINGS.has(warning.code));
-  const reason = settingsDirty
-    ? messages.indexing.dirty
-    : blocked
-      ? messages.preAnalysis.blocking
-      : null;
+  const reason = blockedReason;
   const disabled =
     reason !== null ||
-    inventory === undefined ||
+    !ready ||
     !providers.isSuccess ||
     (remote && !acknowledged) ||
     mutation.isPending;
 
   return (
-    <section className="stack panel" aria-labelledby="privacy-title">
-      <h2 id="privacy-title">{messages.privacy.title}</h2>
+    <section className="stack panel" aria-labelledby="index-panel-title">
+      <h2 id="index-panel-title">{title}</h2>
       {providers.isPending && <Loading />}
       {providers.isError && (
         <ProblemAlert error={providers.error} onRetry={() => void providers.refetch()} />
@@ -73,6 +71,7 @@ export function IndexPanel({ projectId, inventory, settingsDirty }: IndexPanelPr
       {providers.isSuccess && (
         <ProviderNotice
           providers={providers.data}
+          reviewHref={reviewHref}
           acknowledged={acknowledged}
           onAcknowledge={setAcknowledged}
         />
@@ -91,7 +90,7 @@ export function IndexPanel({ projectId, inventory, settingsDirty }: IndexPanelPr
           aria-describedby={reason ? reasonId : undefined}
           onClick={() => mutation.mutate()}
         >
-          {mutation.isPending ? messages.indexing.starting : messages.indexing.start}
+          {mutation.isPending ? messages.indexing.starting : startLabel}
         </button>
       </div>
     </section>
@@ -100,11 +99,17 @@ export function IndexPanel({ projectId, inventory, settingsDirty }: IndexPanelPr
 
 interface ProviderNoticeProps {
   providers: Providers;
+  reviewHref: string;
   acknowledged: boolean;
   onAcknowledge: (value: boolean) => void;
 }
 
-function ProviderNotice({ providers, acknowledged, onAcknowledge }: ProviderNoticeProps) {
+function ProviderNotice({
+  providers,
+  reviewHref,
+  acknowledged,
+  onAcknowledge,
+}: ProviderNoticeProps) {
   const { embeddings } = providers;
   if (embeddings.provider === 'none') {
     return <p>{messages.privacy.noEmbeddings}</p>;
@@ -116,7 +121,11 @@ function ProviderNotice({ providers, acknowledged, onAcknowledge }: ProviderNoti
     <div className="notice notice--warning stack">
       <p>{messages.privacy.remote(PROVIDER_NAMES[embeddings.provider], embeddings.model)}</p>
       <p>
-        <a href={`#${SETTINGS_SECTION_ID}`}>{messages.privacy.review}</a>
+        {reviewHref.startsWith('#') ? (
+          <a href={reviewHref}>{messages.privacy.review}</a>
+        ) : (
+          <Link to={reviewHref}>{messages.privacy.review}</Link>
+        )}
       </p>
       <label className="checkbox">
         <input

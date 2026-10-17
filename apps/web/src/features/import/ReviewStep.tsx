@@ -4,10 +4,10 @@ import { Loading } from '../../components/Loading';
 import { ProblemAlert } from '../../components/ProblemAlert';
 import { messages } from '../../messages';
 import type { Project } from '../workspaces/api';
-import { getInventory, getSettings, importKeys, type Settings } from './api';
+import { getInventory, getSettings, importKeys, type Inventory, type Settings } from './api';
 import { IndexPanel } from './IndexPanel';
 import { InventorySummary } from './InventorySummary';
-import { SettingsForm } from './SettingsForm';
+import { SETTINGS_SECTION_ID, SettingsForm } from './SettingsForm';
 import { isDirty, toDraft } from './settingsDraft';
 import { StepIndicator } from './StepIndicator';
 
@@ -69,6 +69,22 @@ function InventoryPanel({ projectId }: { projectId: string }) {
   );
 }
 
+// The index job would fail with these same codes, so the button is blocked up front.
+const BLOCKING_WARNINGS = new Set([
+  'NO_INCLUDED_FILES',
+  'PROJECT_SIZE_LIMIT_EXCEEDED',
+  'SCAN_LIMIT_REACHED',
+]);
+
+function blockedReason(inventory: Inventory | undefined, settingsDirty: boolean): string | null {
+  if (settingsDirty) {
+    return messages.indexing.dirty;
+  }
+  return inventory?.warnings.some((warning) => BLOCKING_WARNINGS.has(warning.code))
+    ? messages.preAnalysis.blocking
+    : null;
+}
+
 interface SettingsAndIndexProps {
   projectId: string;
   settings: Settings;
@@ -94,8 +110,11 @@ function SettingsAndIndex({ projectId, settings, onSaved }: SettingsAndIndexProp
       />
       <IndexPanel
         projectId={projectId}
-        inventory={inventory.isFetching ? undefined : inventory.data}
-        settingsDirty={isDirty(draft, settings)}
+        title={messages.privacy.title}
+        startLabel={messages.indexing.start}
+        reviewHref={`#${SETTINGS_SECTION_ID}`}
+        ready={inventory.isSuccess && !inventory.isFetching}
+        blockedReason={blockedReason(inventory.data, isDirty(draft, settings))}
       />
     </>
   );

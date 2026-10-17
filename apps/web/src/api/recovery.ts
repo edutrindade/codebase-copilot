@@ -15,7 +15,8 @@ export type Recovery =
   | 'configureProvider'
   | 'providerLimit'
   | 'useEvidenceCopy'
-  | 'openLocally';
+  | 'openLocally'
+  | 'reviewExclusions';
 
 // A Record forces a decision for every code the contract adds.
 export const recoveryByCode: Record<ErrorCode, Recovery> = {

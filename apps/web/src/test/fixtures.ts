@@ -1,4 +1,5 @@
 import type { ImportJob, Inventory, Providers, Settings } from '../features/import/api';
+import type { IndexJob, Snapshot } from '../features/project/api';
 import type { Project, Workspace } from '../features/workspaces/api';
 
 export function page<T>(items: T[], overrides: { page?: number; totalPages?: number } = {}) {
@@ -158,12 +159,12 @@ export function importJob(overrides: Partial<ImportJob> = {}): ImportJob {
   };
 }
 
-export function indexJob(projectId: string) {
+export function indexJob(projectId: string, overrides: Partial<IndexJob> = {}): IndexJob {
   return {
     id: '0192f5c4-0000-7000-8000-000000000301',
     projectId,
     snapshotId: '0192f5c4-0000-7000-8000-000000000201',
-    status: 'PENDING' as const,
+    status: 'PENDING',
     stage: null,
     progress: null,
     attempts: 0,
@@ -171,5 +172,34 @@ export function indexJob(projectId: string) {
     createdAt: '2026-10-16T12:00:00Z',
     startedAt: null,
     completedAt: null,
+    ...overrides,
+  };
+}
+
+export function snapshotDetail(overrides: Partial<Snapshot> = {}): Snapshot {
+  return {
+    id: '0192f5c4-0000-7000-8000-000000000201',
+    projectId: '0192f5c4-0000-7000-8000-000000000101',
+    status: 'READY',
+    active: true,
+    settingsVersion: 0,
+    chunkingVersion: 'lines-v1',
+    sourceImportId: null,
+    counts: {
+      files: 10,
+      indexedFiles: 9,
+      unsupportedFiles: 1,
+      failedFiles: 0,
+      chunks: 40,
+      bytes: 2048,
+    },
+    changes: null,
+    inventory: null,
+    embedding: null,
+    lexical: { version: 'ident-v1' },
+    createdAt: '2026-10-16T12:00:00Z',
+    completedAt: '2026-10-16T12:05:00Z',
+    prunedAt: null,
+    ...overrides,
   };
 }

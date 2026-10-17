@@ -55,30 +55,7 @@ export function InventorySummary({ inventory }: { inventory: Inventory }) {
       </section>
       <section aria-labelledby="inventory-languages">
         <h3 id="inventory-languages">{text.languagesTitle}</h3>
-        {inventory.byLanguage.length === 0 ? (
-          <p className="muted">{text.none}</p>
-        ) : (
-          <div className="table-scroll">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th scope="col">{text.languageColumn}</th>
-                  <th scope="col">{text.filesColumn}</th>
-                  <th scope="col">{text.bytesColumn}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {inventory.byLanguage.map((language) => (
-                  <tr key={language.language}>
-                    <th scope="row">{language.language}</th>
-                    <td>{formatNumber(language.files)}</td>
-                    <td>{formatBytes(language.bytes)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <LanguagesTable languages={inventory.byLanguage} />
       </section>
       <section aria-labelledby="inventory-directories">
         <h3 id="inventory-directories">{text.directoriesTitle}</h3>
@@ -127,6 +104,35 @@ export function InventorySummary({ inventory }: { inventory: Inventory }) {
           </ul>
         )}
       </section>
+    </div>
+  );
+}
+
+export function LanguagesTable({ languages }: { languages: Inventory['byLanguage'] }) {
+  const text = messages.preAnalysis;
+  if (languages.length === 0) {
+    return <p className="muted">{text.none}</p>;
+  }
+  return (
+    <div className="table-scroll">
+      <table className="data-table">
+        <thead>
+          <tr>
+            <th scope="col">{text.languageColumn}</th>
+            <th scope="col">{text.filesColumn}</th>
+            <th scope="col">{text.bytesColumn}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {languages.map((language) => (
+            <tr key={language.language}>
+              <th scope="row">{language.language}</th>
+              <td>{formatNumber(language.files)}</td>
+              <td>{formatBytes(language.bytes)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
