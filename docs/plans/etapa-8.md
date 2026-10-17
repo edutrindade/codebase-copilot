@@ -291,6 +291,18 @@ O Spring Boot 4.1.1 é o último 4.1.x publicado no Maven Central, então não h
 ### F5 — Suíte de segurança
 - As lacunas da matriz da F0 (P4), o comportamento de codificação decidido, o E2E com conteúdo hostil, o levantamento de dependências com as ações.
 
+**Resultado (17/10/2026)**
+- Injeção estrutural: `PromptBuilderTest` com nonce forjado, caminho com delimitador, JSON de saída e rótulos no conteúdo, instrução em nome de arquivo e de diretório e linha de ~4.000 caracteres; `AnswerApiIT.labelsWrittenInTheContentAreNotEvidence`.
+- `ExcludedContentIT`: a fixture da avaliação inteira indexada e as seis perguntas de segredo feitas com provedores espiões; nada dos arquivos excluídos chega aos provedores nem aos logs, e os logs da indexação não têm caminhos nem conteúdo.
+- ZIP: nomes em NFC na extração (NFD e NFC do mesmo nome viram `ZIP_DUPLICATE_ENTRY`), controles bidirecionais recusados como `ZIP_UNSAFE_PATH`, ZIP aninhado extraído como arquivo, comentário e extra field no máximo do formato.
+- Pasta local: link físico lido como arquivo comum e nomes NFD informados em NFC (`SafeScannerTest`), abertura de diretório em NFD (`DirectoryBrowserTest`); as limitações do Linux ficam documentadas.
+- Codificação: BOM de UTF-16 vira `INVALID_ENCODING`; testes de UTF-8 com BOM, UTF-16 com e sem BOM e Latin-1.
+- Regra ArchUnit contra `ProcessBuilder`, `Process` e `Runtime.exec`; teste da pasta do import removida com o projeto.
+- E2E `hostile-content.spec.ts` com a fixture `hostile-content`: conteúdo, nomes e pergunta como texto, sem execução nem erro de console.
+- Dependências: `npm audit` e OSV sem nenhum aviso; nenhuma ação.
+- Registro na D-082.
+- **Desvios:** a matriz dizia que o BOM de UTF-8 não tinha teste, mas `TextClassifierTest.removesUtf8Bom` já existia; o teste novo só confere que as linhas ficam iguais. A exclusão de projeto já removia a pasta do import depois do commit (`ProjectImports.onProjectDeleted`); faltava só o teste de integração. A resposta do fake é fixa, então o E2E não cobre marcação vinda do modelo; isso continua no teste de unidade do texto da resposta.
+
 ### F6 — Segredos por conteúdo
 - Detector (P5), motivo `SENSITIVE_CONTENT`, testes com os segredos sintéticos da fixture (inclusive conferindo que nada vai ao provedor fake), UI e mensagens.
 

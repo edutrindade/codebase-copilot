@@ -1287,6 +1287,24 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Consequências:** a O-005 e a O-010 continuam a validar, agora só pela parte com vetores; a F3 roda, além das rodadas da P2, a varredura com `EVAL_PROVIDER=openai EVAL_SWEEP=fusion` (pesos de cada canal no `HYBRID`), a variante de nomes no `PathSearch` e o chunking de 80 linhas. Reranking e AST continuam fora: nada mostra um teto do `lines-v1`.  
 **O que levaria à revisão:** os números com vetores (F3), ou um corpus novo que separe melhor as variantes.
 
+### D-082 — Suíte de segurança: injeção, importações maliciosas e codificação (P4 da Etapa 8)
+**Status:** Aceita (17/10/2026; F5 da Etapa 8)  
+**Contexto:** a F0 ligou cada item do `08` §7 e do `07` §11 a um teste e listou as lacunas. A parte de efeito da injeção (o modelo obedece ou não) depende do modelo real e fica com as perguntas `PROMPT_INJECTION` da avaliação de respostas (F3).  
+**Decisão:**
+- **Injeção, estrutural:** o conteúdo, o nome de arquivo e o de diretório ficam dentro do bloco da evidência com o nonce, inclusive com um delimitador de nonce forjado, um caminho com quebra de linha e delimitador, a imitação do JSON de saída com rótulos `[En]` e uma linha de instrução de ~4.000 caracteres; nada do conteúdo vai às instruções (`PromptBuilderTest`). Uma resposta que "obedece" ao arquivo e cita os rótulos escritos nele perde as citações e vira `PARTIAL` (`AnswerApiIT.labelsWrittenInTheContentAreNotEvidence`).
+- **Segredos e logs, de ponta a ponta:** a fixture da avaliação inteira é indexada e as perguntas de segredo são feitas com provedores espiões: nenhum segredo sintético chega ao provedor de embeddings nem ao de geração, e o log da indexação e das respostas não tem caminhos, conteúdo nem perguntas (`ExcludedContentIT`).
+- **ZIP:** nomes **normalizados para NFC** na extração, como a varredura os informa; a grafia NFD e a NFC do mesmo nome viram `ZIP_DUPLICATE_ENTRY` em qualquer sistema de arquivos (antes, no Linux, viravam dois arquivos com o mesmo caminho no snapshot). Nomes com **controles bidirecionais** (U+061C, U+200E, U+200F, U+202A–U+202E, U+2066–U+2069) são `ZIP_UNSAFE_PATH`, porque fazem um nome aparecer diferente do que é. ZIP dentro de ZIP é extraído como arquivo, sem abrir (e a regra `archives` o exclui da varredura); comentário e extra field no máximo do formato não mudam nada.
+- **Pasta local:** link físico é lido como o arquivo comum que é (teste fixa o comportamento); nomes em NFD são informados em NFC e lidos pelo caminho real. **Limitações documentadas, sem detecção:** link físico e ponto de montagem dentro da raiz só existem se a própria pessoa os criar; no Linux, um diretório em NFD não é aberto pelo navegador pelo nome em NFC, e uma pasta com dois nomes iguais depois da NFC falha a indexação (`INDEX_IO_ERROR`, depois das tentativas).
+- **Codificação:** só UTF-8, com ou sem BOM (removido, linhas preservadas). Arquivo com BOM de UTF-16 vira `UNSUPPORTED INVALID_ENCODING` sem decodificar (antes virava `BINARY` pelos bytes NUL); UTF-16 sem BOM continua `BINARY`; Latin-1 continua `INVALID_ENCODING`.
+- **Nada é executado:** regra ArchUnit proíbe `ProcessBuilder`, `Process` e `Runtime.exec` no código de produção.
+- **Exclusão de projeto:** teste de integração confere que a pasta do import ZIP sai do `DATA_DIR` logo depois da exclusão.
+- **UI:** E2E com um projeto de fixture com HTML e script no conteúdo, no nome de arquivo e de diretório e na pergunta: tudo aparece como texto, nada roda e não há erro de console nem violação de CSP (`e2e/hostile-content.spec.ts`). A resposta do fake é fixa; a marcação vinda do modelo continua coberta pelo teste de unidade do texto da resposta.
+- **Dependências** (consulta repetida em 17/10/2026, fora do `verify`): `npm audit` em `apps/web` sem nenhuma vulnerabilidade (411 pacotes, inclusive os de desenvolvimento); as 168 dependências Maven consultadas na base do OSV (`api.osv.dev/v1/querybatch`) sem nenhum aviso, com Tomcat 11.0.27 e Jackson 3.1.7 e 2.21.7 sobrescritos na F1. Nenhuma ação nova.
+
+**Motivo:** fechar as lacunas da matriz com testes no `verify`, sem depender do modelo real; normalizar e recusar só onde o projeto controla a escrita (o extrator), e documentar onde a detecção custaria mais do que o risco.  
+**Consequências:** um ZIP que antes era aceito com nomes bidirecionais ou com duas grafias Unicode do mesmo nome agora é recusado. As limitações da pasta local entram no `11-OPERATIONS.md` (F9).  
+**O que levaria à revisão:** uso real em Linux com nomes em NFD, ou um caso de ZIP legítimo recusado pelos controles bidirecionais.
+
 ---
 
 ## Decisões em aberto

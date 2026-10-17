@@ -1,5 +1,6 @@
 package com.codebasecopilot;
 
+import static com.tngtech.archunit.base.DescribedPredicate.describe;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 import com.tngtech.archunit.core.importer.ImportOption;
@@ -29,6 +30,21 @@ class ArchitectureTest {
     private static final String PROVIDERS = "com.codebasecopilot.providers..";
 
     private static final String CODE_ANALYSIS = "com.codebasecopilot.codeanalysis..";
+
+    // Nothing from an imported repository is ever executed (07, section 11).
+    @ArchTest
+    static final ArchRule noProcessIsStarted =
+            noClasses()
+                    .should()
+                    .dependOnClassesThat()
+                    .belongToAnyOf(ProcessBuilder.class, Process.class)
+                    .orShould()
+                    .callMethodWhere(
+                            describe(
+                                    "Runtime.exec",
+                                    call ->
+                                            call.getTargetOwner().isEquivalentTo(Runtime.class)
+                                                    && call.getName().equals("exec")));
 
     @ArchTest
     static final ArchRule providerLibrariesOnlyInProviders =

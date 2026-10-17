@@ -21,6 +21,10 @@ public final class TextClassifier {
     public record Unsupported(UnsupportedReason reason) implements Classification {}
 
     public static Classification classify(byte[] bytes) {
+        // UTF-16 is not decoded; without this check its NUL bytes would make it BINARY.
+        if (hasUtf16Bom(bytes)) {
+            return new Unsupported(UnsupportedReason.INVALID_ENCODING);
+        }
         for (byte b : bytes) {
             if (b == 0) {
                 return new Unsupported(UnsupportedReason.BINARY);
@@ -66,6 +70,12 @@ public final class TextClassifier {
             lines.add(content.substring(start));
         }
         return lines;
+    }
+
+    private static boolean hasUtf16Bom(byte[] bytes) {
+        return bytes.length >= 2
+                && (((bytes[0] & 0xFF) == 0xFF && (bytes[1] & 0xFF) == 0xFE)
+                        || ((bytes[0] & 0xFF) == 0xFE && (bytes[1] & 0xFF) == 0xFF));
     }
 
     private static boolean hasBom(byte[] bytes) {
