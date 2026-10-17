@@ -75,6 +75,8 @@ Além dos códigos de cada recurso, qualquer endpoint pode responder (D-022):
 | 400 | `MALFORMED_REQUEST` | Corpo ilegível: JSON inválido, tipo incompatível ou valor de enum desconhecido. |
 | 404 | `RESOURCE_NOT_FOUND` | Rota inexistente. |
 | 405 | `METHOD_NOT_ALLOWED` | Método HTTP não suportado pela rota. |
+| 403 | `FORBIDDEN_HOST` | `Host` fora de `app.http.allowed-hosts` (padrão `localhost`, `127.0.0.1`, `[::1]`), D-072. |
+| 403 | `FORBIDDEN_ORIGIN` | `POST`, `PUT`, `PATCH` ou `DELETE` com `Origin` fora de `app.http.allowed-origins` (padrão: o Vite em `localhost`/`127.0.0.1`, portas 5173 e 4173), D-072. Sem `Origin`, passa. |
 | 415 | `UNSUPPORTED_MEDIA_TYPE` | `Content-Type` não suportado. |
 | 500 | `INTERNAL_ERROR` | Falha inesperada. |
 
@@ -624,12 +626,38 @@ Lista os arquivos incluídos pela varredura do snapshot (substitui `GET /project
 Erros: `400 VALIDATION_FAILED` (filtros), `404 SNAPSHOT_NOT_FOUND`.
 
 ### `GET /snapshots/{snapshotId}/files/content?path=...`
-Retorna o conteúdo do arquivo como estava no snapshot, a partir de `file_contents` (D-039). Implementação na Etapa 7, junto com o visualizador de código. Só arquivos `INDEXED` têm conteúdo; nada é lido do disco nesta chamada.
+Retorna o conteúdo do arquivo como estava no snapshot, a partir de `file_contents` (D-039, D-071). Só arquivos `INDEXED` têm conteúdo; nada é lido do disco nesta chamada.
+
+Response `200 OK`:
+```json
+{
+  "snapshotId": "…",
+  "path": "src/App.java",
+  "language": "java",
+  "contentHash": "9f86d0…",
+  "sizeBytes": 2048,
+  "lineCount": 80,
+  "content": "…"
+}
+```
+
+- `path`: obrigatório, com a normalização de `relativePath` (§5) e devolvido normalizado; a comparação é exata.
+- `content`: o texto UTF-8 como foi indexado, sem BOM e com as quebras de linha originais. JSON, para o conteúdo nunca ser servido como página.
+- Sem paginação de linhas: o tamanho é limitado pelo `max-file-bytes` da indexação (D-036).
+- Vale para qualquer snapshot não podado, inclusive `BUILDING` (arquivos já gravados) e anteriores ao ativo.
+
+Erros, nesta ordem:
+1. `400 VALIDATION_FAILED` (`field = "path"`): ausente, vazio ou a própria raiz, `/` inicial, `..`, `\` ou caracteres de controle;
+2. `404 SNAPSHOT_NOT_FOUND`;
+3. `409 SNAPSHOT_PRUNED`: snapshot podado; a cópia do trecho continua em `GET /evidence`;
+4. `404 FILE_NOT_FOUND`: o caminho não é um arquivo do snapshot (inclusive diretório ou arquivo excluído pelas regras);
+5. `409 FILE_NOT_INDEXED`: arquivo `UNSUPPORTED` ou `FAILED`.
 
 ### `GET /projects/{projectId}/evidence/{evidenceId}`
 Retorna a evidência como foi enviada ao modelo (D-046, D-068): `id`, `answerId`, `snapshotId`, `snapshotStatus`, `citationLabel`, `path`, `otherPaths`, `contentHash`, `startLine`, `endLine`, `citedStartLine`, `citedEndLine`, `snippet` (cópia do momento da resposta), `validationStatus`, `rank` e `ranks`.
 
 - `snapshotStatus`: `AVAILABLE`, ou `PRUNED` quando o snapshot foi podado ("snapshot removido"). Nos dois casos a resposta é `200` com a cópia; com `PRUNED`, o visualizador não abre o arquivo inteiro.
+- `activeVersion` (D-071): o arquivo da evidência (`path`) no snapshot ativo do projeto. `SAME` (mesmo `contentHash`), `CHANGED` (outro conteúdo, ou o arquivo deixou de ser indexado), `REMOVED` (o ativo não tem o caminho) ou `NO_ACTIVE_SNAPSHOT`. Calculado a cada leitura, sem ler conteúdo; o visualizador avisa quando o arquivo mudou desde a resposta (F-06).
 - Erros, nesta ordem: `404 PROJECT_NOT_FOUND`; `404 EVIDENCE_NOT_FOUND` (inexistente ou de outro projeto).
 
 ## 10. Histórico
@@ -644,9 +672,26 @@ Retorna `{ conversation, answers }`: a conversa no formato da listagem e as resp
 
 - Publicar OpenAPI; o contrato versionado (`apps/backend/openapi.json`) é verificado por teste (D-023).
 - O contrato publica as respostas de erro como `application/problem+json` com o schema `Problem` (enum com todos os `code`) e `FieldError`. Por operação: `500 INTERNAL_ERROR` sempre; `400 VALIDATION_FAILED` quando há parâmetros ou corpo; `400 MALFORMED_REQUEST` e `415 UNSUPPORTED_MEDIA_TYPE` quando há corpo; códigos de domínio declarados no endpoint com `@ApiErrors`.
-- Todos os campos dos schemas de resposta (`*Response`) são marcados como obrigatórios, já que são sempre serializados (valores ausentes vêm como `null`).
+- Todos os campos dos schemas de resposta (`*Response`, e os schemas que eles embutem, como o inventário do snapshot) são marcados como obrigatórios, já que são sempre serializados (valores ausentes vêm como `null`).
+- Componentes de record com `@Nullable` (jspecify) são publicados como anuláveis (`["tipo", "null"]`, ou `oneOf` com `null` para objetos), em respostas e em requisições (D-074).
 - Gerar tipos do frontend a partir do contrato.
 - Versionar mudanças incompatíveis.
 - Testar validação, erros, limites e respostas com evidências.
 - Não colocar lógica de negócio apenas no controller.
 - Controllers Spring devem delegar para casos de uso/serviços de aplicação.
+
+## 12. Sistema
+
+### `GET /system/providers`
+Provedores configurados no backend, para a UI informar para onde vão os trechos de código (`03` §7, D-073).
+
+```json
+{
+  "embeddings": { "provider": "openai", "model": "text-embedding-3-small", "dimensions": 1536, "remote": true },
+  "generation": { "provider": "openai", "model": "gpt-6-luna", "remote": true }
+}
+```
+
+- `provider`: `none`, `fake` ou `openai`; `model` e `dimensions` são `null` com `none`.
+- `remote`: `true` quando os dados saem da máquina (`openai` com `base-url` fora de `localhost`/`127.0.0.1`).
+- Nunca devolve a chave, a `base-url` nem os preços.

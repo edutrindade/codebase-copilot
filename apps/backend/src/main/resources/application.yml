@@ -18,6 +18,11 @@ spring:
     # User-facing messages are pt-BR only (D-025); never fall back to the OS locale.
     fallback-to-system-locale: false
 
+server:
+  # Loopback only: the API has no authentication (D-072). SERVER_ADDRESS=0.0.0.0 exposes it
+  # to the network and then also needs app.http.allowed-hosts.
+  address: ${SERVER_ADDRESS:127.0.0.1}
+
 logging:
   pattern:
     # Correlates every log line with the X-Request-Id of the response (D-022).

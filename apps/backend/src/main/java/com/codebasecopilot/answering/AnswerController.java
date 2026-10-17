@@ -99,7 +99,8 @@ class AnswerController {
                             + " (snapshotStatus PRUNED).")
     EvidenceDetailResponse evidence(@PathVariable UUID projectId, @PathVariable UUID evidenceId) {
         AnswerReads.EvidenceView view = reads.evidence(projectId, evidenceId);
-        return AnswerResponses.evidenceDetail(view.evidence(), view.snapshotAvailable());
+        return AnswerResponses.evidenceDetail(
+                view.evidence(), view.snapshotAvailable(), view.activeVersion());
     }
 
     // retrievalMode is a string so an unknown value is a VALIDATION_FAILED on the field, not a

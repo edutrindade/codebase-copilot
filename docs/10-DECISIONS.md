@@ -326,7 +326,7 @@ Projetos ZIP não têm caminho; guardam uma referência ao import correspondente
 
 **Decisão:** opção 2.  
 **Motivo:** evita manter dependências e configuração de frontend sem uso; o contrato OpenAPI (D-023) garante que os tipos poderão ser gerados quando o frontend for criado.  
-**Consequências:** texto da Etapa 0 em `09-IMPLEMENTATION-ROADMAP.md` ajustado; a biblioteca de UI e o gerenciamento de estado continuam a decidir na Etapa 7.  
+**Consequências:** texto da Etapa 0 em `09-IMPLEMENTATION-ROADMAP.md` ajustado; a biblioteca de UI e o gerenciamento de estado continuam a decidir na Etapa 7 (decididos na D-070).  
 **O que levaria à revisão:** necessidade de validar fluxos de UX com protótipo funcional antes da Etapa 7.
 
 ### D-027 — Escopo do MVP (resolve O-013)
@@ -1112,6 +1112,72 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Motivo:** passar pelo endpoint mede o fluxo que a pessoa usa (recuperação, contexto, prompt, validação e custo); o cache torna a rodada paga barata de refazer e as métricas reproduzíveis, já que a resposta do modelo não é determinística.  
 **Consequências:** a rodada com o fake na fixture roda em segundos e exercita o harness inteiro; a rodada real (custo estimado abaixo de US$ 0,15 com o `gpt-6-luna`, F0) e a auditoria esperam saldo, como a rodada da Etapa 5. A comparação com o `gpt-6.1-sol` e com o esforço `none` sai do mesmo harness, mudando só a configuração.  
 **O que levaria à revisão:** LLM como juiz (Etapa 8), corpus maior, perguntas de acompanhamento ou um provedor que informe custo.
+
+### D-070 — Stack do frontend (P1 da Etapa 7; completa a D-026)
+**Status:** Aceita (16/10/2026; F0 da Etapa 7)  
+**Contexto:** a D-026 deixou para a Etapa 7 a biblioteca de componentes e o gerenciamento de estado de `apps/web`. Quase todo o estado da UI vem da API, e os tipos podem ser gerados do contrato versionado (D-023).  
+**Opções consideradas:**
+1. Estado do servidor com TanStack Query, primitivos sem estilo (Radix) e CSS próprio.
+2. Store global (Redux, Zustand) e biblioteca de componentes com estilo (MUI, Mantine) ou Tailwind.
+
+**Decisão:** opção 1, com versões exatas e `package-lock.json` versionado. Versões conferidas no registro npm em 16/10/2026:
+- React 19.3.1, Vite 8.3.4 (`@vitejs/plugin-react` 6.1.2), **TypeScript 5.9.3**, React Router 8.4.0, TanStack Query 5.104.3, TanStack Virtual 3.14.21, Radix UI 1.8.1;
+- `openapi-typescript` 7.13.0 (tipos gerados do `apps/backend/openapi.json`, versionados e conferidos por teste) e `openapi-fetch` 0.17.0;
+- Vitest 5.0.5, jsdom 30.1.3, Testing Library (React 16.3.3, user-event 14.6.8, jest-dom 7.0.1), MSW 3.0.3, Playwright 1.64.1, `axe-core`/`@axe-core/playwright` 4.14.0;
+- **ESLint 10.13.0**, sem o `eslint-plugin-jsx-a11y`, com `typescript-eslint` 8.71.2 e `eslint-plugin-react-hooks` 7.1.1; Prettier 3.9.10;
+- npm com `ignore-scripts=true` e `save-exact=true`; **Node 22.22.2 ou mais novo** (exigência do `jsdom`).
+
+**Motivo:** o cache e o polling do TanStack Query cobrem o estado do servidor sem uma store; os primitivos do Radix trazem teclado e ARIA sem impor identidade visual (`03` §8). O TypeScript 7 fica fora dos pares do `typescript-eslint` (`<6.1.0`) e do `openapi-typescript` (`^5.x`). O `jsx-a11y` não suporta o ESLint 10 (último release em 2024), e o ESLint 9 já está marcado como sem suporte. A acessibilidade passa a ser verificada pelo `axe-core`, nos testes de componente e no E2E.  
+**Consequências:** `npm run check` (tipos, lint, testes, build) é o `verify` do frontend. Nenhuma dependência roda script na instalação; os browsers do Playwright são baixados à parte.  
+**O que levaria à revisão:** `typescript-eslint` e `openapi-typescript` com suporte ao TypeScript 7, ou um plugin de acessibilidade estático compatível com o ESLint 10.
+
+### D-071 — Conteúdo do arquivo e versão ativa da evidência (P3 da Etapa 7; F-06)
+**Status:** Aceita (16/10/2026; F1 da Etapa 7)  
+**Contexto:** o visualizador precisa do arquivo inteiro como estava no snapshot (`06` §9 previa o endpoint para esta etapa), e o PRD pede avisar quando o arquivo mudou depois da resposta.  
+**Decisão:**
+- `GET /snapshots/{snapshotId}/files/content?path=` devolve JSON com `snapshotId`, `path`, `language`, `contentHash`, `sizeBytes`, `lineCount` e `content`, lido de `snapshot_files` + `file_contents`, sem tocar no disco. Erros, nesta ordem: `400 VALIDATION_FAILED` (`path`), `404 SNAPSHOT_NOT_FOUND`, `409 SNAPSHOT_PRUNED`, `404 FILE_NOT_FOUND`, `409 FILE_NOT_INDEXED`. Sem paginação de linhas; o limite é o `max-file-bytes` da indexação.
+- `GET /evidence/{id}` ganha `activeVersion`: `SAME`, `CHANGED`, `REMOVED` ou `NO_ACTIVE_SNAPSHOT`, comparando o `contentHash` da evidência com o do mesmo caminho no snapshot ativo, numa consulta.
+- A comparação mora na fachada `Retrieval` (como o `snapshotAvailable`), não numa porta de `indexing`: `answering` depende só de `retrieval`, `providers`, `history` e `project` (P11 da Etapa 6).
+
+**Motivo:** JSON mantém os metadados junto e impede que o conteúdo, não confiável, seja servido como página; uma consulta por evidência é barata e dispensa ler o arquivo novo.  
+**Consequências:** o visualizador abre a versão da resposta e, com `CHANGED`, pode oferecer a do snapshot ativo pelo mesmo endpoint.  
+**O que levaria à revisão:** arquivos grandes travando a UI (paginação de linhas) ou diff entre versões (Etapa 9).
+
+### D-072 — Acesso local ao backend (P5 da Etapa 7)
+**Status:** Aceita (16/10/2026; F1 da Etapa 7, com o ajuste da F0)  
+**Contexto:** a API não tem autenticação e o backend escutava em todas as interfaces. Com a UI no browser, uma página de terceiros pode chamar `localhost` (CSRF, inclusive o upload `multipart`, que não tem preflight) ou usar DNS rebinding para ler respostas. O proxy do Vite reescreve o `Host`, mas mantém a `Origin` do browser (F0).  
+**Opções consideradas:**
+1. Resolver na Etapa 7: escutar em loopback e filtrar `Host` e `Origin`.
+2. Deixar para a Etapa 8.
+
+**Decisão:** opção 1.
+- `server.address` padrão `127.0.0.1` (`SERVER_ADDRESS`).
+- `LocalAccessFilter` (em `shared/web`, depois do `RequestIdFilter`): `Host` fora de `app.http.allowed-hosts` (padrão `localhost`, `127.0.0.1`, `[::1]`, qualquer porta, sem distinção de caixa) → `403 FORBIDDEN_HOST`; `POST`, `PUT`, `PATCH` ou `DELETE` com `Origin` fora de `app.http.allowed-origins` (padrão `http://localhost:5173`, `http://127.0.0.1:5173`, `http://localhost:4173`, `http://127.0.0.1:4173`) → `403 FORBIDDEN_ORIGIN`. Sem `Origin`, passa. As respostas são ProblemDetail, pelo mesmo `GlobalExceptionHandler`.
+- Sem CORS. O proxy do Vite aponta para `127.0.0.1` e não reescreve a `Origin`.
+
+**Motivo:** pouco código e testável, e a exposição nasce com a UI. Reescrever a `Origin` no proxy deixaria passar um CSRF que chegasse pelo próprio Vite.  
+**Consequências:** quem expõe o backend à rede (`SERVER_ADDRESS=0.0.0.0`) precisa listar os nomes em `app.http.allowed-hosts`, e uma UI servida em outra porta, em `app.http.allowed-origins`. O log do filtro registra só o método e o código, nunca o `Host` ou a `Origin`.  
+**O que levaria à revisão:** autenticação, acesso por outra máquina, ou o backend servindo a UI (P2, Etapa 8).
+
+### D-073 — Provedores configurados para a UI (P4 da Etapa 7)
+**Status:** Aceita (16/10/2026; F1 da Etapa 7)  
+**Contexto:** antes de indexar ou perguntar, a UI deve dizer para onde vão os trechos (`03` §7), e nenhum endpoint dizia isso.  
+**Decisão:** `GET /system/providers`, no módulo `providers`, com `embeddings` (`provider`, `model`, `dimensions`, `remote`) e `generation` (`provider`, `model`, `remote`). `remote` é `true` só para `openai` com `base-url` fora de `localhost`/`127.0.0.1`. Nunca devolve chave, `base-url` nem preços. O `pricingConfigured` previsto na P4 ficou de fora: o preço é configuração do módulo `answering`, que `providers` não pode ler, e cada resposta já informa `costStatus`.  
+**Motivo:** a UI decide o aviso de privacidade e os modos de busca disponíveis sem tentar e errar.  
+**Consequências:** o aviso de envio é transparência, não controle de acesso; o controle continua sendo `provider=none`.  
+**O que levaria à revisão:** configuração de provedor pela UI, ou provedor local (Etapa 9).
+
+### D-074 — Nulos e obrigatórios no contrato (achado da F0 da Etapa 7; completa a D-023)
+**Status:** Aceita (16/10/2026; F1 da Etapa 7)  
+**Contexto:** a F0 gerou os tipos do frontend e encontrou duas falhas no `openapi.json`. Os schemas embutidos em respostas sem nome `*Response` (o inventário do snapshot) tinham campos opcionais. E o `@Nullable` do jspecify, anotação de tipo que o swagger não lê, não chegava ao contrato: só os campos com `@Schema(nullable = true)` à mão saíam anuláveis, e mais de vinte (`completedAt`, `prunedAt`, `sourceImportId`, `lineCount`, `ruleId`…) eram publicados como não nulos.  
+**Decisão:**
+- Os campos de todo schema alcançável a partir de um `*Response` são obrigatórios.
+- Um `ModelConverter` (`NullableRecordComponents`, em `shared/openapi`) marca como anulável todo componente de record com `@Nullable`: `["tipo", "null"]`, ou `oneOf` com `null` para objetos. Vale também para requisições, onde o `null` é aceito e validado pelo backend.
+- O `@Schema(nullable = true)` existente continua válido, mas deixa de ser necessário.
+
+**Motivo:** os tipos gerados (D-070) só protegem a UI se o contrato disser a verdade sobre os nulos.  
+**Consequências:** `openapi.json` regenerado; nenhuma mudança no JSON das respostas.  
+**O que levaria à revisão:** o springdoc passar a ler anotações de tipo do jspecify.
 
 ---
 

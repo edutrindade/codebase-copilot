@@ -27,7 +27,10 @@ class AnswerReads {
         this.retrieval = retrieval;
     }
 
-    record EvidenceView(StoredEvidence evidence, boolean snapshotAvailable) {}
+    record EvidenceView(
+            StoredEvidence evidence,
+            boolean snapshotAvailable,
+            Retrieval.ActiveVersion activeVersion) {}
 
     StoredAnswer answer(UUID answerId) {
         return history.findAnswer(answerId)
@@ -40,7 +43,13 @@ class AnswerReads {
         StoredEvidence evidence =
                 history.findEvidence(projectId, evidenceId)
                         .orElseThrow(() -> new ApiException(ErrorCode.EVIDENCE_NOT_FOUND));
-        return new EvidenceView(evidence, retrieval.snapshotAvailable(evidence.snapshotId()));
+        return new EvidenceView(
+                evidence,
+                retrieval.snapshotAvailable(evidence.snapshotId()),
+                retrieval.activeVersion(
+                        projectId,
+                        evidence.evidence().relativePath(),
+                        evidence.evidence().contentHash()));
     }
 
     PageResponse<StoredConversation> conversations(UUID projectId, PageRequestParams params) {

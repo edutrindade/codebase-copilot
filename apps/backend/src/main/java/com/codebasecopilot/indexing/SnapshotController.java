@@ -74,6 +74,28 @@ class SnapshotController {
                                         f.chunkCount()));
     }
 
+    @GetMapping("/snapshots/{snapshotId}/files/content")
+    @ApiErrors({
+        ErrorCode.SNAPSHOT_NOT_FOUND,
+        ErrorCode.SNAPSHOT_PRUNED,
+        ErrorCode.FILE_NOT_FOUND,
+        ErrorCode.FILE_NOT_INDEXED
+    })
+    @Operation(
+            operationId = "getSnapshotFileContent",
+            summary = "Busca o conteúdo de um arquivo como estava no snapshot")
+    FileContentResponse content(@PathVariable UUID snapshotId, @RequestParam String path) {
+        SnapshotService.ContentView view = service.content(snapshotId, path);
+        return new FileContentResponse(
+                view.snapshotId(),
+                view.path(),
+                view.language(),
+                view.contentHash(),
+                view.sizeBytes(),
+                view.lineCount(),
+                view.content());
+    }
+
     private SnapshotResponse response(SnapshotService.SnapshotView view, boolean withInventory) {
         Snapshot s = view.snapshot();
         SnapshotRepository.Counts c = s.counts();
@@ -169,6 +191,18 @@ class SnapshotController {
                     @Nullable Long tokens) {}
 
     record LexicalResponse(String version) {}
+
+    record FileContentResponse(
+            UUID snapshotId,
+            String path,
+            String language,
+            String contentHash,
+            long sizeBytes,
+            int lineCount,
+            @Schema(
+                            description =
+                                    "Texto UTF-8 do arquivo, sem BOM e com as quebras de linha originais.")
+                    String content) {}
 
     record SnapshotFileResponse(
             String relativePath,

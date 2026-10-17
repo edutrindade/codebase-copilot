@@ -33,6 +33,7 @@ cp .env.example .env
 | `GENERATION_PROVIDER` | Opcional. Provedor das respostas: `none` (padrão; nada é enviado e não há respostas), `fake` (testes e demonstração) ou `openai` (D-063). |
 | `GENERATION_API_KEY` | Chave da API do provedor de respostas; obrigatória com `openai`. Pode ter o mesmo valor de `EMBEDDING_API_KEY`, mas é configurada à parte. |
 | `GENERATION_PRICE_INPUT_PER_MILLION` / `GENERATION_PRICE_OUTPUT_PER_MILLION` | Opcionais. Preço do modelo em US$ por 1M de tokens, para estimar o custo de cada resposta. Sem os dois, o custo fica `UNKNOWN`. |
+| `SERVER_ADDRESS` | Opcional. Endereço em que o backend escuta. Padrão: `127.0.0.1`, só a própria máquina, porque a API não tem autenticação (D-072). |
 
 A porta do banco é definida uma única vez, em `DB_PORT` no `.env`, e usada em dois lugares: o Compose publica o container em `127.0.0.1:${DB_PORT}`, e o backend se conecta em `localhost:${DB_PORT}` (`application.yml`). Se a porta 5432 já estiver ocupada, altere apenas `DB_PORT`.
 
@@ -235,3 +236,5 @@ Com o backend no ar:
 - Health check: <http://localhost:8080/actuator/health>
 - Contrato OpenAPI: <http://localhost:8080/v3/api-docs>
 - Swagger UI: <http://localhost:8080/swagger-ui.html>
+
+O backend só atende a própria máquina (D-072): escuta em `127.0.0.1` e recusa com `403` requisições endereçadas a outro nome que não `localhost`/`127.0.0.1`/`[::1]` (`FORBIDDEN_HOST`) e mudanças de estado vindas de páginas fora das origens da UI (`FORBIDDEN_ORIGIN`). As listas ficam em `app.http.allowed-hosts` e `app.http.allowed-origins` (padrão: o Vite em `localhost`/`127.0.0.1`, portas 5173 e 4173); curl e scripts, que não enviam `Origin`, passam.

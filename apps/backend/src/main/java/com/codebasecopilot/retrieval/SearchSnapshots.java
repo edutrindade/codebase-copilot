@@ -48,4 +48,29 @@ class SearchSnapshots {
                                         rs.getString("lexical_version")))
                 .optional();
     }
+
+    record ActiveFile(
+            @Nullable UUID activeSnapshotId, boolean present, @Nullable String contentHash) {}
+
+    Optional<ActiveFile> findActiveFile(UUID projectId, String relativePath) {
+        return jdbc.sql(
+                        """
+                        SELECT p.active_snapshot_id, f.relative_path IS NOT NULL AS present,
+                               f.content_hash
+                        FROM projects p
+                        LEFT JOIN snapshot_files f
+                               ON f.snapshot_id = p.active_snapshot_id
+                              AND f.relative_path = :path
+                        WHERE p.id = :projectId
+                        """)
+                .param("projectId", projectId)
+                .param("path", relativePath)
+                .query(
+                        (rs, rowNum) ->
+                                new ActiveFile(
+                                        rs.getObject("active_snapshot_id", UUID.class),
+                                        rs.getBoolean("present"),
+                                        rs.getString("content_hash")))
+                .optional();
+    }
 }

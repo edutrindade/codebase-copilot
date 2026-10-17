@@ -25,7 +25,7 @@ final class OpenAiClients {
                     "organization_usage_limit_exceeded");
 
     // The base URL decides where the key and code chunks are sent (D-047).
-    private static final Set<String> LOOPBACK_HOSTS = Set.of("localhost", "127.0.0.1");
+    static final Set<String> LOOPBACK_HOSTS = Set.of("localhost", "127.0.0.1");
 
     static OpenAIClient create(URI baseUrl, String apiKey, Duration timeout) {
         return OpenAIOkHttpClient.builder()
