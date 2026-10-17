@@ -2,7 +2,7 @@
 
 Ferramenta local-first que responde perguntas sobre um repositório com evidências verificáveis (arquivo + linhas). A documentação do produto e da arquitetura está em [`docs/`](docs/README.md), e as decisões técnicas em [`docs/10-DECISIONS.md`](docs/10-DECISIONS.md).
 
-> Estado atual: Etapa 4 do [roadmap](docs/09-IMPLEMENTATION-ROADMAP.md) concluída (embeddings e busca vetorial). Só o backend existe; o frontend (`apps/web`) entra na Etapa 7.
+> Estado atual: Etapa 6 do [roadmap](docs/09-IMPLEMENTATION-ROADMAP.md) concluída (respostas com evidências). Só o backend existe; o frontend (`apps/web`) entra na Etapa 7.
 
 ## Pré-requisitos
 
@@ -30,6 +30,9 @@ cp .env.example .env
 | `DATA_DIR` | Opcional. Diretório de dados da aplicação; imports ZIP são extraídos em `DATA_DIR/imports/<id>/source` (D-028, D-033). Padrão: `~/.codebase-copilot`; um `~` inicial é expandido pela aplicação. |
 | `EMBEDDING_PROVIDER` | Opcional. Provedor de embeddings: `none` (padrão; nada é enviado), `fake` (testes e demonstração) ou `openai` (D-047). |
 | `EMBEDDING_API_KEY` | Chave da API do provedor; obrigatória com `openai`. Nunca aparece em logs nem em mensagens de erro. |
+| `GENERATION_PROVIDER` | Opcional. Provedor das respostas: `none` (padrão; nada é enviado e não há respostas), `fake` (testes e demonstração) ou `openai` (D-063). |
+| `GENERATION_API_KEY` | Chave da API do provedor de respostas; obrigatória com `openai`. Pode ter o mesmo valor de `EMBEDDING_API_KEY`, mas é configurada à parte. |
+| `GENERATION_PRICE_INPUT_PER_MILLION` / `GENERATION_PRICE_OUTPUT_PER_MILLION` | Opcionais. Preço do modelo em US$ por 1M de tokens, para estimar o custo de cada resposta. Sem os dois, o custo fica `UNKNOWN`. |
 
 A porta do banco é definida uma única vez, em `DB_PORT` no `.env`, e usada em dois lugares: o Compose publica o container em `127.0.0.1:${DB_PORT}`, e o backend se conecta em `localhost:${DB_PORT}` (`application.yml`). Se a porta 5432 já estiver ocupada, altere apenas `DB_PORT`.
 
@@ -107,6 +110,31 @@ A indexação gera um vetor por chunk e a busca (`POST /api/v1/projects/{id}/sea
 
 **Atenção:** `app.embeddings.base-url` decide para onde vão a chave e os trechos de código. Mudar esse endereço muda o destino dos dados. Só são aceitos endereços `https`; `http` é aceito apenas para `localhost` ou `127.0.0.1` (servidor de teste ou servidor local). Qualquer outro valor, ou um endereço com usuário e senha embutidos, impede a aplicação de iniciar.
 
+### Respostas
+
+`POST /api/v1/projects/{id}/questions` busca trechos do snapshot, envia ao modelo os que cabem no contexto e devolve a resposta com as evidências citadas e validadas (arquivo e linhas). Perguntas, respostas e evidências ficam no histórico (`GET /api/v1/projects/{id}/conversations`); detalhes em `docs/06-API-CONTRACTS.md` §8 a §10. O provedor vem de `GENERATION_PROVIDER`:
+
+- `none` (padrão): **nada sai da máquina** e não há respostas (`409 GENERATION_NOT_AVAILABLE`). A busca continua disponível.
+- `fake`: respostas determinísticas que citam a primeira evidência, sem qualidade real. Serve para testes e demonstração.
+- `openai`: modelo `gpt-6-luna` da OpenAI. Exige `GENERATION_API_KEY` no `.env`; sem ela, a aplicação não inicia.
+
+**O que é enviado com `openai`:** a cada pergunta, as instruções, a pergunta e os trechos escolhidos como evidência (até 8 por padrão, cerca de 6.000 tokens). Só trechos de arquivos indexados; arquivos excluídos nunca são enviados. Pergunta sem evidência não chama o modelo. Pela política da OpenAI consultada em 16/10/2026, os dados de `/v1/chat/completions` (enviados com `store=false`) não são usados para treino e ficam retidos por até 30 dias para monitoramento de abuso. Com o modo `VECTOR` ou `HYBRID`, a pergunta também vai ao provedor de embeddings. Detalhes em `docs/07-SECURITY-PRIVACY-COSTS.md` §7 e §9.
+
+**Custo:** com o `gpt-6-luna` (US$ 0,10 por 1M de tokens de entrada e US$ 0,50 de saída, preço de 16/10/2026), cerca de US$ 0,0017 por pergunta no teto. Cada resposta traz os tokens e o custo estimado pelo preço configurado em `GENERATION_PRICE_*` (não é a fatura); sem preço, `costStatus` fica `UNKNOWN`.
+
+**Como desligar:** `GENERATION_PROVIDER=none`; nenhuma pergunta ou trecho vai ao provedor de chat. Para que nem as perguntas da busca vetorial saiam da máquina, também `EMBEDDING_PROVIDER=none`. Com embeddings e geração separados, dá para manter as respostas e mandar só `retrievalMode: "LEXICAL"`, sem enviar a pergunta ao provedor de embeddings.
+
+| Propriedade | Padrão | Uso |
+|---|---|---|
+| `app.generation.model` | `gpt-6-luna` | Modelo do provedor. |
+| `app.generation.reasoning-effort` | `low` | Esforço de raciocínio (`none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`); vazio não envia o parâmetro. Os tokens de raciocínio são cobrados como saída. |
+| `app.generation.max-output-tokens` | 2000 | Limite de saída, incluindo o raciocínio. Uma resposta cortada fica `FAILED` com `GENERATION_OUTPUT_TRUNCATED`. |
+| `app.generation.timeout` | 60s | Tempo máximo da chamada; o pedido espera por ela. Sem repetição. |
+| `app.generation.base-url` | `https://api.openai.com/v1` | Endereço da API, com a mesma regra de `app.embeddings.base-url`. |
+| `app.answering.candidates` | 20 | Candidatos da busca considerados para o contexto (1 a 50). |
+| `app.answering.max-context-tokens` | 6000 | Orçamento de tokens do prompt (estimado em caracteres/4). |
+| `app.answering.max-evidence-per-file` | 3 | Trechos do mesmo conteúdo no contexto. |
+
 O `.env` está no `.gitignore` e nunca deve ser commitado.
 
 ## Subir o banco
@@ -162,6 +190,13 @@ Alguns testes ficam fora do `verify` (tags `performance`, `smoke` e `eval`) e s�
 
 - **Chave:** `EMBEDDING_API_KEY` no `.env` (ou no ambiente). O teste usa `provider=openai` qualquer que seja o `EMBEDDING_PROVIDER` do `.env`, e o endereço padrão da OpenAI.
 - **Custo:** algumas centenas de tokens por execução, menos de US$ 0,0001 pelo preço da D-047.
+**Fumaça da geração** (`GenerationSmokeIT`, D-063): envia um trecho sintético e uma pergunta ao modelo configurado em `app.generation.model`, com a saída estruturada estrita, e confere status, rótulo e tokens. Imprime modelo, esforço, tokens e latência. Chave em `GENERATION_API_KEY`; custo de frações de centavo.
+
+```bash
+./mvnw verify -Dtest.excluded-groups= -Dgroups=smoke -Dtest=none \
+  -Dsurefire.failIfNoSpecifiedTests=false -Dit.test=GenerationSmokeIT
+```
+
 - Só testes com as tags `smoke` e `eval` podem subir com `provider=openai`; em qualquer outro teste, a guarda dos testes (`RealProviderGuard`) impede o contexto de subir.
 
 **Avaliação de recuperação** (`RetrievalEvaluationIT`, D-062): indexa os corpora de `eval/` e mede Recall@k, MRR, Precision@10, cobertura de arquivos e latência das buscas lexical, vetorial e híbrida. Grava os resultados em `eval/results/`. Os corpora externos são baixados à parte (instruções em `eval/README.md`).
@@ -174,6 +209,17 @@ EVAL_CORPUS_CODEBASE_COPILOT=<pasta> EVAL_CORPUS_CLICK=<pasta> \
 
 - **Sem provedor** (padrão, `EVAL_PROVIDER=none`): mede só o lexical e o canal de caminhos; nada sai da máquina.
 - **Com `EVAL_PROVIDER=openai`:** envia os corpora e as perguntas à OpenAI (chave de `EMBEDDING_API_KEY`). **Custo** estimado de US$ 0,02 a 0,07 na primeira rodada, pelo preço da D-047. Os vetores ficam em cache em `DATA_DIR/eval-cache`, e as rodadas seguintes não custam nada.
+
+**Avaliação de respostas** (`AnswerEvaluationIT`, D-069): faz as 40 perguntas dos corpora por `POST /questions` e mede validade de citação, respostas sustentadas, citação relevante, abstenção, vazamento, tokens, custo e latência. O `.md` do resultado traz cada resposta ao lado dos trechos citados, para a auditoria humana.
+
+```bash
+EVAL_CORPUS_CODEBASE_COPILOT=<pasta> EVAL_CORPUS_CLICK=<pasta> EVAL_GENERATION_PROVIDER=openai \
+  ./mvnw verify -Dtest.excluded-groups= -Dgroups=eval -Dtest=none \
+  -Dsurefire.failIfNoSpecifiedTests=false -Dit.test=AnswerEvaluationIT
+```
+
+- **Padrão (`EVAL_GENERATION_PROVIDER=fake`):** só testa o harness; nada sai da máquina e o resultado vai para `apps/backend/target/eval-results/`, sem versionar.
+- **Com `openai`:** envia perguntas e evidências ao provedor de chat (chave de `GENERATION_API_KEY`); resultado em `eval/results/`. **Custo** estimado abaixo de US$ 0,15 com o `gpt-6-luna`. As respostas ficam em cache em `DATA_DIR/eval-cache/answers`, e uma rodada refeita não paga de novo. Variáveis em `eval/README.md`.
 
 ## Executar o backend
 

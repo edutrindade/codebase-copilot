@@ -1,6 +1,6 @@
 # Plano — Etapa 6: Resposta com evidências
 
-**Status:** aprovado em 16/10/2026 com as recomendações do plano (branch `etapa-6`), com os ajustes da F0 em P1, P2, P3, P6 e P9. As propostas P1 a P11 viram D-063 em diante, registradas em `10-DECISIONS.md` na fatia indicada em cada uma.
+**Status:** concluída em 16/10/2026, com o aceite demonstrado em testes e a avaliação com o modelo real pendente de saldo (ver "Resultado e desvios"). Plano aprovado em 16/10/2026 com as recomendações do plano (branch `etapa-6`), com os ajustes da F0 em P1, P2, P3, P6 e P9. As propostas P1 a P11 viram D-063 em diante, registradas em `10-DECISIONS.md` na fatia indicada em cada uma.
 **Referências:** `09-IMPLEMENTATION-ROADMAP.md` (Etapa 6), `docs/plans/etapa-5.md` (pendências), `01-PRD.md` (F-05, F-07, F-09, §9), `02-ARCHITECTURE.md` §7 e §8, `03-UX-ONBOARDING.md` §5 a §7, `04-RAG-PIPELINE.md` §7 a §10, `05-DATA-MODEL.md` (`conversations`, `messages`, `answers`, `answer_evidence`), `06-API-CONTRACTS.md` §8 a §10, `07-SECURITY-PRIVACY-COSTS.md` §6, §7 e §9, `08-EVALUATION.md` §4 e §7, D-006, D-010, D-011, D-014, D-019, D-031, D-046, D-047, D-051, D-054, D-059, D-060, D-061, D-062, O-004, O-005.
 
 ## Escopo
@@ -393,6 +393,35 @@ Somados os embeddings do corpus da Etapa 5 (US$ 0,02 a 0,07, uma vez, depois em 
 - Decisões: D-063 em diante; O-004 com o provedor de chat; D-014 (P2); D-046 com a implementação; D-047 (P9 resolvida).
 - Docs: `02` §7, `04` §7 a §10, `05` (histórico), `06` §8 a §10, `07` §6, §7 e §9 (o que vai ao provedor de chat, custo por pergunta), `08` §4 e processo, `09` (status), README (configuração da geração, custo, como desligar).
 - Seção "Resultado e desvios" neste arquivo.
+
+## Resultado e desvios
+
+**Aceite:** *citações inválidas são rejeitadas/sinalizadas e perguntas sem evidência suficiente podem se abster.*
+- **Citações inválidas: sim, em teste.** O `CitationValidator` descarta rótulos inventados, linhas fora do trecho ou invertidas e marcadores sem citação, e o backend decide o status final (`CitationValidatorTest`). Pelo endpoint, o rótulo inventado sai do texto e é sinalizado com `INVALID_CITATIONS_REMOVED` e `invalidCitationCount`, e uma resposta só com citações inválidas vira `PARTIAL` com `NO_VALID_CITATIONS` (`AnswerApiIT.inventedLabelIsFlaggedAndRemoved`, `answerWithOnlyInvalidCitationsIsPartial`). Saída fora do schema não é exibida: `FAILED` com `GENERATION_OUTPUT_INVALID`.
+- **Abstenção: sim, em teste.** Sem evidência recuperada ou que caiba no contexto, a resposta é `ABSTAINED` com `NO_EVIDENCE`, sem chamar o modelo (`AnswerApiIT.abstainsWithoutEvidenceAndWithoutCallingTheModel`); a abstenção declarada pelo modelo é mantida, mesmo sem citações (`CitationValidatorTest`).
+- **Com o modelo real: pendente.** A avaliação de respostas (F6) e o teste de fumaça da geração (F1) não rodaram, por falta de saldo. O harness está pronto e foi exercitado com o fake; a rodada com o `gpt-6-luna` custa menos de US$ 0,15 e completa o aceite sem código novo, seguida da sua auditoria.
+
+**O que a etapa entregou:** `POST /projects/{projectId}/questions`, síncrono, com recuperação híbrida, contexto com orçamento de tokens, prompt delimitado por nonce, saída estruturada estrita, validação de citações, custo estimado e histórico (`GET /answers/{answerId}`, evidência com `snapshotStatus`, conversas). Geração pelo SDK `openai-java`, sem Spring AI. Decisões D-063 a D-069.
+
+**Desvios em relação ao plano** (detalhes no "Como foi entregue" de cada fatia):
+- F1: limite de saída e esforço de raciocínio na configuração, não no pedido; instruções como mensagem `system`.
+- F2: recuperação de `PENDING` em `answering`, com corte pelos timeouts somados; `ABSTAINED` pode não ter mensagem de resposta.
+- F3: a fachada `Retrieval` tem duas fases; orçamento medido no prompt renderizado; limite por conteúdo, não por caminho.
+- F4: a resposta ganhou `question`, `invalidCitationCount`, datas e `rank`; evidências gravadas também em falha da geração; projeto removido durante a geração → `404`.
+- F5: sem a porta `SnapshotStates` (quebraria a regra de dependências da P11); a conversa responde `{ conversation, answers }`.
+- F6: nome do resultado com esforço e modo; auditoria no próprio `.md`; rodada com o fake fora do versionamento.
+- F7: o `openapi.json` publicava `200` para `POST /questions`, que responde `201`; o `@ResponseStatus(CREATED)` foi acrescentado e o contrato regenerado. As menções ao Spring AI em `02`, `docs/README.md` e no resumo executivo foram atualizadas (D-014).
+
+**Pendências que saem da etapa:**
+
+| Pendência | Para onde |
+|---|---|
+| Avaliação de respostas com o `gpt-6-luna` e a sua auditoria; comparação com o `gpt-6.1-sol` e com o esforço `none` | quando houver saldo, antes ou no início da Etapa 7 |
+| Testes de fumaça da geração (Etapa 6) e dos embeddings (Etapa 4); baseline vetorial e híbrido da Etapa 5 | na mesma ocasião |
+| Revisão da D-017, da O-005 e do canal de caminhos; parâmetros do contexto (orçamento, limite por arquivo, candidatos) e `max-output-tokens` | depois dessas rodadas |
+| Custo por pergunta medido (`07` §9) | com a rodada paga |
+| Tela de chat, painel de evidências, visualizador (`GET /snapshots/{snapshotId}/files/content`), streaming, aviso de envio ao provedor | Etapa 7 |
+| Perguntas de acompanhamento, nova recuperação quando falta suporte, LLM como juiz, retenção de conversas | Etapa 8 |
 
 ## Migração
 

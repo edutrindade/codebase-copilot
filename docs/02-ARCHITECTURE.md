@@ -41,7 +41,7 @@ Embedding / Chat provider (remote initially)
 - Maven com wrapper `./mvnw` (D-015).
 - Spring Web MVC para REST.
 - Bean Validation para validação de requests.
-- Spring AI 2.0.x para integrações de modelo e embeddings, a partir da Etapa 4, somente no módulo `providers` e encapsulado por interfaces internas (D-006, D-014).
+- SDK oficial `openai-java` para embeddings (Etapa 4) e geração (Etapa 6), somente no módulo `providers` e encapsulado por interfaces internas (D-006, D-014). O Spring AI saiu na Etapa 6 (D-014): o modelo de chat dele confunde tokens ausentes com zero e pode logar o prompt.
 - Spring Data JDBC para CRUD de agregados pequenos; `JdbcClient` com SQL explícito para indexação e para toda a recuperação híbrida; **sem JPA** (D-016).
 - Flyway para migrações.
 - OpenAPI code-first com springdoc; contrato versionado em `apps/backend/openapi.json` (D-023).
@@ -79,7 +79,7 @@ Implementa busca lexical e vetorial, fusão de ranking, filtros por projeto/snap
 Constrói prompts, chama o provedor, valida referências e registra resultado e métricas.
 
 ### Provider Integration
-Abstrai geração, embeddings e telemetria do provedor. Spring AI pode ser usado dentro do adaptador, mas tipos do framework não devem vazar para o domínio.
+Abstrai geração, embeddings e telemetria do provedor por portas internas (`EmbeddingProvider`, `GenerationProvider`). Os tipos do SDK (`com.openai`) não saem do módulo; o ArchUnit confere.
 
 ### History & Metrics
 Persiste perguntas, respostas, evidências, latência, tokens e custo estimado.
@@ -88,7 +88,7 @@ Persiste perguntas, respostas, evidências, latência, tokens e custo estimado.
 
 - **Monólito modular:** menor complexidade operacional para o MVP.
 - **Sem execução do repositório:** o importador lê texto; não roda scripts, build tools nem hooks.
-- **Spring AI atrás de portas:** permite mudar provedor ou adicionar modelos locais sem reescrever o domínio.
+- **Provedores atrás de portas:** permite mudar provedor ou adicionar modelos locais sem reescrever o domínio (D-006, D-064).
 - **SQL especializado na recuperação:** o ranking híbrido precisa ser observável e testável; abstrações genéricas não devem esconder o comportamento.
 - **Processamento assíncrono:** começar com jobs persistidos e execução assíncrona no backend; imports em executor em processo (D-034) e indexação por fila em tabela com `SKIP LOCKED`, heartbeat e limite de tentativas (D-040). Separar worker apenas se consumo de recursos, escalabilidade ou confiabilidade justificarem.
 - **Versionamento por snapshot:** respostas devem estar ligadas ao snapshot que forneceu as evidências.
@@ -129,15 +129,15 @@ com.codebasecopilot
 
 ## 7. Fluxo de uma pergunta
 
-1. Validar workspace, projeto e snapshot ativo.
-2. Gerar consulta lexical e vetor da pergunta.
-3. Recuperar candidatos por canais lexical e vetorial.
-4. Fundir e reranquear candidatos.
-5. Selecionar contexto dentro do orçamento configurado.
-6. Chamar o provedor de geração com instruções para tratar o código como dado não confiável.
-7. Validar que cada referência aponta para chunk/arquivo/linhas reais.
-8. Remover ou sinalizar referências inválidas; se faltar suporte, abster-se ou pedir refinamento.
-9. Persistir resposta, evidências e métricas.
+Implementado na Etapa 6 (`POST /projects/{projectId}/questions`, D-066 e D-067):
+
+1. Validar o pedido, o projeto, a conversa e o snapshot (o ativo, se nenhum for informado), com as checagens da busca e a disponibilidade da geração. Nada é gravado se alguma falhar.
+2. Gravar, numa transação curta, a conversa, a pergunta e a resposta `PENDING`.
+3. Fora de transação: gerar o vetor da pergunta (modos `VECTOR` e `HYBRID`), recuperar candidatos pelos canais lexical, vetorial e de caminhos e fundi-los por RRF (D-059). Sem reranking.
+4. Selecionar evidências dentro do orçamento de tokens e de evidências (`ContextAssembler`). Sem evidência, abster-se sem chamar o modelo.
+5. Chamar o provedor de geração com as evidências e a pergunta em blocos delimitados por um nonce, com instruções para tratar o conteúdo como dado não confiável e saída estruturada estrita.
+6. Validar cada citação contra as evidências enviadas e as suas linhas (`CitationValidator`); descartar e contar as inválidas; o backend decide o status final (`ANSWERED`, `PARTIAL` ou `ABSTAINED`).
+7. Gravar, noutra transação curta, o desfecho, a cópia das evidências e as métricas (tokens, custo estimado, durações). Falha de provedor depois do passo 2 vira resposta `FAILED`, sem perder a pergunta.
 
 ## 8. Observabilidade
 
@@ -165,9 +165,9 @@ As decisões técnicas e os itens em aberto são mantidos em `10-DECISIONS.md`. 
 
 | Tema | Situação |
 |---|---|
-| Versões de Java, Spring Boot e Spring AI | D-014 |
+| Versões de Java, Spring Boot e Spring AI | D-014 (Spring AI removido na Etapa 6) |
 | Maven ou Gradle | D-015 (Maven) |
 | JPA, JDBC ou abordagem híbrida | D-016 (sem JPA) |
 | Busca lexical e algoritmo de fusão | D-017 (provisória); comparação final em O-005 |
-| Provedor inicial de chat e embeddings | O-004 (em aberto) |
+| Provedor inicial de chat e embeddings | D-047 e D-063 (provisórias); bake-off em O-004 |
 | Biblioteca de UI e estado do frontend | Etapa 7 (D-026) |

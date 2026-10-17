@@ -180,51 +180,58 @@ Criada na migração V8 (Etapa 4, D-048). PK: `(chunk_hash, provider, model, dim
 Sem índice aproximado: a busca é exata sobre os chunks do snapshot (D-049). Um índice HNSW futuro será parcial por modelo, sobre `embedding::vector(N)`, sem migrar dados.
 
 ### `conversations`
+Implementadas na Etapa 6 (V10, D-065), como as três tabelas seguintes.
 - `id` UUID, PK
-- `project_id` FK
-- `snapshot_id` FK
-- `title`
+- `project_id` FK, cascata
+- `title`: a primeira pergunta, numa linha, até 100 caracteres
 - `created_at`
-- `updated_at`
+- `updated_at`: data da pergunta mais recente; a listagem ordena por ela
+
+Sem `snapshot_id`: cada resposta guarda o seu, e uma conversa pode passar por snapshots diferentes.
 
 ### `messages`
 - `id` UUID, PK
-- `conversation_id` FK
-- `role` (`USER`, `ASSISTANT`, `SYSTEM_SUMMARY`)
-- `content`
+- `conversation_id` FK, cascata
+- `role` (`USER`, `ASSISTANT`)
+- `content`: a pergunta ou o texto da resposta
 - `created_at`
 
 ### `answers`
 - `id` UUID, PK
-- `message_id` FK
-- `status` (`ANSWERED`, `PARTIAL`, `ABSTAINED`, `FAILED`)
-- `provider`
-- `model`
-- `retrieval_metadata` JSONB
-- `latency_ms`
-- `input_tokens` nullable
-- `output_tokens` nullable
-- `estimated_cost` nullable
-- `cost_currency` nullable
-- `cost_status` (`MEASURED`, `ESTIMATED`, `UNKNOWN`)
-- `created_at`
+- `question_message_id` FK única: a mensagem `USER`
+- `answer_message_id` FK única, nullable: a mensagem `ASSISTANT`, quando há texto
+- `snapshot_id`: referência sem FK (D-046)
+- `status` (`PENDING`, `ANSWERED`, `PARTIAL`, `ABSTAINED`, `FAILED`)
+- `retrieval_mode` (`LEXICAL`, `VECTOR`, `HYBRID`)
+- `prompt_version`
+- `generation_provider`, `generation_model` nullable: `null` quando o modelo não foi chamado
+- `error_code` nullable: só em `FAILED` (`GENERATION_*`, `EMBEDDING_*`, `ANSWER_INTERRUPTED`)
+- `warnings` `text[]` (`NO_EVIDENCE`, `INVALID_CITATIONS_REMOVED`, `NO_VALID_CITATIONS`)
+- `invalid_citation_count`
+- `retrieval_metadata` JSONB: modelo de embedding, versão lexical, candidatos, tokens do embedding da pergunta e de raciocínio, duração por etapa; nunca texto
+- `latency_ms`, `input_tokens`, `output_tokens` nullable
+- `estimated_cost` `numeric(12,6)` e `cost_currency` nullable
+- `cost_status` (`ESTIMATED`, `UNKNOWN`); `MEASURED` fica para um provedor que informe custo
+- `created_at`, `completed_at`
+
+`CHECK`s garantem estados coerentes: `PENDING` sem conclusão, erro, mensagem de resposta, latência ou tokens; `FAILED` com erro e sem mensagem de resposta; `ANSWERED` e `PARTIAL` com mensagem de resposta; `ESTIMATED` com custo e moeda, `UNKNOWN` sem os dois. Respostas `PENDING` antigas viram `FAILED` (`ANSWER_INTERRUPTED`) na inicialização (D-065).
 
 ### `answer_evidence`
-Cópia da evidência no momento da resposta, independente da retenção de snapshots (D-046).
-- `answer_id` FK
+Cópia da evidência no momento da resposta, independente da retenção de snapshots (D-046). Guarda todas as evidências enviadas ao modelo, citadas ou não.
+- `id` UUID, PK
+- `answer_id` FK, cascata
 - `snapshot_id`: referência sem FK com cascata; o snapshot pode ser podado
 - `chunk_id` nullable: referência sem FK com cascata; o chunk pode ser limpo
-- `citation_label`
+- `citation_label` (`E1`, `E2`…), único por resposta
 - `relative_path`: caminho citado (o primeiro em ordem lexicográfica quando o mesmo conteúdo aparece em mais de um caminho, D-039)
 - `other_paths` `text[]`: demais caminhos com o mesmo conteúdo no snapshot
 - `content_hash`
-- `start_line`
-- `end_line`
-- `snippet`: trecho citado
-- `rank_lexical` nullable
-- `rank_vector` nullable
-- `final_rank`
-- `validation_status`
+- `start_line`, `end_line`: linhas do trecho enviado
+- `cited_start_line`, `cited_end_line` nullable: linhas estreitadas pela citação, só em `CITED` e dentro do trecho
+- `snippet`: o trecho enviado ao modelo
+- `rank_lexical`, `rank_vector`, `rank_path` nullable: posição em cada canal
+- `final_rank`: posição depois da fusão
+- `validation_status` (`CITED`, `NOT_CITED`, `INVALID_RANGE`)
 
 Podar um snapshot nunca apaga respostas nem evidências; ao abrir uma evidência de snapshot podado, a API devolve a cópia indicando "snapshot removido" (D-046).
 
@@ -245,7 +252,7 @@ FileContent 1---N Chunk (por chunking_version)
 Chunk     N---1 ChunkEmbedding (por chunk_hash + modelo)
 Project   1---N Conversation
 Conversation 1---N Message
-Message   1---0..1 Answer
+Message   1---0..1 Answer (pela pergunta; a resposta tem 0..1 Message própria)
 Answer    1---N AnswerEvidence (cópia; referências soltas a Snapshot e Chunk)
 ```
 

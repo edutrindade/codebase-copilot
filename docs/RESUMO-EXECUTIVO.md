@@ -59,7 +59,7 @@ Desenvolvedores que precisam compreender uma base existente, especialmente em on
 
 - React + Vite + TypeScript no frontend.
 - Java + Spring Boot no backend, em monólito modular.
-- Spring AI encapsulado atrás de interfaces internas.
+- Provedores de IA (SDK oficial) encapsulados atrás de interfaces internas.
 - PostgreSQL + pgvector.
 - Flyway para migrações.
 - REST/OpenAPI.

@@ -694,7 +694,7 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Consequências:** `06-API-CONTRACTS.md` §5, §7 e §9 atualizados.
 
 ### D-046 — Evidências independentes da retenção de snapshots
-**Status:** Aceita (16/10/2026; implementação na Etapa 6)  
+**Status:** Aceita (16/10/2026; implementada na Etapa 6, D-065 e D-068)  
 **Contexto:** a poda de snapshots e a limpeza de chunks (D-039, D-044) não podem invalidar respostas já dadas.  
 **Decisão:**
 - `answer_evidence` guarda **cópia** do caminho, das linhas, do hash do conteúdo e do trecho no momento da resposta, além das referências ao snapshot e ao chunk.
@@ -740,7 +740,7 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Consequências:** o texto dos chunks indexados e as perguntas de busca saem da máquina quando `provider=openai` (D-054). Preço e política devem ser reconferidos antes de alterar esta decisão.  
 **Atualização (Etapa 5, 16/10/2026):**
 - **Bake-off adiado** (P8 do plano da Etapa 5): o corpus inicial é pequeno para separar dois bons modelos, e o harness (D-062) roda o bake-off depois sem mudança de código, com um adaptador novo. A Voyage não foi verificada.
-- **`spring-ai-openai` mantido** (P9): a escolha entre ele e o SDK sozinho passa para a Etapa 6, junto com a porta de geração, onde o `ChatClient` do Spring AI pode (ou não) se pagar.
+- **`spring-ai-openai` mantido** (P9): a escolha entre ele e o SDK sozinho passa para a Etapa 6, junto com a porta de geração, onde o `ChatClient` do Spring AI pode (ou não) se pagar. Resolvida na Etapa 6: removido, só o SDK (D-014).
 - A guarda dos testes passou a liberar também a tag `eval`, do harness de avaliação (D-062).
 - O teste de fumaça com a chave real continua pendente por falta de saldo.
 
@@ -1118,7 +1118,7 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 ## Decisões em aberto
 
 ### O-004 — Provedor inicial (chat e embeddings)
-**Status:** A validar (bake-off na Etapa 5, com o corpus de avaliação)  
+**Status:** A validar (embeddings e chat decididos provisoriamente, D-047 e D-063; comparação com o corpus de avaliação pendente de saldo)  
 **Restrições já aceitas:**
 - Escolher **um** par embedding/chat por instalação; trocar de modelo implica reindexar.
 - Preferir modelos de embedding com **até 2.000 dimensões**, compatível com índice HNSW sobre `vector` no pgvector (`halfvec` permite mais). A dimensão não é mais fixada por migração: fica na linha (D-048).
@@ -1126,7 +1126,7 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 
 **Critérios de comparação:** recall@k e MRR no corpus, qualidade em código, custo por 1M de tokens, latência, limites de taxa e política de retenção de dados do provedor.  
 **Estado (16/10/2026, fim da Etapa 5):** embeddings decididos provisoriamente na Etapa 4: OpenAI `text-embedding-3-small`, 1.536 dimensões (D-047), com armazenamento que não exige migração para trocar de modelo (D-048). O bake-off com a Voyage `voyage-code-3` foi adiado (D-047, atualização da Etapa 5): o corpus de avaliação (D-061) e o harness (D-062) estão prontos para ele, mas nem o baseline com a OpenAI rodou ainda, por falta de saldo. O provedor de chat é decidido na Etapa 6.  
-**Estado (16/10/2026, Etapa 6):** chat decidido provisoriamente: OpenAI `gpt-6-luna` pela Chat Completions (D-063), com o `gpt-6.1-sol` e a Anthropic como candidatos na avaliação de respostas.
+**Estado (16/10/2026, fim da Etapa 6):** chat decidido provisoriamente: OpenAI `gpt-6-luna` pela Chat Completions (D-063), com o `gpt-6.1-sol` e a Anthropic como candidatos. O harness de avaliação de respostas (D-069) está pronto para a comparação, mas não rodou com modelo real, por falta de saldo; continuam pendentes também o baseline vetorial da Etapa 5 e os testes de fumaça das Etapas 4 e 6. A O-004 segue a validar até essas rodadas.
 
 ### O-005 — Comparação final de estratégia lexical e fusão
 **Status:** A validar  
