@@ -37,6 +37,11 @@
 		<openai-java.version>4.49.0</openai-java.version>
 		<!-- Manual tests (D-049, D-054, D-062); run with -Dtest.excluded-groups= -Dgroups=<tag> -->
 		<test.excluded-groups>performance,smoke,eval</test.excluded-groups>
+		<!-- OSV advisories on the versions managed by Boot 4.1.1 (Etapa 8, F0); remove once Boot
+		     manages these versions or later ones. -->
+		<tomcat.version>11.0.27</tomcat.version>
+		<jackson-bom.version>3.1.7</jackson-bom.version>
+		<jackson-2-bom.version>2.21.7</jackson-2-bom.version>
 	</properties>
 	<dependencies>
 		<dependency>
