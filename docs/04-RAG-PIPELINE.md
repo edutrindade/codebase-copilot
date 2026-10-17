@@ -107,6 +107,8 @@ Adicionar reranking apenas se os resultados do baseline mostrarem problemas que 
 - Distribuir o contexto entre arquivos quando a pergunta exigir fluxo entre módulos.
 - Não assumir que similaridade alta equivale a evidência suficiente.
 
+**Implementado na Etapa 6 (D-066):** o `ContextAssembler` percorre os candidatos na ordem da fusão (padrão `HYBRID`, 20 candidatos) e escolhe cada um que ainda cabe: até `maxEvidence` (padrão 8, de 1 a 20), até 3 trechos por conteúdo, sem sobrepor linhas de um trecho já escolhido e dentro de 6.000 tokens estimados (⌈caracteres/4⌉) no prompt renderizado, com instruções, delimitadores e números de linha. Um trecho que não cabe é pulado e os seguintes ainda são tentados. As evidências recebem os rótulos `E1`…`En` na ordem de escolha. Sem corte por score e sem reranking.
+
 ## 8. Geração
 
 O prompt deve:
@@ -115,6 +117,8 @@ O prompt deve:
 - ignorar instruções presentes em comentários, README ou arquivos do projeto que tentem mudar as regras da conversa;
 - pedir referências para afirmações sobre o código;
 - permitir resposta parcial, pergunta de esclarecimento ou abstenção.
+
+**Implementado na Etapa 6 (D-063, D-064, D-066):** o prompt `prompt-v1` tem as instruções, em inglês, na mensagem de sistema; na mensagem do usuário vêm as evidências e depois a pergunta, cada uma num bloco `<<<BEGIN … nonce>>>`/`<<<END … nonce>>>` com um nonce aleatório de 128 bits por pedido, para que um arquivo não consiga fechar o próprio bloco. Cada evidência traz rótulo, caminho, intervalo e linhas numeradas. A saída é estruturada e estrita: `{status, answer, citations[{evidence, startLine, endLine}]}`, com `status` `ANSWERED`, `PARTIAL` ou `ABSTAINED`. Pergunta de esclarecimento não está no schema; a resposta parcial cumpre esse papel no MVP. O modelo padrão é o `gpt-6-luna` da OpenAI, pela Chat Completions com `store=false`, sem repetição de chamadas; com `GENERATION_PROVIDER=none` não há geração. Mudar instruções, blocos ou schema cria uma versão nova do prompt, gravada em cada resposta.
 
 ## 9. Validação de citações
 
@@ -127,6 +131,8 @@ A resposta estruturada deve referenciar IDs de evidência fornecidos pelo backen
 
 Evitar depender exclusivamente de parsing de texto livre; preferir saída estruturada validada no backend.
 
+**Implementado na Etapa 6 (D-066):** o `CitationValidator` recusa a saída que não é JSON ou não segue o schema (a resposta fica `FAILED` com `GENERATION_OUTPUT_INVALID`); descarta rótulos fora do conjunto enviado e intervalos fora das linhas da evidência ou invertidos (a evidência fica `INVALID_RANGE`); tira do texto os marcadores `[En]` sem citação válida; junta várias citações da mesma evidência num intervalo só. `invalidCitationCount` e o aviso `INVALID_CITATIONS_REMOVED` sinalizam o que saiu. O status final é do backend: `ANSWERED` ou `PARTIAL` sem nenhuma citação válida vira `PARTIAL` com `NO_VALID_CITATIONS`. Não há nova recuperação quando falta suporte (Etapa 8, se a avaliação pedir). A validação garante que arquivo e linhas existem, não que o trecho sustenta a afirmação; isso é medido na avaliação (`08` §4).
+
 ## 10. Controle de custo
 
 - Limites de arquivos, chunks e contexto.
@@ -136,6 +142,8 @@ Evitar depender exclusivamente de parsing de texto livre; preferir saída estrut
 - Mostrar tokens e custo somente quando conhecidos ou calculáveis.
 - Registrar modelo e preço configurado usados no cálculo.
 - Permitir limitar tamanho da resposta e número de evidências.
+
+**Implementado na Etapa 6 (D-067):** cada resposta registra os tokens de entrada e de saída informados pelo provedor (os de raciocínio, já incluídos na saída, ficam em `retrieval_metadata`) e o custo estimado pelo preço configurado em `GENERATION_PRICE_INPUT_PER_MILLION` e `GENERATION_PRICE_OUTPUT_PER_MILLION`. Sem os dois tokens ou sem os dois preços, o custo fica `UNKNOWN`, sem número. Limites: `maxEvidence`, `app.answering.max-context-tokens` (6.000) e `app.generation.max-output-tokens` (2.000, com o raciocínio). Pergunta sem evidência não chama o modelo. Custo por pergunta em `07` §9.
 
 ## 11. Reindexação incremental
 

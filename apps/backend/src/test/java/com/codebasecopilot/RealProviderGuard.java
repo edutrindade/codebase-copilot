@@ -13,12 +13,13 @@ import org.springframework.test.context.ContextCustomizerFactory;
 import org.springframework.test.context.MergedContextConfiguration;
 
 // Registered in META-INF/spring.factories, so it also covers test contexts created later: a
-// context that forgets TestProperties.EMBEDDING_PROVIDER would pick the provider from .env.
-// Only the manual smoke test and the evaluation harness, excluded from ./mvnw verify by their
-// tags, may call the real provider.
-class RealEmbeddingProviderGuard implements ContextCustomizerFactory {
+// context that forgets TestProperties.EMBEDDING_PROVIDER or GENERATION_PROVIDER would pick the
+// provider from .env. Only the manual smoke tests and the evaluation harnesses, excluded from
+// ./mvnw verify by their tags, may call a real provider.
+class RealProviderGuard implements ContextCustomizerFactory {
 
-    static final String PROPERTY = "app.embeddings.provider";
+    static final List<String> PROPERTIES =
+            List.of("app.embeddings.provider", "app.generation.provider");
     static final Set<String> REAL_PROVIDER_TAGS = Set.of("smoke", "eval");
 
     @Override
@@ -33,13 +34,15 @@ class RealEmbeddingProviderGuard implements ContextCustomizerFactory {
     }
 
     static void check(ConfigurableApplicationContext context) {
-        String provider = context.getEnvironment().getProperty(PROPERTY, "");
-        // Same normalization as Spring's lenient enum binding ("Open-AI" binds to OPENAI).
-        if (provider.replaceAll("[^A-Za-z0-9]", "").toLowerCase(Locale.ROOT).equals("openai")) {
-            throw new IllegalStateException(
-                    "Test contexts must not use "
-                            + PROPERTY
-                            + "=openai; add TestProperties.EMBEDDING_PROVIDER to the context");
+        for (String property : PROPERTIES) {
+            String provider = context.getEnvironment().getProperty(property, "");
+            // Same normalization as Spring's lenient enum binding ("Open-AI" binds to OPENAI).
+            if (provider.replaceAll("[^A-Za-z0-9]", "").toLowerCase(Locale.ROOT).equals("openai")) {
+                throw new IllegalStateException(
+                        "Test contexts must not use "
+                                + property
+                                + "=openai; add the provider from TestProperties to the context");
+            }
         }
     }
 

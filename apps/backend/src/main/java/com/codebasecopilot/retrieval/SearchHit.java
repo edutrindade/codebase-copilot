@@ -8,7 +8,9 @@ import java.util.UUID;
 record SearchHit(
         UUID chunkId,
         List<String> paths,
+        String contentHash,
         int startLine,
         int endLine,
         String content,
+        int tokenEstimate,
         double score) {}

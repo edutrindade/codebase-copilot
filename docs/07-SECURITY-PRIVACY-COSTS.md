@@ -96,6 +96,12 @@ No MVP, segredos são excluídos apenas por padrões de nome, em regras que o us
 - Validar citações no backend independentemente da saída do modelo.
 - Tratar README, comentários e arquivos de instruções como conteúdo a analisar, não como autoridade.
 
+**Implementado na Etapa 6 (D-066, D-069):**
+- Cada evidência e a pergunta vão num bloco delimitado por um nonce aleatório de 128 bits por pedido; um arquivo com linhas de delimitador não fecha o próprio bloco, porque não conhece o nonce. As instruções dizem que o conteúdo dos blocos é dado, nunca instrução.
+- A geração não tem ferramentas, e a saída é um JSON estrito; o backend valida rótulos e linhas e decide o status final.
+- Testes: `AnswerApiIT` confere que as instruções injetadas ficam dentro do bloco da evidência; a fixture de avaliação tem um `CONTRIBUTING.md` com instrução injetada, e a avaliação de respostas falha a pergunta cuja resposta repete o que a injeção pede (`mustNotContain`).
+- Limitação conhecida: a delimitação reduz o risco, não o elimina; o modelo ainda pode seguir uma instrução do repositório. A medição com o modelo real está pendente (`08` §8).
+
 ## 7. Privacidade e provedores
 
 **Local-first não significa necessariamente offline.** Se for usado um provedor remoto, trechos selecionados de código e a pergunta podem ser enviados a esse provedor para embeddings ou geração.
@@ -125,6 +131,22 @@ O provedor é escolhido por `EMBEDDING_PROVIDER` (`app.embeddings.provider`), D-
 - Política da OpenAI para `/v1/embeddings` (consultada em 16/10/2026): os dados não são usados para treino, ficam retidos por até 30 dias para monitoramento de abuso e o endpoint é elegível a Zero Data Retention mediante acordo (D-047).
 - Logs trazem só quantidades, códigos e duração; nunca texto de chunk, pergunta ou chave (D-054). O log do SDK da OpenAI fica desligado, mesmo com `OPENAI_LOG` no ambiente.
 - Para não enviar nada: `EMBEDDING_PROVIDER=none`. Os snapshots continuam sendo criados; ao configurar um provedor depois, o projeto informa `EMBEDDINGS_MISSING` até ser reindexado.
+
+### Geração (Etapa 6)
+
+O provedor de chat é escolhido por `GENERATION_PROVIDER` (`app.generation.provider`), separado dos embeddings (D-063):
+
+| Provedor | O que sai da máquina |
+|---|---|
+| `none` (padrão) | Nada. `POST /questions` responde `409 GENERATION_NOT_AVAILABLE`. |
+| `fake` | Nada. Respostas determinísticas, só para testes e demonstração. |
+| `openai` | A cada pergunta: as instruções, a pergunta e os trechos escolhidos como evidência (até 8 por padrão, cerca de 6.000 tokens), enviados a `app.generation.base-url` com a chave `GENERATION_API_KEY`. |
+
+- Só trechos de arquivos `INDEXED` podem virar evidência; arquivos excluídos, segredos por nome, binários e não suportados nunca são enviados. Pergunta sem evidência não chama o modelo.
+- Endpoint `/v1/chat/completions` com `store=false`. Pela política da OpenAI consultada em 16/10/2026: os dados não são usados para treino, ficam retidos por até 30 dias para monitoramento de abuso, o cache de prompts pode manter dados criptografados por até 24 horas e o endpoint é elegível a Zero Data Retention mediante acordo (D-063).
+- `app.generation.base-url` segue a mesma regra dos embeddings: só `https`, ou `http` para `localhost`/`127.0.0.1`.
+- A pergunta, a resposta e a cópia das evidências ficam só no banco local (histórico), apagadas com o projeto (D-021). Logs trazem ids, status, quantidades, tokens e durações; nunca pergunta, resposta, prompt ou trecho (D-054, D-067). O log do SDK fica desligado.
+- Para não enviar nada: `GENERATION_PROVIDER=none` (e `EMBEDDING_PROVIDER=none` para a pergunta também não sair na busca vetorial).
 
 ## 8. Segredos de configuração
 
@@ -162,6 +184,13 @@ Se o provedor não informar tokens ou se o preço não estiver configurado, most
 - **Falhas:** repetição só para limite de taxa e indisponibilidade, até `app.embeddings.max-retries` (D-051); cota esgotada falha na hora com `EMBEDDING_QUOTA_EXCEEDED`. Vetores gravados antes de uma falha ficam no cache e não são pagos de novo.
 - **Limites de entrada:** chunks de até 4.000 caracteres e lotes validados na inicialização contra os limites do modelo (8.192 tokens por entrada, 2.048 entradas e 300.000 tokens por requisição), contando um token por caractere (D-054).
 - **Limitação conhecida:** um chunk recusado pelo provedor (`INVALID_REQUEST`, por exemplo um texto fora do ASCII que passe do limite de tokens) falha o job inteiro com `EMBEDDING_REQUEST_REJECTED`; o lote não é dividido para descobrir qual texto foi recusado. Isolar o lote fica para quando o uso real mostrar o problema.
+
+### Geração (Etapa 6)
+
+- **Preço:** `gpt-6-luna` custa US$ 0,10 por 1M de tokens de entrada e US$ 0,50 de saída; `gpt-6.1-sol`, US$ 2,00 e US$ 10,00 (página oficial, consultada em 16/10/2026; D-063). O preço usado na estimativa vem de `GENERATION_PRICE_INPUT_PER_MILLION` e `GENERATION_PRICE_OUTPUT_PER_MILLION`; o `.env.example` traz os do luna.
+- **Custo por pergunta:** estimado, no teto, em ~US$ 0,0017 com o luna (~6.700 tokens de entrada e até 2.000 de saída, raciocínio incluído) e ~US$ 0,033 com o sol. A rodada da avaliação (40 perguntas) fica abaixo de US$ 0,15 com o luna. **O custo medido está pendente:** a avaliação com o modelo real ainda não rodou, por falta de saldo (D-069).
+- **Uso registrado:** cada resposta guarda os tokens informados pelo provedor e o custo estimado (`ESTIMATED`), ou `UNKNOWN` sem tokens ou sem preço; os tokens do embedding da pergunta ficam em `retrieval_metadata`, fora do custo (D-067).
+- **Limites:** `maxEvidence` (padrão 8, até 20), `app.answering.max-context-tokens` (6.000), `app.generation.max-output-tokens` (2.000, com o raciocínio), `app.generation.reasoning-effort` (`low`) e `app.generation.timeout` (60 s). Sem repetição de chamadas: uma falha vira resposta `FAILED`, sem novo custo.
 
 ## 10. Exclusão e retenção
 

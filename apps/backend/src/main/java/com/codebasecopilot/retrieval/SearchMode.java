@@ -1,6 +1,6 @@
 package com.codebasecopilot.retrieval;
 
-enum SearchMode {
+public enum SearchMode {
     LEXICAL,
     VECTOR,
     HYBRID;

@@ -22,7 +22,7 @@ Leia nesta ordem:
 
 - **Frontend:** React, Vite e TypeScript.
 - **Backend:** Java com Spring Boot, organizado como monólito modular.
-- **IA/RAG:** Spring AI como integração substituível, sem deixar que o framework defina o domínio.
+- **IA/RAG:** SDK oficial do provedor atrás de portas internas, substituível sem tocar no domínio (o Spring AI saiu na Etapa 6, D-014).
 - **Persistência:** PostgreSQL com pgvector; SQL explícito para a recuperação híbrida quando necessário.
 - **Migrações:** Flyway.
 - **Execução local:** Docker Compose para dependências de infraestrutura.

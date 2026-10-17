@@ -8,12 +8,19 @@ import java.nio.file.Path;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 
-// OPENAI_LOG=debug makes the SDK print request bodies to stderr; the provider turns it off.
+// OPENAI_LOG=debug makes the SDK print request bodies to stderr; the providers turn it off.
 class OpenAiLogLevelTest {
 
     @Test
     void providerPrintsNoRequestBodyWithOpenAiLogDebug() throws Exception {
         String output = runProbe("provider");
+
+        assertThat(output).contains(OpenAiLogProbe.DONE + 1).doesNotContain(OpenAiLogProbe.CHUNK);
+    }
+
+    @Test
+    void generationPrintsNoRequestOrResponseBodyWithOpenAiLogDebug() throws Exception {
+        String output = runProbe("generation");
 
         assertThat(output).contains(OpenAiLogProbe.DONE + 1).doesNotContain(OpenAiLogProbe.CHUNK);
     }

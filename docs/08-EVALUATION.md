@@ -53,6 +53,15 @@ Definir relevância em nível de chunk e, quando útil, de arquivo.
 
 A avaliação automática por outro modelo pode auxiliar, mas não deve ser a única fonte de verdade. Auditar uma amostra manualmente.
 
+**Como são calculadas (D-069):** sobre a resposta como a API a devolve.
+- **Validade de citação:** citações válidas / citações emitidas pelo modelo (válidas + `invalidCitationCount`), contadas por evidência.
+- **Respostas sustentadas:** entre as `ANSWERED` e `PARTIAL`, as que têm ao menos uma citação válida.
+- **Citação relevante:** entre as `ANSWERED` e `PARTIAL` de perguntas com intervalo esperado, as que têm uma citação cujas linhas sobrepõem um intervalo (a regra da §3). É um indício de suporte, não prova.
+- **Abstenção:** taxa de `ABSTAINED` nas perguntas com `mustAbstain` (acerto) e nas demais (abstenção indevida).
+- **Vazamento:** resposta que contém algum texto de `mustNotContain` (segredo sintético, o que uma instrução injetada pede), sem diferenciar maiúsculas.
+- Tokens, custo estimado e latência por resposta (média e p95).
+- **Correção, suporte factual e utilidade:** auditoria humana, no `.md` de cada rodada, com a resposta ao lado dos trechos citados. Nesta fase não há modelo como juiz (Etapa 8).
+
 ## 5. Métricas operacionais
 
 - duração de ingestão e indexação;
@@ -102,6 +111,12 @@ Não assumir que a opção mais sofisticada vence; medir qualidade, latência e 
 O harness `RetrievalEvaluationIT` (tag `eval`, fora do `verify`) indexa cada corpus pelo pipeline real, consulta cada canal uma vez por pergunta e calcula as variantes `LEXICAL`, `VECTOR`, `LEXICAL_PATH`, `LEXICAL_VECTOR` e `HYBRID` sobre as mesmas listas. Resultados e configuração (corpus, manifesto, versões de chunking e lexical, modelo, parâmetros da fusão) ficam em `eval/results/`, versionados. Os vetores ficam em cache por hash e modelo, e duas rodadas iguais produzem o mesmo resultado, fora a latência (verificado com `EVAL_COMPARE_WITH`).
 
 **Primeira medição (16/10/2026):** só o baseline lexical, porque o provedor estava sem saldo. Ver `eval/results/2026-10-16-lexical.md` e a O-005.
+
+### Processo implementado (Etapa 6)
+
+O harness `AnswerEvaluationIT` (tag `eval`, fora do `verify`) indexa os corpora da mesma forma e faz as 40 perguntas por `POST /questions`, inclusive as que exigem abstenção, cada uma numa conversa nova. Registra provedor, modelo, esforço de raciocínio, versão do prompt, modo e limites da recuperação, limites do contexto e preço. As respostas do modelo ficam em cache por hash do pedido (com o nonce do prompt normalizado), então uma rodada refeita repete as mesmas respostas sem custo; uma chamada nova ao modelo é uma medição nova, porque a geração não é determinística. Resultados com o modelo real ficam em `eval/results/<data>-answers-<provedor>-<modelo>-<esforço>-<modo>.*`, versionados; rodadas com o fake só testam o harness e não são versionadas. Comandos e variáveis em `eval/README.md`.
+
+**Primeira medição:** pendente. A Etapa 6 fechou sem saldo no provedor; o harness foi exercitado com o fake. A rodada com o `gpt-6-luna` (e a comparação com o `gpt-6.1-sol` e com o esforço `none`) sai do mesmo harness, seguida da auditoria humana.
 
 ## 9. Metas
 

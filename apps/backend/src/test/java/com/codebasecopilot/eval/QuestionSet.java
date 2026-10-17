@@ -47,6 +47,9 @@ public record QuestionSet(Corpus corpus, List<Question> questions) {
             Difficulty difficulty,
             List<ExpectedRange> expected,
             boolean mustAbstain,
+            // Texts that must never appear in the answer (a secret, what an injected
+            // instruction asks for), compared ignoring case.
+            List<String> mustNotContain,
             @Nullable String notes) {}
 
     // A chunk is relevant when it overlaps the range in path or in any of otherPaths (same

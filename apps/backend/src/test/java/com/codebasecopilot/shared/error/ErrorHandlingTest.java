@@ -36,7 +36,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @WebMvcTest(
         controllers = ErrorHandlingTest.ErrorTestController.class,
-        properties = "app.embeddings.provider=none")
+        properties = {"app.embeddings.provider=none", "app.generation.provider=none"})
 @Import({ErrorHandlingTest.ErrorTestController.class, UuidV7Generator.class})
 @ExtendWith(OutputCaptureExtension.class)
 class ErrorHandlingTest {

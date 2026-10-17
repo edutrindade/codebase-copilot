@@ -90,6 +90,8 @@
 
 ## Etapa 6 — Resposta com evidências
 
+**Status:** concluída em 16/10/2026 (plano, testes e desvios em `docs/plans/etapa-6.md`; decisões D-063 a D-069). O aceite foi demonstrado em testes com o provedor fake; a avaliação das respostas com o modelo real e o teste de fumaça da geração ficaram pendentes por falta de saldo e rodam no mesmo harness, sem código novo.
+
 - Definir porta de geração.
 - Montar contexto com limite de tokens.
 - Implementar prompt de evidência e abstenção.

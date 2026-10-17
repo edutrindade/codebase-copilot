@@ -18,9 +18,11 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import org.jspecify.annotations.Nullable;
 
-// Local stand-in for the OpenAI embeddings endpoint; never reaches the network.
-final class StubEmbeddingServer implements AutoCloseable {
+// Local stand-in for the OpenAI embeddings and chat completions endpoints; never reaches the
+// network. Every request gets the current reply, whatever the endpoint.
+final class StubOpenAiServer implements AutoCloseable {
 
     record Reply(int status, Map<String, String> headers, String body, Duration delay) {
 
@@ -37,7 +39,7 @@ final class StubEmbeddingServer implements AutoCloseable {
         }
     }
 
-    record Request(String body, String authorization) {}
+    record Request(String path, String body, String authorization) {}
 
     private final HttpServer server;
     private final ExecutorService executor = Executors.newCachedThreadPool();
@@ -45,10 +47,11 @@ final class StubEmbeddingServer implements AutoCloseable {
     private final List<Request> requests = new CopyOnWriteArrayList<>();
     private volatile Reply reply = Reply.json(500, "{}");
 
-    StubEmbeddingServer() throws IOException {
+    StubOpenAiServer() throws IOException {
         server = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0);
         server.setExecutor(executor);
         server.createContext("/v1/embeddings", this::handle);
+        server.createContext("/v1/chat/completions", this::handle);
         server.start();
     }
 
@@ -77,6 +80,24 @@ final class StubEmbeddingServer implements AutoCloseable {
                 .formatted(data, usage.isEmpty() ? "" : ",\"usage\":" + usage);
     }
 
+    // A chat completion whose message holds content (null for none) and, optionally, a refusal.
+    static String completion(
+            String finishReason, @Nullable String content, @Nullable String refusal, String usage) {
+        return """
+                {"id":"chatcmpl-1","object":"chat.completion","created":1760000000,\
+                "model":"gpt-6-luna","choices":[{"index":0,"finish_reason":"%s",\
+                "message":{"role":"assistant","content":%s,"refusal":%s}}]%s}"""
+                .formatted(
+                        finishReason,
+                        content == null ? "null" : quoted(content),
+                        refusal == null ? "null" : quoted(refusal),
+                        usage.isEmpty() ? "" : ",\"usage\":" + usage);
+    }
+
+    static String quoted(String text) {
+        return "\"" + text.replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
+    }
+
     static float component(int index, int position) {
         return index + position / 100f;
     }
@@ -91,7 +112,11 @@ final class StubEmbeddingServer implements AutoCloseable {
         try (exchange) {
             String body =
                     new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-            requests.add(new Request(body, exchange.getRequestHeaders().getFirst("Authorization")));
+            requests.add(
+                    new Request(
+                            exchange.getRequestURI().getPath(),
+                            body,
+                            exchange.getRequestHeaders().getFirst("Authorization")));
             Reply current = reply;
             if (current.delay().isPositive()) {
                 closed.await(current.delay().toMillis(), TimeUnit.MILLISECONDS);

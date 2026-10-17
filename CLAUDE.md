@@ -7,7 +7,7 @@ Decisões técnicas: `docs/10-DECISIONS.md` (consulte antes de mudar a stack).
 ## Stack
 
 Java 25, Spring Boot 4.1.x, Maven (use `./mvnw`), PostgreSQL 17 + pgvector,
-Flyway, Spring Data JDBC + JdbcClient (sem JPA), Spring AI 2.0.x (Spring AI entra na Etapa 4)
+Flyway, Spring Data JDBC + JdbcClient (sem JPA), SDK `openai-java` (sem Spring AI, D-014)
 apenas dentro do módulo `providers`. Frontend futuro: React + Vite + TypeScript.
 
 ## Comandos
@@ -20,7 +20,8 @@ apenas dentro do módulo `providers`. Frontend futuro: React + Vite + TypeScript
 
 - Monólito modular por pacotes (workspace, project, importjob, indexing,
   codeanalysis, retrieval, answering, providers, history, shared).
-- Tipos do Spring AI nunca vazam para o domínio; use as portas internas.
+- Tipos do SDK de provedores (`com.openai`) nunca vazam para o domínio; use as portas
+  internas de `providers`.
 - Retrieval em SQL explícito, com testes de integração (Testcontainers).
 - Migrações apenas via Flyway; nunca editar uma migração já aplicada.
 - Nunca executar código do repositório importado.

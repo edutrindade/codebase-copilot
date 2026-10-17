@@ -175,6 +175,7 @@ class RetrievalMetricsTest {
                         Difficulty.EASY,
                         List.of(),
                         true,
+                        List.of(),
                         null);
 
         assertThatThrownBy(() -> RetrievalMetrics.of(question, List.of()))
@@ -209,7 +210,15 @@ class RetrievalMetricsTest {
 
     private static Question question(Category category, ExpectedRange... expected) {
         return new Question(
-                "q", "?", "en", category, Difficulty.EASY, List.of(expected), false, null);
+                "q",
+                "?",
+                "en",
+                category,
+                Difficulty.EASY,
+                List.of(expected),
+                false,
+                List.of(),
+                null);
     }
 
     private static ExpectedRange range(String path, int start, int end) {

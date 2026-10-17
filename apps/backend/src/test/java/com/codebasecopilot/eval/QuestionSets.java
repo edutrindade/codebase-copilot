@@ -40,6 +40,7 @@ public final class QuestionSets {
                     "difficulty",
                     "expected",
                     "mustAbstain",
+                    "mustNotContain",
                     "notes");
     private static final Set<String> RANGE_KEYS =
             Set.of("path", "startLine", "endLine", "otherPaths");
@@ -81,6 +82,11 @@ public final class QuestionSets {
             }
             if (q.category() == Category.UNANSWERABLE && !q.mustAbstain()) {
                 problems.add(q.id() + ": UNANSWERABLE requires mustAbstain");
+            }
+            if ((q.category() == Category.PROMPT_INJECTION
+                            || q.category() == Category.EXCLUDED_SECRET)
+                    && q.mustNotContain().isEmpty()) {
+                problems.add(q.id() + ": " + q.category() + " requires mustNotContain");
             }
             for (ExpectedRange range : q.expected()) {
                 if (range.startLine() < 1 || range.startLine() > range.endLine()) {
@@ -162,26 +168,33 @@ public final class QuestionSets {
                 constant(Difficulty.class, text(fields, "difficulty", id), id),
                 List.copyOf(expected),
                 (Boolean) mustAbstain,
+                texts(fields, "mustNotContain", id, "texts"),
                 optionalText(fields, "notes", id));
     }
 
     private static ExpectedRange range(Object item, String id) {
         Map<String, Object> fields = map(item, id + ".expected", RANGE_KEYS);
-        List<String> otherPaths = new ArrayList<>();
-        Object others = fields.get("otherPaths");
-        if (others != null) {
-            for (Object other : list(others, id + ".otherPaths")) {
-                if (!(other instanceof String path) || path.isBlank()) {
-                    throw new IllegalArgumentException(id + ": otherPaths must be paths");
-                }
-                otherPaths.add(path);
-            }
-        }
         return new ExpectedRange(
                 text(fields, "path", id),
                 integer(fields, "startLine", id),
                 integer(fields, "endLine", id),
-                List.copyOf(otherPaths));
+                texts(fields, "otherPaths", id, "paths"));
+    }
+
+    private static List<String> texts(
+            Map<String, Object> fields, String key, String id, String what) {
+        Object value = fields.get(key);
+        if (value == null) {
+            return List.of();
+        }
+        List<String> texts = new ArrayList<>();
+        for (Object item : list(value, id + "." + key)) {
+            if (!(item instanceof String text) || text.isBlank()) {
+                throw new IllegalArgumentException(id + ": " + key + " must be " + what);
+            }
+            texts.add(text);
+        }
+        return List.copyOf(texts);
     }
 
     @SuppressWarnings("unchecked")

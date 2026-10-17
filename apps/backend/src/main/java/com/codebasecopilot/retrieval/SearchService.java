@@ -4,6 +4,7 @@ import com.codebasecopilot.codeanalysis.IdentifierTokenizer;
 import com.codebasecopilot.project.ProjectService;
 import com.codebasecopilot.providers.EmbeddingFailure;
 import com.codebasecopilot.providers.EmbeddingProvider;
+import com.codebasecopilot.providers.EmbeddingResult;
 import com.codebasecopilot.providers.ModelInfo;
 import com.codebasecopilot.retrieval.RrfFusion.Channel;
 import com.codebasecopilot.retrieval.RrfFusion.RankedHit;
@@ -14,6 +15,7 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -70,15 +72,32 @@ class SearchService {
             @Nullable Integer limit,
             @Nullable String mode) {}
 
-    // model is null without the vector channel, lexicalVersion without the lexical one.
+    // model, embeddingMillis and embeddingTokens are null without the vector channel,
+    // lexicalVersion without the lexical one; embeddingTokens also when the provider reports none.
     record Result(
             UUID snapshotId,
             SearchMode mode,
             @Nullable ModelInfo model,
             @Nullable String lexicalVersion,
-            List<RankedHit> hits) {}
+            List<RankedHit> hits,
+            Map<Channel, Integer> candidates,
+            @Nullable Long embeddingMillis,
+            @Nullable Long embeddingTokens) {}
+
+    // A query that passed every check; provider is null when the mode has no vector channel.
+    record Plan(
+            String text,
+            UUID snapshotId,
+            SearchMode mode,
+            int limit,
+            @Nullable EmbeddingProvider provider) {}
 
     Result search(UUID projectId, Query query) {
+        return run(prepare(projectId, query));
+    }
+
+    // Every check that does not call a provider, so answers can fail before persisting anything.
+    Plan prepare(UUID projectId, Query query) {
         String text = query.text();
         int limit = query.limit() == null ? DEFAULT_LIMIT : query.limit();
         SearchMode mode = validate(text, limit, query.mode());
@@ -88,17 +107,34 @@ class SearchService {
             throw new ApiException(ErrorCode.SNAPSHOT_LEXICAL_MISMATCH);
         }
         EmbeddingProvider provider = mode.usesVector() ? provider(snapshot) : null;
+        return new Plan(Objects.requireNonNull(text), snapshotId, mode, limit, provider);
+    }
+
+    // Only embedding failures of the question are left: an ApiException with an EMBEDDING_* code.
+    Result run(Plan plan) {
+        String text = plan.text();
+        UUID snapshotId = plan.snapshotId();
+        SearchMode mode = plan.mode();
+        int limit = plan.limit();
+        EmbeddingProvider provider = plan.provider();
 
         Map<Channel, List<SearchHit>> lists = new EnumMap<>(Channel.class);
         Map<Channel, Long> millis = new EnumMap<>(Channel.class);
         int depth = mode == SearchMode.HYBRID ? Math.max(properties.candidates(), limit) : limit;
+        Long embeddingMillis = null;
+        Long embeddingTokens = null;
         if (provider != null) {
             ModelInfo model = provider.model();
+            long start = System.nanoTime();
+            EmbeddingResult embedded = embed(provider, text);
+            embeddingMillis = (System.nanoTime() - start) / 1_000_000;
+            embeddingTokens = embedded.tokens();
+            float[] queryVector = embedded.vectors().getFirst();
             timed(
                     Channel.VECTOR,
                     lists,
                     millis,
-                    () -> vector.search(snapshotId, model, embed(provider, text), depth));
+                    () -> vector.search(snapshotId, model, queryVector, depth));
         }
         if (mode.usesLexical()) {
             timed(Channel.LEXICAL, lists, millis, () -> lexical.search(snapshotId, text, depth));
@@ -117,19 +153,25 @@ class SearchService {
                     case VECTOR -> RrfFusion.single(Channel.VECTOR, lists.get(Channel.VECTOR));
                     case HYBRID -> RrfFusion.fuse(lists, RrfFusion.Parameters.DEFAULT, limit);
                 };
+        Map<Channel, Integer> sizes = sizes(lists);
         log.info(
-                "Search in {} mode on snapshot {} returned {} results (per channel: {} results, {} ms)",
+                "Search in {} mode on snapshot {} returned {} results (per channel: {} results, {}"
+                        + " ms; question embedding: {} ms)",
                 mode,
                 snapshotId,
                 hits.size(),
-                sizes(lists),
-                millis);
+                sizes,
+                millis,
+                embeddingMillis);
         return new Result(
                 snapshotId,
                 mode,
                 provider == null ? null : provider.model(),
                 mode.usesLexical() ? IdentifierTokenizer.VERSION : null,
-                hits);
+                hits,
+                sizes,
+                embeddingMillis,
+                embeddingTokens);
     }
 
     private static SearchMode validate(@Nullable String text, int limit, @Nullable String mode) {
@@ -216,9 +258,9 @@ class SearchService {
         return sizes;
     }
 
-    private static float[] embed(EmbeddingProvider provider, String text) {
+    private static EmbeddingResult embed(EmbeddingProvider provider, String text) {
         try {
-            return provider.embed(List.of(text)).vectors().getFirst();
+            return provider.embed(List.of(text));
         } catch (EmbeddingFailure e) {
             throw new ApiException(code(e.type()));
         }

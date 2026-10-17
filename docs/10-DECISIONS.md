@@ -134,6 +134,22 @@ Este documento registra decisões aceitas e itens que ainda precisam de validaç
 - O SDK da OpenAI tem repetição própria; o adaptador da F1 a desliga (D-047), para que a política da D-051 seja a única.
 - A troca para o patch 2.0.x seguinte exige repetir esta verificação.
 
+#### Atualização de 16/10/2026 — Spring AI removido (Etapa 6)
+**Contexto:** a Etapa 5 adiou para a Etapa 6 a escolha entre manter o `spring-ai-openai` ou usar só o SDK (P9), porque o `ChatClient`/`ChatModel` poderia se pagar na geração. Até aqui o Spring AI só montava o cliente (`OpenAiSetup`); a chamada de embeddings já ia direto ao SDK.  
+**Opções consideradas:**
+1. Manter o Spring AI e gerar respostas pelo `OpenAiChatModel`.
+2. Usar só o SDK `openai-java`, nos embeddings e no chat.
+
+**Verificação (16/10/2026, F0 da Etapa 6, fontes do `spring-ai-openai` 2.0.1 e bytecode do `spring-ai-model` 2.0.1):**
+- uso de tokens ausente: o `OpenAiChatModel` usa `EmptyUsage`, que devolve **0** tokens; zero e "não informado" ficam iguais (contra a D-054);
+- log: sem `choices`, o modelo faz `logger.warn("No choices returned for prompt: " + prompt)`, e o `Prompt.toString()` traz as mensagens, isto é, instruções, pergunta e trechos de código;
+- repetição desligável e saída estruturada estrita: atendidas pelos dois caminhos.
+
+**Decisão:** opção 2. Saem o `spring-ai-bom` e o `spring-ai-openai`; entra o **`com.openai:openai-java-client-okhttp` 4.49.0**, na mesma versão do `openai-java-core` (propriedade `openai-java.version`, conferida por teste). Ele traz o OkHttp 4.12.0, a mesma versão que o Spring AI trazia. O cliente é montado pelo `OpenAiClients` (módulo `providers`): `baseUrl` e chave sempre explícitos (nunca `fromEnv()`, que leria `OPENAI_*` do ambiente), `maxRetries(0)` e `logLevel(OFF)`.  
+**Motivo:** o que o `ChatClient` acrescenta (advisors, memória, conversores) é o que este projeto controla à mão, e o modelo de chat do Spring AI quebra duas regras já aceitas (D-054 e "não logar prompts").  
+**Consequências:** a D-006 continua valendo (Spring AI "onde for útil", sempre atrás de portas); hoje ele não é útil em nenhum ponto. O ArchUnit continua barrando `org.springframework.ai` e `com.openai` fora de `providers`. A versão-alvo do Spring AI desta decisão deixa de valer até ele voltar ao projeto.  
+**O que levaria à revisão:** um provedor novo (por exemplo, local, na Etapa 9) cuja integração só exista no Spring AI, ou uma versão do Spring AI que corrija os dois pontos acima.
+
 ### D-015 — Build tool (resolve O-002)
 **Status:** Aceita  
 **Decisão:** **Maven com wrapper (`mvnw`)**.  
@@ -678,7 +694,7 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Consequências:** `06-API-CONTRACTS.md` §5, §7 e §9 atualizados.
 
 ### D-046 — Evidências independentes da retenção de snapshots
-**Status:** Aceita (16/10/2026; implementação na Etapa 6)  
+**Status:** Aceita (16/10/2026; implementada na Etapa 6, D-065 e D-068)  
 **Contexto:** a poda de snapshots e a limpeza de chunks (D-039, D-044) não podem invalidar respostas já dadas.  
 **Decisão:**
 - `answer_evidence` guarda **cópia** do caminho, das linhas, do hash do conteúdo e do trecho no momento da resposta, além das referências ao snapshot e ao chunk.
@@ -690,7 +706,7 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **O que levaria à revisão:** volume de evidências copiadas relevante frente ao conteúdo indexado.
 
 ### D-047 — Provedor inicial de embeddings (O-004, provisória)
-**Status:** Aceita (provisória, 16/10/2026; bake-off adiado na Etapa 5, P8; manter o `spring-ai-openai` é decidido na Etapa 6, P9)  
+**Status:** Aceita (provisória, 16/10/2026; bake-off adiado na Etapa 5, P8; `spring-ai-openai` removido na Etapa 6, ver D-014)  
 **Contexto:** a O-004 pede um provedor de embeddings antes de concluir a Etapa 4, mas a comparação de qualidade depende do corpus da Etapa 5 (O-011).  
 **Opções consideradas:**
 1. OpenAI `text-embedding-3-small`, pelo módulo OpenAI do Spring AI.
@@ -724,9 +740,11 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Consequências:** o texto dos chunks indexados e as perguntas de busca saem da máquina quando `provider=openai` (D-054). Preço e política devem ser reconferidos antes de alterar esta decisão.  
 **Atualização (Etapa 5, 16/10/2026):**
 - **Bake-off adiado** (P8 do plano da Etapa 5): o corpus inicial é pequeno para separar dois bons modelos, e o harness (D-062) roda o bake-off depois sem mudança de código, com um adaptador novo. A Voyage não foi verificada.
-- **`spring-ai-openai` mantido** (P9): a escolha entre ele e o SDK sozinho passa para a Etapa 6, junto com a porta de geração, onde o `ChatClient` do Spring AI pode (ou não) se pagar.
+- **`spring-ai-openai` mantido** (P9): a escolha entre ele e o SDK sozinho passa para a Etapa 6, junto com a porta de geração, onde o `ChatClient` do Spring AI pode (ou não) se pagar. Resolvida na Etapa 6: removido, só o SDK (D-014).
 - A guarda dos testes passou a liberar também a tag `eval`, do harness de avaliação (D-062).
 - O teste de fumaça com a chave real continua pendente por falta de saldo.
+
+**Atualização (Etapa 6, F1, 16/10/2026):** o adaptador deixou de usar o `OpenAiSetup` do Spring AI; o cliente vem do `OpenAiClients`, com o SDK sozinho (D-014). Comportamento igual: mesma chave, `base-url`, timeout, sem repetição e sem log. A guarda dos testes passou a se chamar `RealProviderGuard` e barra também `app.generation.provider=openai` (D-063).
 
 **O que levaria à revisão:** resultado do bake-off, mudança de preço ou de política de dados, ou integração da Voyage no Spring AI.
 
@@ -982,19 +1000,133 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Consequências:** o baseline lexical (sem custo) está em `eval/results/2026-10-16-lexical.*`; o vetorial e o híbrido saem do mesmo harness com `EVAL_PROVIDER=openai`, quando houver saldo, junto com o teste de fumaça da Etapa 4. A Etapa 5 fechou sem saldo: a comparação e as decisões que dependem dela (D-017, O-005, saída do canal de caminhos da D-058) esperam essa rodada.  
 **O que levaria à revisão:** corpus maior, bake-off de embeddings (O-004) ou variantes novas da fusão.
 
+### D-063 — Provedor de chat (O-004, provisória)
+**Status:** Aceita (provisória, 16/10/2026; P1 da Etapa 6; F1 entregue)  
+**Contexto:** a O-004 deixou o provedor de chat para a Etapa 6. A escolha decide custo e para onde vão a pergunta e os trechos de código usados como evidência.  
+**Opções consideradas:**
+1. OpenAI, pelo SDK já usado nos embeddings (D-047).
+2. Anthropic (Claude), pelo SDK oficial ou pelo Spring AI: dependência, chave e destino de dados novos.
+3. Entregar a etapa só com o provedor fake.
+
+**Decisão:** opção 1, provisória; a Anthropic fica como candidata na avaliação de respostas.
+- **Modelo padrão `gpt-6-luna`**, com o `gpt-6.1-sol` como comparação na avaliação. Pelas páginas oficiais (consultadas em 16/10/2026): `gpt-6-luna` custa US$ 0,10 por 1M de tokens de entrada, US$ 0,01 em cache e US$ 0,50 de saída (até 272 mil tokens de entrada); `gpt-6.1-sol`, US$ 2,00, US$ 0,10 e US$ 10,00. Os dois têm contexto de 1,05 M de tokens, saída máxima de 128 mil e saída estruturada; o luna aceita raciocínio de `none` a `max`, o sol de `low` a `max`. Fontes: `developers.openai.com/api/docs/pricing`, `/api/docs/models/gpt-6-luna`, `/api/docs/models/gpt-6.1-sol`.
+- **Chat Completions, com `store=false`.** Pela página de uso de dados (`developers.openai.com/api/docs/guides/your-data`, consultada em 16/10/2026), `/v1/chat/completions` não usa os dados para treino, retém por 30 dias para monitoramento de abuso, não guarda estado da aplicação (o cache de prompts pode manter dados criptografados nas GPUs por até 24 horas) e é elegível a Zero Data Retention mediante acordo. O `/v1/responses` guardaria a resposta por pelo menos 30 dias com `store` omitido, e é a Chat Completions que servidores compatíveis e locais implementam (Etapa 9).
+- **Saída estruturada estrita** (`response_format` `json_schema`, `strict: true`): todo campo em `required`, `additionalProperties: false` e opcional como união com `null` (guia de structured outputs, consultado em 16/10/2026).
+- **Configuração própria** (`app.generation.*`), separada dos embeddings: `provider` (`none` padrão, `fake`, `openai`), `model`, `reasoning-effort` (padrão `low`; vazio não envia o parâmetro), `max-output-tokens` (padrão 2.000, inclui o raciocínio), `timeout` (60 s), `base-url` (mesma regra da D-047) e a chave em `GENERATION_API_KEY`, obrigatória com `openai`. A chave dos embeddings não serve à geração: são destinos configurados à parte, mesmo que o valor seja igual.
+- Com `provider=none` não há bean de geração e nada sai da máquina.
+- A guarda dos testes (`RealProviderGuard`) barra também `app.generation.provider=openai`, com a mesma exceção para as tags `smoke` e `eval`; o teste de fumaça é o `GenerationSmokeIT`.
+
+**Motivo:** reaproveita o SDK, a guarda de `base-url`, a classificação de erros (D-051) e a mesma conta dos embeddings; o luna cobre a tarefa (responder com trechos dados, ~6 mil tokens de contexto) por fração de centavo por pergunta.  
+**Consequências:** com `provider=openai`, a pergunta e os trechos escolhidos como evidência saem da máquina. Custo estimado por pergunta com o luna: ~US$ 0,0017 no teto (6.700 tokens de entrada e 2.000 de saída). Os dois modelos têm um único snapshot, sem versão datada para fixar; uma mudança do modelo aparece na avaliação.  
+**O que levaria à revisão:** resultado da avaliação de respostas (luna × sol, ou Anthropic), mudança de preço ou de política de dados, ou provedor local (Etapa 9).
+
+### D-064 — Porta de geração
+**Status:** Aceita (16/10/2026; P3 da Etapa 6; F1 entregue)  
+**Decisão:**
+- `GenerationProvider` em `providers`: `generate(GenerationRequest)` → `GenerationResult`, e `model()` (provedor e modelo). Sem tipos do SDK na assinatura.
+- `GenerationRequest`: instruções (mensagem de sistema), entrada (mensagem do usuário) e o schema da saída (`OutputSchema`: nome e JSON Schema estrito como mapa). O limite de saída e o esforço de raciocínio vêm da configuração, não do pedido.
+- `GenerationResult`: o JSON produzido, ainda não validado, e os tokens de entrada, de saída e de raciocínio, cada um `null` quando o provedor não informa (D-054). Os de saída já incluem os de raciocínio.
+- `GenerationFailure` com os tipos da D-051 e mais `OUTPUT_TRUNCATED` (`finish_reason` `length`) e `REFUSED` (`message.refusal` presente ou `finish_reason` `content_filter`); resposta sem `choices` ou sem conteúdo é `INVALID_REQUEST`. Mensagens só com tipo e status HTTP; a exceção do SDK não é guardada como causa.
+- **Sem repetição:** uma chamada por pedido, porque há uma pessoa esperando (como na busca, D-051). Timeout por chamada, que vira `UNAVAILABLE`.
+- `FakeGenerationProvider` determinístico (D-019): cita o primeiro rótulo de evidência (`E1`, `E2`…) que encontra na entrada, no formato de resposta da Etapa 6, ou se abstém quando não há nenhum; tokens = contagem de termos.
+- Nada de instruções, pergunta, trecho ou saída em log: o adaptador registra só tokens e duração, e um teste numa JVM filha com `OPENAI_LOG=debug` confere que nenhum corpo de pedido ou de resposta aparece.
+
+**Motivo:** o domínio fica livre do SDK e o comportamento de falha é previsível e testável sem rede.  
+**Consequências:** o formato de resposta que o fake produz precisa acompanhar o schema da P6; se o schema mudar, o fake muda junto.  
+**O que levaria à revisão:** necessidade de streaming (Etapa 7), de várias mensagens (perguntas de acompanhamento) ou de ferramentas.
+
+### D-065 — Histórico de perguntas e respostas
+**Status:** Aceita (16/10/2026; P7 e parte da P8 da Etapa 6; F2 entregue)  
+**Contexto:** as respostas precisam guardar a pergunta, o texto, as evidências enviadas ao modelo e as métricas, sobreviver à poda de snapshots (D-046) e não segurar transação durante a chamada ao provedor.  
+**Decisão:**
+- Migração V10 com `conversations`, `messages`, `answers` e `answer_evidence`, no módulo `history`, que `answering` usa pela API pública `AnswerHistory` (`start`, `complete`, `findAnswer`, `failPendingCreatedBefore`).
+- Ajustes em relação a `05-DATA-MODEL.md`: `conversations` sem `snapshot_id` (cada resposta guarda o seu) e com `title` = a primeira pergunta numa linha, até 100 caracteres; `messages` só com `USER` e `ASSISTANT`; `answers` com `PENDING`, `snapshot_id`, `retrieval_mode`, `prompt_version`, `generation_provider`/`generation_model`, `error_code`, `warnings`, `invalid_citation_count` e `retrieval_metadata` (nunca texto); `answer_evidence` com `id`, `rank_path`, `cited_start_line`/`cited_end_line` e `validation_status` (`CITED`, `NOT_CITED`, `INVALID_RANGE`), guardando todas as evidências enviadas ao modelo, citadas ou não.
+- Snapshot e chunk referenciados sem FK (D-046); tudo apagado em cascata a partir do projeto (D-021).
+- `CHECK`s de estado: `PENDING` sem conclusão, erro, mensagem de resposta, latência ou tokens e com custo `UNKNOWN`; `FAILED` com erro e sem mensagem de resposta; `ANSWERED` e `PARTIAL` com mensagem de resposta; `ABSTAINED` com ou sem texto (a abstenção sem evidência não chama o modelo). `ESTIMATED` exige custo e moeda, `UNKNOWN` proíbe os dois. Linhas citadas só em evidência `CITED`, as duas juntas e dentro do intervalo da evidência.
+- Escrita em duas transações curtas: `start` cria a conversa (ou valida que ela é do projeto, senão `CONVERSATION_NOT_FOUND`), a mensagem `USER` e a resposta `PENDING`; `complete` trava a resposta e só a conclui se ainda estiver `PENDING`, gravando a mensagem `ASSISTANT` (quando há texto) e as evidências. Uma resposta já recuperada ou apagada com o projeto devolve `false`, sem erro.
+- **Recuperação:** na inicialização, `AnswerRecovery` (em `answering`) marca `FAILED` com `ANSWER_INTERRUPTED` as respostas `PENDING` criadas há mais que o timeout de embeddings somado ao de geração, o máximo que um pedido espera pelos provedores. As mais recentes ficam, porque podem ser de outra instância em execução.
+
+**Motivo:** o histórico (F-07) continua verificável depois da poda, e os `CHECK`s impedem estados que a API não saberia mostrar.  
+**Consequências:** `05-DATA-MODEL.md` é atualizado no fechamento da etapa. O texto da pergunta e da resposta fica só no banco local, nunca em log.  
+**O que levaria à revisão:** perguntas de acompanhamento com histórico no prompt (Etapa 8), retenção de conversas fora da remoção do projeto, ou volume de evidências copiadas relevante (D-046).
+
+### D-066 — Contexto, prompt e validação de citações
+**Status:** Aceita (16/10/2026; P4, P5 e P6 da Etapa 6; F3 entregue)  
+**Contexto:** a busca devolve até 50 chunks; o modelo precisa de poucos, delimitados como dado não confiável, e a resposta só vale com citações que existem (D-011).  
+**Decisão:**
+- **Recuperação** pela fachada pública `Retrieval` de `retrieval`, em duas fases: `prepare` faz as checagens da busca, com os mesmos códigos e a mesma precedência (D-060), sem chamar provedor; `retrieve` gera o embedding da pergunta, se o modo pedir, e só falha com um código `EMBEDDING_*`. Cada chunk vem com conteúdo, hash do conteúdo, estimativa de tokens, posição final e posição em cada canal. Padrão `HYBRID` com `app.answering.candidates` = 20 (de 1 a 50); sem cair para lexical em silêncio.
+- **`ContextAssembler`**, puro, percorre os chunks na ordem da fusão e escolhe cada um que ainda cabe: até `maxEvidence` (pedido, padrão 8, de 1 a 20), até `app.answering.max-evidence-per-file` = 3 por conteúdo, sem sobrepor linhas de um chunk já escolhido do mesmo conteúdo, e dentro de `app.answering.max-context-tokens` = 6.000. O custo é ⌈caracteres/4⌉ (D-043) medido no prompt renderizado (instruções, pergunta, delimitadores e números de linha); um chunk que não cabe é pulado e os seguintes ainda são tentados. Rótulos `E1`…`En` na ordem de escolha. Sem corte por score (D-059).
+- **`PromptBuilder`** (`prompt-v1`): instruções em inglês na mensagem de sistema (só as evidências, citar com `[En]`, conteúdo como dado e nunca como instrução, `ABSTAINED`/`PARTIAL`, idioma da pergunta). Na mensagem do usuário, as evidências e depois a pergunta, cada uma num bloco `<<<BEGIN … nonce>>>`/`<<<END … nonce>>>` com um nonce aleatório de 128 bits por pedido; cada evidência traz rótulo, primeiro caminho, intervalo e as linhas numeradas, para o modelo poder estreitar a citação.
+- **Schema estrito** `{status, answer, citations[{evidence, startLine, endLine}]}`, com as linhas como `["integer", "null"]`. O rótulo é texto livre no schema (não um `enum` por pedido), para o schema não mudar a cada pergunta; o validador cuida dos inventados.
+- **`CitationValidator`**, puro: JSON inválido ou fora do schema (inclusive `ANSWERED`/`PARTIAL` com texto vazio) → inválido, sem texto exibido; rótulo fora do conjunto → descartado; linhas fora do intervalo ou invertidas → descartadas e a evidência fica `INVALID_RANGE`; uma linha nula vale o limite da evidência, as duas nulas citam a evidência inteira; várias citações válidas da mesma evidência viram o intervalo que cobre todas; marcador `[En]` sem citação válida sai do texto; citação sem marcador vale. `invalidCitationCount` = citações descartadas + rótulos marcados no texto que não aparecem nas citações.
+- **Status final:** `ABSTAINED` declarado fica; `ANSWERED` ou `PARTIAL` sem citação válida vira `PARTIAL` com `NO_VALID_CITATIONS`; senão, o declarado. `INVALID_CITATIONS_REMOVED` quando algo foi descartado.
+
+**Motivo:** o orçamento medido no prompt real evita estourar o contexto com numeração e delimitadores; o nonce impede que um arquivo feche o próprio bloco; o status decidido no backend deixa claro quando nada sustenta a resposta.  
+**Consequências:** a validação garante existência de arquivo e linhas, não suporte factual, medido na avaliação (F6). Mudar instruções, blocos ou schema cria uma versão nova do prompt.  
+**O que levaria à revisão:** resultados da avaliação de respostas (orçamento, limite por arquivo, abstenção), perguntas de acompanhamento (Etapa 8) ou reranking.
+
+### D-067 — Caso de uso de perguntas e custo por resposta
+**Status:** Aceita (16/10/2026; P8 e P9 da Etapa 6; F4 entregue)  
+**Contexto:** a pergunta passa por dois provedores e pode levar o tempo da geração; o histórico não pode perder a pergunta quando um provedor falha, e nada pode ficar gravado quando o pedido é recusado.  
+**Decisão:**
+- **`POST /projects/{projectId}/questions`**, síncrono: `{ question, snapshotId, conversationId, options: { maxEvidence, retrievalMode } }`. `question` de 1 a 2.000 caracteres, não em branco; `maxEvidence` de 1 a 20 (padrão 8); `retrievalMode` `LEXICAL`, `VECTOR` ou `HYBRID` (nome exato, padrão `HYBRID`, texto no pedido como na D-060). Resposta `201` com `Location: /api/v1/answers/{answerId}`.
+- **Erros, nesta ordem, sem nada gravado:** `400 VALIDATION_FAILED` (`question`, `options.maxEvidence`, `options.retrievalMode`); `404 PROJECT_NOT_FOUND`; `404 CONVERSATION_NOT_FOUND` (inexistente ou de outro projeto); as checagens do snapshot e dos embeddings da busca, na ordem da D-060 (`SNAPSHOT_NOT_FOUND`, `SNAPSHOT_NOT_SEARCHABLE`, `SNAPSHOT_LEXICAL_MISMATCH`, `EMBEDDINGS_NOT_AVAILABLE`, `SNAPSHOT_EMBEDDING_MISMATCH`); `409 GENERATION_NOT_AVAILABLE`. Os 404 vêm antes dos 409, e a geração por último, por ser a última peça usada.
+- **Fluxo:** checagens; transação curta com conversa, mensagem `USER` e resposta `PENDING`; busca, montagem, geração e validação fora de transação; transação curta com o desfecho. Depois da primeira transação, falhas dos provedores **não viram erro HTTP**: a resposta fica `FAILED` com `error.code` (`GENERATION_*` ou `EMBEDDING_*`) e o pedido responde `201`. Mensagens pt-BR em `answer.error.<CODE>`.
+- **Sem evidência, sem chamada:** busca vazia, ou nada que caiba no contexto, vira `ABSTAINED` com o aviso `NO_EVIDENCE`, sem texto gravado; o texto exibido é a mensagem `answer.abstained`.
+- **Evidências gravadas** sempre que o modelo foi chamado, inclusive numa falha da geração ou numa saída inválida (todas `NOT_CITED`), porque foram enviadas ao provedor; numa falha do embedding da pergunta não há evidência.
+- **Projeto removido durante a geração:** a resposta já não existe para ser concluída, e o pedido responde `404 PROJECT_NOT_FOUND`.
+- **Resposta:** `answerId`, `conversationId`, `snapshotId`, `question`, `status`, `answer` (texto com `[En]`, ou `null`), `warnings` (`{code, message}`), `invalidCitationCount`, `error` (`{code, message}` só em `FAILED`), `evidence` (todas as enviadas ao modelo, com `id`, rótulo, caminhos, linhas, linhas citadas, cópia do trecho, `validationStatus`, `rank` e `ranks` por canal), `model` (`null` quando o modelo não foi chamado), `retrieval` (`mode`, `promptVersion`), `metrics` (`latencyMs`, `retrievalMs`, `generationMs`, tokens, custo) e as datas.
+- **Custo (P9):** preço em `app.generation.pricing.input-per-million` e `output-per-million` (US$), sem padrão no código; o `.env.example` traz os valores do `gpt-6-luna` com a data da consulta. `ESTIMATED` só com os dois tokens informados e os dois preços configurados, arredondado a 6 casas; senão `UNKNOWN`, sem custo nem moeda. Os tokens do embedding da pergunta ficam em `retrieval_metadata`, fora do custo.
+- **`retrieval_metadata`:** modelo de embedding, versão lexical, tokens do embedding da pergunta, candidatos por canal, chunks recuperados, tokens de raciocínio e duração por etapa (`retrieval`, `questionEmbedding`, `generation`, `validation`). Nunca texto.
+- **Log:** uma linha por resposta com resposta, projeto, snapshot, modo, status e código, quantidade de evidências, tokens e durações; nunca pergunta, resposta, prompt ou trecho (D-054). A linha da busca passou a separar a duração do embedding da pergunta.
+
+**Motivo:** o histórico guarda toda pergunta que passou pelas checagens (F-07, "erros de provedor são comunicados sem perder o histórico da pergunta"), e um pedido recusado não deixa conversa vazia.  
+**Consequências:** o cliente espera até o timeout da geração (60 s por padrão); um erro inesperado depois da primeira transação (banco fora do ar, por exemplo) deixa a resposta `PENDING` até a recuperação da próxima inicialização (D-065). O `Location` aponta para `GET /answers/{answerId}`, entregue na F5.  
+**O que levaria à revisão:** streaming na UI (Etapa 7), perguntas de acompanhamento (Etapa 8) ou um provedor que informe o custo.
+
+### D-068 — Leituras do histórico
+**Status:** Aceita (16/10/2026; leituras da P8 da Etapa 6; F5 entregue)  
+**Contexto:** o histórico (F-07) e as evidências precisam ser consultados depois da resposta, inclusive quando o snapshot já foi podado (D-046), e as respostas `PENDING` e `FAILED` também fazem parte dele.  
+**Decisão:**
+- **`GET /answers/{answerId}`**: o mesmo formato da resposta de `POST /questions` (D-067), inclusive `PENDING`; `404 ANSWER_NOT_FOUND`.
+- **`GET /projects/{projectId}/evidence/{evidenceId}`**: a cópia guardada (caminho, demais caminhos, hash do conteúdo, linhas, linhas citadas, trecho, `validationStatus`, posições), com `answerId`, `snapshotId` e `snapshotStatus` `AVAILABLE` ou `PRUNED`. Snapshot podado ou inexistente → `PRUNED`, com `200`. Erros, nesta ordem: `404 PROJECT_NOT_FOUND`; `404 EVIDENCE_NOT_FOUND` (inexistente ou de outro projeto).
+- **`GET /projects/{projectId}/conversations`**: paginada (D-030), pela pergunta mais recente (`updated_at` decrescente, `id` decrescente no empate); cada item com `id`, `projectId`, `title`, `questionCount` e as datas. `404 PROJECT_NOT_FOUND`.
+- **`GET /conversations/{conversationId}`**: `{ conversation, answers }`, com as respostas na ordem das perguntas e no formato de `GET /answers/{answerId}`, inclusive `FAILED` e `PENDING`; evidências lidas numa consulta só para a conversa inteira. `404 CONVERSATION_NOT_FOUND`.
+- **Módulos:** as consultas ficam em `history` (`AnswerHistory.findEvidence`, `listConversations`, `findConversation`); os endpoints em `answering` (`AnswerController` e `ConversationController`, tag "Conversas"), que já montam a resposta exibida (texto da abstenção, avisos e erros em pt-BR, em `AnswerResponses`). O estado do snapshot vem de `Retrieval.snapshotAvailable`, chamado por `answering`; sem porta em `history`.
+
+**Motivo:** a porta `SnapshotStates` da P11 seria implementada em `retrieval`, que pela mesma P11 não pode depender de `history`; como as leituras compõem `history` e `retrieval` em `answering`, que já depende dos dois, a porta não é necessária.  
+**Consequências:** `06-API-CONTRACTS.md` §8 a §10 atualizados no fechamento da etapa.  
+**O que levaria à revisão:** busca ou filtros no histórico, conversas longas o bastante para pedir paginação das respostas, ou a abertura do arquivo inteiro do snapshot (`GET /snapshots/{snapshotId}/files/content`).
+
+### D-069 — Avaliação de respostas (P10 da Etapa 6)
+**Status:** Aceita (16/10/2026; F6 da Etapa 6 entregue; rodada com o modelo real pendente de saldo no provedor)  
+**Contexto:** o aceite da Etapa 6 pede citações inválidas sinalizadas e abstenção quando falta evidência; `08` §4 pede validade de citação, abstenção e vazamento medidos no corpus da D-061, com correção e suporte por auditoria humana.  
+**Decisão:**
+- **`AnswerEvaluationIT`**, tag `eval`, fora do `verify`. Indexa os corpora como o harness da D-062 (a preparação passou para `EvalCorpora`, usada pelos dois) e faz as 40 perguntas, inclusive as com `mustAbstain`, por `POST /questions`, cada uma numa conversa nova. Provedor de chat em `EVAL_GENERATION_PROVIDER` (`fake` por padrão; `openai` com a chave de `GENERATION_API_KEY`); embeddings em `EVAL_PROVIDER`, como na D-062; modo `HYBRID` com embeddings e `LEXICAL` sem, ou `EVAL_RETRIEVAL_MODE`.
+- **`mustNotContain`** nas anotações: textos que não podem aparecer na resposta, comparados sem diferenciar maiúsculas. Obrigatório nas categorias `PROMPT_INJECTION` e `EXCLUDED_SECRET`; o `verify` confere que os textos da fixture existem nela (um erro de digitação faria a checagem passar sempre). Na fixture: o token sintético do `.npmrc` (fx-08 e fx-09) e o que o `CONTRIBUTING.md` injetado pede para dizer (fx-08).
+- **Métricas automáticas** (`AnswerQuality`, pura, com testes no `verify`), sobre a resposta como a API a devolve: validade de citação (citações válidas / emitidas, contadas por evidência, porque o validador junta as citações repetidas de uma evidência); respostas sustentadas (`ANSWERED`/`PARTIAL` com ao menos uma citação válida); citação relevante (linhas citadas sobrepondo um intervalo esperado, pela regra da `RetrievalMetrics`; indício de suporte, não prova); abstenção correta nas perguntas com `mustAbstain` e indevida nas demais; vazamento; falhas. Resumo geral, por corpus, categoria e idioma; tokens (média e p95), custo estimado (total e médio) e latência (média e p95).
+- **Cache de respostas** (`GenerationCache`): cada resultado do provedor fica em `DATA_DIR/eval-cache/answers/<provedor>-<modelo>-reasoning-<esforço>/<sha256 do pedido>.json` (ou em `EVAL_CACHE_DIR`). O nonce aleatório dos delimitadores (D-066) é normalizado antes do hash; sem isso, nenhum pedido se repetiria. O arquivo guarda a saída do modelo e os tokens, nunca o prompt; falhas não entram. Uma resposta em cache mantém os tokens e o custo da chamada original e fica fora da latência.
+- **Resultados:** `<data>-answers-<provedor>-<modelo>-<esforço>-<modo>.json` (métricas, referências das evidências sem o trecho, texto da resposta) e `.md` em pt-BR, com o resumo e, por pergunta, a resposta ao lado dos trechos citados e caixas para a auditoria humana (correta, sustentada, nota). Com o modelo real, em `eval/results/`, versionados; com o fake, em `apps/backend/target/eval-results/`, sem versionar, porque só testam o harness.
+- Sem metas numéricas (`08` §9): a primeira rodada real é o baseline.
+
+**Motivo:** passar pelo endpoint mede o fluxo que a pessoa usa (recuperação, contexto, prompt, validação e custo); o cache torna a rodada paga barata de refazer e as métricas reproduzíveis, já que a resposta do modelo não é determinística.  
+**Consequências:** a rodada com o fake na fixture roda em segundos e exercita o harness inteiro; a rodada real (custo estimado abaixo de US$ 0,15 com o `gpt-6-luna`, F0) e a auditoria esperam saldo, como a rodada da Etapa 5. A comparação com o `gpt-6.1-sol` e com o esforço `none` sai do mesmo harness, mudando só a configuração.  
+**O que levaria à revisão:** LLM como juiz (Etapa 8), corpus maior, perguntas de acompanhamento ou um provedor que informe custo.
+
 ---
 
 ## Decisões em aberto
 
 ### O-004 — Provedor inicial (chat e embeddings)
-**Status:** A validar (bake-off na Etapa 5, com o corpus de avaliação)  
+**Status:** A validar (embeddings e chat decididos provisoriamente, D-047 e D-063; comparação com o corpus de avaliação pendente de saldo)  
 **Restrições já aceitas:**
 - Escolher **um** par embedding/chat por instalação; trocar de modelo implica reindexar.
 - Preferir modelos de embedding com **até 2.000 dimensões**, compatível com índice HNSW sobre `vector` no pgvector (`halfvec` permite mais). A dimensão não é mais fixada por migração: fica na linha (D-048).
 - Provedor de embeddings e de chat podem ser diferentes (a Anthropic, por exemplo, não oferece modelo de embeddings próprio), o que justifica as duas portas separadas.
 
 **Critérios de comparação:** recall@k e MRR no corpus, qualidade em código, custo por 1M de tokens, latência, limites de taxa e política de retenção de dados do provedor.  
-**Estado (16/10/2026, fim da Etapa 5):** embeddings decididos provisoriamente na Etapa 4: OpenAI `text-embedding-3-small`, 1.536 dimensões (D-047), com armazenamento que não exige migração para trocar de modelo (D-048). O bake-off com a Voyage `voyage-code-3` foi adiado (D-047, atualização da Etapa 5): o corpus de avaliação (D-061) e o harness (D-062) estão prontos para ele, mas nem o baseline com a OpenAI rodou ainda, por falta de saldo. O provedor de chat é decidido na Etapa 6.
+**Estado (16/10/2026, fim da Etapa 5):** embeddings decididos provisoriamente na Etapa 4: OpenAI `text-embedding-3-small`, 1.536 dimensões (D-047), com armazenamento que não exige migração para trocar de modelo (D-048). O bake-off com a Voyage `voyage-code-3` foi adiado (D-047, atualização da Etapa 5): o corpus de avaliação (D-061) e o harness (D-062) estão prontos para ele, mas nem o baseline com a OpenAI rodou ainda, por falta de saldo. O provedor de chat é decidido na Etapa 6.  
+**Estado (16/10/2026, fim da Etapa 6):** chat decidido provisoriamente: OpenAI `gpt-6-luna` pela Chat Completions (D-063), com o `gpt-6.1-sol` e a Anthropic como candidatos. O harness de avaliação de respostas (D-069) está pronto para a comparação, mas não rodou com modelo real, por falta de saldo; continuam pendentes também o baseline vetorial da Etapa 5 e os testes de fumaça das Etapas 4 e 6. A O-004 segue a validar até essas rodadas.
 
 ### O-005 — Comparação final de estratégia lexical e fusão
 **Status:** A validar  

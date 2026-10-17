@@ -1,2 +1,2 @@
 org.springframework.test.context.ContextCustomizerFactory=\
-com.codebasecopilot.RealEmbeddingProviderGuard
+com.codebasecopilot.RealProviderGuard

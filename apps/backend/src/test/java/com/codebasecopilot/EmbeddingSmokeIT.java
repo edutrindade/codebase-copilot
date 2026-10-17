@@ -49,7 +49,8 @@ import org.springframework.test.web.servlet.assertj.MvcTestResult;
             TestProperties.WORK_ROOT_LABEL,
             TestProperties.WORK_ROOT_PATH,
             TestProperties.INDEX_POLL_INTERVAL,
-            "app.embeddings.provider=openai"
+            "app.embeddings.provider=openai",
+            "app.generation.provider=none"
         })
 @AutoConfigureMockMvc
 @ContextConfiguration(initializers = TestFileSystemInitializer.class)

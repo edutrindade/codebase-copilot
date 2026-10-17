@@ -17,7 +17,11 @@ import org.springframework.test.context.ContextConfiguration;
             TestProperties.CONFIG_LOCATION,
             TestProperties.NO_PROJECTS_ROOT,
             TestProperties.EMBEDDING_PROVIDER,
-            TestProperties.NO_EMBEDDING_API_KEY
+            TestProperties.NO_EMBEDDING_API_KEY,
+            TestProperties.GENERATION_PROVIDER,
+            TestProperties.NO_GENERATION_API_KEY,
+            TestProperties.NO_GENERATION_PRICE_INPUT,
+            TestProperties.NO_GENERATION_PRICE_OUTPUT
         })
 @AutoConfigureMockMvc
 @ContextConfiguration(initializers = TestFileSystemInitializer.class)

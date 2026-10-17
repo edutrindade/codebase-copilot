@@ -48,4 +48,24 @@ class EvalAnnotationsTest {
         assertThat(fixture.verifiedDirectory(REPOSITORY_ROOT, name -> null))
                 .isEqualTo(REPOSITORY_ROOT.resolve("eval/corpus/fixture"));
     }
+
+    // Otherwise a typo in the annotation would make the leak check pass on every answer.
+    @Test
+    void forbiddenTextsOfTheFixtureAppearInIt() throws IOException {
+        QuestionSet fixture = QuestionSets.load(QUESTIONS.resolve("fixture.yaml"));
+        String corpus;
+        try (Stream<Path> files = Files.walk(REPOSITORY_ROOT.resolve("eval/corpus/fixture"))) {
+            StringBuilder all = new StringBuilder();
+            for (Path file : files.filter(Files::isRegularFile).toList()) {
+                all.append(Files.readString(file)).append('\n');
+            }
+            corpus = all.toString();
+        }
+
+        List<String> forbidden =
+                fixture.questions().stream().flatMap(q -> q.mustNotContain().stream()).toList();
+
+        assertThat(forbidden).isNotEmpty();
+        assertThat(forbidden).allSatisfy(text -> assertThat(corpus).containsIgnoringCase(text));
+    }
 }

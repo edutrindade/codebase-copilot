@@ -514,53 +514,89 @@ O log registra modo, snapshot, quantidade de resultados e duração por canal, n
 
 ## 8. Perguntas e respostas
 
+Implementado na Etapa 6 (D-066 a D-068).
+
 ### `POST /projects/{projectId}/questions`
+
+Síncrono: responde quando a geração termina (até o timeout da geração, 60 s por padrão).
 
 Request:
 ```json
 {
-  "question": "Como a autenticação funciona?",
-  "snapshotId": "uuid",
+  "question": "Como o valor do reembolso é calculado?",
+  "snapshotId": null,
   "conversationId": null,
-  "options": {
-    "maxEvidence": 8,
-    "answerLength": "MEDIUM"
-  }
+  "options": { "maxEvidence": 8, "retrievalMode": "HYBRID" }
 }
 ```
 
-Response conceitual:
+- `question`: obrigatória, não em branco, até 2.000 caracteres.
+- `snapshotId`: opcional; sem ele, o snapshot ativo.
+- `conversationId`: opcional; sem ele, abre uma conversa nova, com a pergunta como título.
+- `options.maxEvidence`: de 1 a 20, padrão 8. `options.retrievalMode`: `LEXICAL`, `VECTOR` ou `HYBRID` (nome exato), padrão `HYBRID`.
+
+Response `201 Created`, com `Location: /api/v1/answers/{answerId}`:
 ```json
 {
   "answerId": "uuid",
   "conversationId": "uuid",
+  "snapshotId": "uuid",
+  "question": "Como o valor do reembolso é calculado?",
   "status": "ANSWERED",
-  "answer": "Resposta baseada nas evidências recuperadas.",
+  "answer": "O reembolso é o total do pedido menos a taxa [E1].",
+  "warnings": [],
+  "invalidCitationCount": 0,
+  "error": null,
   "evidence": [
     {
       "id": "uuid",
       "citationLabel": "E1",
-      "path": "src/example/File.java",
-      "startLine": 10,
-      "endLine": 28,
-      "snippet": "Trecho real do arquivo...",
-      "validationStatus": "VALID"
+      "path": "src/billing/Refund.java",
+      "otherPaths": [],
+      "startLine": 1,
+      "endLine": 40,
+      "citedStartLine": 12,
+      "citedEndLine": 14,
+      "snippet": "Trecho enviado ao modelo...",
+      "validationStatus": "CITED",
+      "rank": 1,
+      "ranks": { "lexical": 2, "vector": 1, "path": null }
     }
   ],
+  "model": { "provider": "openai", "name": "gpt-6-luna" },
+  "retrieval": { "mode": "HYBRID", "promptVersion": "prompt-v1" },
   "metrics": {
-    "latencyMs": 1240,
-    "inputTokens": null,
-    "outputTokens": null,
-    "estimatedCost": null,
-    "costStatus": "UNKNOWN"
-  }
+    "latencyMs": 1840, "retrievalMs": 120, "generationMs": 1690,
+    "inputTokens": 4210, "outputTokens": 380,
+    "estimatedCost": 0.000611, "costCurrency": "USD", "costStatus": "ESTIMATED"
+  },
+  "createdAt": "2026-10-16T12:00:00Z",
+  "completedAt": "2026-10-16T12:00:02Z"
 }
 ```
 
-Os valores acima são exemplos de contrato, não dados reais. O backend deve derivar as evidências do conjunto recuperado e validar cada referência.
+Os valores acima são exemplos de contrato, não dados reais.
+
+- `status`: `ANSWERED`, `PARTIAL`, `ABSTAINED` ou `FAILED` (`PENDING` só aparece nas leituras, enquanto a geração não termina). O backend decide o status final: resposta sem nenhuma citação válida vira `PARTIAL`.
+- `answer`: texto com os marcadores `[E1]`, `[E2]`… das evidências citadas, já sem os marcadores inválidos; `null` em `FAILED`. Uma abstenção sem texto do modelo traz uma mensagem padrão.
+- `warnings` (`{code, message}`): `NO_EVIDENCE` (nada recuperado ou nada coube no contexto; o modelo não é chamado), `INVALID_CITATIONS_REMOVED` (com `invalidCitationCount`) e `NO_VALID_CITATIONS`.
+- `evidence`: todas as evidências enviadas ao modelo, citadas ou não. `validationStatus`: `CITED`, `NOT_CITED` ou `INVALID_RANGE` (citada com linhas fora do trecho). `citedStartLine`/`citedEndLine` estreitam o trecho quando a citação indicou linhas.
+- `model`: `null` quando o modelo não foi chamado.
+- `metrics`: tokens informados pelo provedor (`null` quando não informados); `costStatus` `ESTIMATED` só com os tokens e o preço configurado, senão `UNKNOWN`, sem custo nem moeda.
+
+Erros, nesta ordem, sem nada gravado:
+1. `400 VALIDATION_FAILED` (`question`, `options.maxEvidence`, `options.retrievalMode`);
+2. `404 PROJECT_NOT_FOUND`;
+3. `404 CONVERSATION_NOT_FOUND`, inclusive conversa de outro projeto;
+4. as checagens da busca (§7): `404 SNAPSHOT_NOT_FOUND`, `409 SNAPSHOT_NOT_SEARCHABLE`, `409 SNAPSHOT_LEXICAL_MISMATCH`, `409 EMBEDDINGS_NOT_AVAILABLE`, `409 SNAPSHOT_EMBEDDING_MISMATCH`;
+5. `409 GENERATION_NOT_AVAILABLE`: `app.generation.provider=none`.
+
+Depois que a pergunta é registrada, falhas dos provedores **não viram erro HTTP**: a resposta é criada com `status: "FAILED"` e `error` (`{code, message}`), e a pergunta fica no histórico. Códigos: `GENERATION_PROVIDER_UNAVAILABLE`, `GENERATION_PROVIDER_UNAUTHORIZED`, `GENERATION_QUOTA_EXCEEDED`, `GENERATION_RATE_LIMITED`, `GENERATION_REQUEST_REJECTED`, `GENERATION_OUTPUT_TRUNCATED`, `GENERATION_REFUSED`, `GENERATION_OUTPUT_INVALID`, os `EMBEDDING_*` da busca e `ANSWER_INTERRUPTED` (resposta que ficou `PENDING` numa queda do backend). Se o projeto for removido durante a geração, `404 PROJECT_NOT_FOUND`.
+
+O log registra ids, modo, status, quantidade de evidências, tokens e durações; nunca a pergunta, a resposta, o prompt ou trechos de código (D-067).
 
 ### `GET /answers/{answerId}`
-Busca resposta e evidências persistidas.
+A resposta no mesmo formato de `POST /questions`, inclusive `PENDING`. Erro: `404 ANSWER_NOT_FOUND`.
 
 ## 9. Arquivos e evidências
 
@@ -588,18 +624,21 @@ Lista os arquivos incluídos pela varredura do snapshot (substitui `GET /project
 Erros: `400 VALIDATION_FAILED` (filtros), `404 SNAPSHOT_NOT_FOUND`.
 
 ### `GET /snapshots/{snapshotId}/files/content?path=...`
-Retorna o conteúdo do arquivo como estava no snapshot, a partir de `file_contents` (D-039). Implementação na Etapa 6/7. Só arquivos `INDEXED` têm conteúdo; nada é lido do disco nesta chamada.
+Retorna o conteúdo do arquivo como estava no snapshot, a partir de `file_contents` (D-039). Implementação na Etapa 7, junto com o visualizador de código. Só arquivos `INDEXED` têm conteúdo; nada é lido do disco nesta chamada.
 
 ### `GET /projects/{projectId}/evidence/{evidenceId}`
-Retorna a evidência como foi citada (Etapa 6, D-046): caminho (`path`) e demais caminhos com o mesmo conteúdo (`otherPaths`), linhas, hash do conteúdo, trecho copiado no momento da resposta e `snapshotStatus`. Se o snapshot foi podado, a resposta continua `200` com a cópia e `snapshotStatus: "PRUNED"` ("snapshot removido"); o visualizador então não abre o arquivo inteiro.
+Retorna a evidência como foi enviada ao modelo (D-046, D-068): `id`, `answerId`, `snapshotId`, `snapshotStatus`, `citationLabel`, `path`, `otherPaths`, `contentHash`, `startLine`, `endLine`, `citedStartLine`, `citedEndLine`, `snippet` (cópia do momento da resposta), `validationStatus`, `rank` e `ranks`.
+
+- `snapshotStatus`: `AVAILABLE`, ou `PRUNED` quando o snapshot foi podado ("snapshot removido"). Nos dois casos a resposta é `200` com a cópia; com `PRUNED`, o visualizador não abre o arquivo inteiro.
+- Erros, nesta ordem: `404 PROJECT_NOT_FOUND`; `404 EVIDENCE_NOT_FOUND` (inexistente ou de outro projeto).
 
 ## 10. Histórico
 
 ### `GET /projects/{projectId}/conversations`
-Lista conversas.
+Lista as conversas do projeto, paginada (§1, D-030), pela pergunta mais recente (`updatedAt` decrescente). Cada item: `id`, `projectId`, `title` (a primeira pergunta, até 100 caracteres), `questionCount`, `createdAt` e `updatedAt`. Erros: `400 VALIDATION_FAILED` (paginação), `404 PROJECT_NOT_FOUND`.
 
 ### `GET /conversations/{conversationId}`
-Retorna mensagens e respostas com evidências.
+Retorna `{ conversation, answers }`: a conversa no formato da listagem e as respostas na ordem das perguntas, cada uma no formato de `GET /answers/{answerId}` (com a pergunta e as evidências), inclusive `FAILED` e `PENDING`. Erro: `404 CONVERSATION_NOT_FOUND`.
 
 ## 11. Contratos e implementação
 

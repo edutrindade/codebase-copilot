@@ -33,7 +33,8 @@ final class SnapshotChunks {
     // snapshot that has the chunk's content.
     static String hits(String orderBy) {
         return """
-                SELECT r.id, c.start_line, c.end_line, c.content, r.score,
+                SELECT r.id, c.content_hash, c.start_line, c.end_line, c.content,
+                       c.token_count_estimate, r.score,
                        ARRAY(SELECT f.relative_path
                              FROM snapshot_files f
                              WHERE f.snapshot_id = :snapshotId
@@ -53,9 +54,11 @@ final class SnapshotChunks {
             return new SearchHit(
                     rs.getObject("id", UUID.class),
                     Arrays.asList((String[]) paths.getArray()),
+                    rs.getString("content_hash"),
                     rs.getInt("start_line"),
                     rs.getInt("end_line"),
                     rs.getString("content"),
+                    rs.getInt("token_count_estimate"),
                     rs.getDouble("score"));
         } finally {
             paths.free();
