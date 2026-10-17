@@ -1084,6 +1084,20 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Consequências:** o cliente espera até o timeout da geração (60 s por padrão); um erro inesperado depois da primeira transação (banco fora do ar, por exemplo) deixa a resposta `PENDING` até a recuperação da próxima inicialização (D-065). O `Location` aponta para `GET /answers/{answerId}`, entregue na F5.  
 **O que levaria à revisão:** streaming na UI (Etapa 7), perguntas de acompanhamento (Etapa 8) ou um provedor que informe o custo.
 
+### D-068 — Leituras do histórico
+**Status:** Aceita (16/10/2026; leituras da P8 da Etapa 6; F5 entregue)  
+**Contexto:** o histórico (F-07) e as evidências precisam ser consultados depois da resposta, inclusive quando o snapshot já foi podado (D-046), e as respostas `PENDING` e `FAILED` também fazem parte dele.  
+**Decisão:**
+- **`GET /answers/{answerId}`**: o mesmo formato da resposta de `POST /questions` (D-067), inclusive `PENDING`; `404 ANSWER_NOT_FOUND`.
+- **`GET /projects/{projectId}/evidence/{evidenceId}`**: a cópia guardada (caminho, demais caminhos, hash do conteúdo, linhas, linhas citadas, trecho, `validationStatus`, posições), com `answerId`, `snapshotId` e `snapshotStatus` `AVAILABLE` ou `PRUNED`. Snapshot podado ou inexistente → `PRUNED`, com `200`. Erros, nesta ordem: `404 PROJECT_NOT_FOUND`; `404 EVIDENCE_NOT_FOUND` (inexistente ou de outro projeto).
+- **`GET /projects/{projectId}/conversations`**: paginada (D-030), pela pergunta mais recente (`updated_at` decrescente, `id` decrescente no empate); cada item com `id`, `projectId`, `title`, `questionCount` e as datas. `404 PROJECT_NOT_FOUND`.
+- **`GET /conversations/{conversationId}`**: `{ conversation, answers }`, com as respostas na ordem das perguntas e no formato de `GET /answers/{answerId}`, inclusive `FAILED` e `PENDING`; evidências lidas numa consulta só para a conversa inteira. `404 CONVERSATION_NOT_FOUND`.
+- **Módulos:** as consultas ficam em `history` (`AnswerHistory.findEvidence`, `listConversations`, `findConversation`); os endpoints em `answering` (`AnswerController` e `ConversationController`, tag "Conversas"), que já montam a resposta exibida (texto da abstenção, avisos e erros em pt-BR, em `AnswerResponses`). O estado do snapshot vem de `Retrieval.snapshotAvailable`, chamado por `answering`; sem porta em `history`.
+
+**Motivo:** a porta `SnapshotStates` da P11 seria implementada em `retrieval`, que pela mesma P11 não pode depender de `history`; como as leituras compõem `history` e `retrieval` em `answering`, que já depende dos dois, a porta não é necessária.  
+**Consequências:** `06-API-CONTRACTS.md` §8 a §10 atualizados no fechamento da etapa.  
+**O que levaria à revisão:** busca ou filtros no histórico, conversas longas o bastante para pedir paginação das respostas, ou a abertura do arquivo inteiro do snapshot (`GET /snapshots/{snapshotId}/files/content`).
+
 ---
 
 ## Decisões em aberto

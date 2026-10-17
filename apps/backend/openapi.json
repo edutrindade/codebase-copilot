@@ -13,20 +13,23 @@
     "description" : "Resultados das indexações: contagens, mudanças, inventário e arquivos.",
     "name" : "Snapshots"
   }, {
+    "description" : "Perguntas sobre o código do projeto, respondidas com evidências citadas.",
+    "name" : "Respostas"
+  }, {
     "description" : "Pré-análise dos arquivos do projeto, calculada a cada chamada.",
     "name" : "Inventário"
   }, {
     "description" : "Exclusões e limites usados na varredura e na indexação.",
     "name" : "Configurações do projeto"
   }, {
-    "description" : "Perguntas sobre o código do projeto, respondidas com evidências citadas.",
-    "name" : "Respostas"
-  }, {
     "description" : "Agrupam os projetos de quem usa a ferramenta.",
     "name" : "Workspaces"
   }, {
     "description" : "Projetos de pasta local ou ZIP, com origem e estado da indexação.",
     "name" : "Projetos"
+  }, {
+    "description" : "Histórico de perguntas e respostas do projeto.",
+    "name" : "Conversas"
   }, {
     "description" : "Navegação nas pastas que o backend permite usar como origem de projetos.",
     "name" : "Raízes locais"
@@ -41,6 +44,124 @@
     "name" : "Importação ZIP"
   } ],
   "paths" : {
+    "/api/v1/answers/{answerId}" : {
+      "get" : {
+        "description" : "Mesmo formato da resposta de POST /questions. Uma resposta ainda em geração vem com status PENDING.",
+        "operationId" : "getAnswer",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "answerId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AnswerResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: VALIDATION_FAILED."
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: ANSWER_NOT_FOUND."
+          },
+          "500" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
+          }
+        },
+        "summary" : "Busca uma resposta com as evidências",
+        "tags" : [ "Respostas" ]
+      }
+    },
+    "/api/v1/conversations/{conversationId}" : {
+      "get" : {
+        "description" : "Respostas na ordem das perguntas, no formato de GET /answers/{answerId}, inclusive as FAILED e as ainda PENDING.",
+        "operationId" : "getConversation",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "conversationId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ConversationResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: VALIDATION_FAILED."
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: CONVERSATION_NOT_FOUND."
+          },
+          "500" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
+          }
+        },
+        "summary" : "Busca uma conversa com as perguntas e respostas",
+        "tags" : [ "Conversas" ]
+      }
+    },
     "/api/v1/imports/{importJobId}" : {
       "get" : {
         "operationId" : "getImport",
@@ -378,6 +499,153 @@
         },
         "summary" : "Busca um projeto, com origem e estado da indexação",
         "tags" : [ "Projetos" ]
+      }
+    },
+    "/api/v1/projects/{projectId}/conversations" : {
+      "get" : {
+        "description" : "A conversa com a pergunta mais recente vem primeiro.",
+        "operationId" : "listConversations",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 0,
+            "minimum" : 0
+          }
+        }, {
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 20,
+            "maximum" : 100,
+            "minimum" : 1
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PageResponseConversationSummaryResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: VALIDATION_FAILED."
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: PROJECT_NOT_FOUND."
+          },
+          "500" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
+          }
+        },
+        "summary" : "Lista as conversas do projeto",
+        "tags" : [ "Conversas" ]
+      }
+    },
+    "/api/v1/projects/{projectId}/evidence/{evidenceId}" : {
+      "get" : {
+        "description" : "Devolve a cópia guardada com a resposta, mesmo depois da poda do snapshot (snapshotStatus PRUNED).",
+        "operationId" : "getEvidence",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "path",
+          "name" : "evidenceId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/EvidenceDetailResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: VALIDATION_FAILED."
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: PROJECT_NOT_FOUND, EVIDENCE_NOT_FOUND."
+          },
+          "500" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
+          }
+        },
+        "summary" : "Busca uma evidência como foi enviada ao modelo",
+        "tags" : [ "Respostas" ]
       }
     },
     "/api/v1/projects/{projectId}/imports" : {
@@ -1859,6 +2127,52 @@
         },
         "required" : [ "added", "modified", "removed", "unchanged" ]
       },
+      "ConversationResponse" : {
+        "type" : "object",
+        "properties" : {
+          "answers" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/AnswerResponse"
+            }
+          },
+          "conversation" : {
+            "$ref" : "#/components/schemas/ConversationSummaryResponse"
+          }
+        },
+        "required" : [ "answers", "conversation" ]
+      },
+      "ConversationSummaryResponse" : {
+        "type" : "object",
+        "properties" : {
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "projectId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "questionCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "title" : {
+            "type" : "string",
+            "description" : "Início da primeira pergunta, numa linha."
+          },
+          "updatedAt" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "Momento da pergunta mais recente."
+          }
+        },
+        "required" : [ "createdAt", "id", "projectId", "questionCount", "title", "updatedAt" ]
+      },
       "CountsResponse" : {
         "type" : "object",
         "properties" : {
@@ -2076,6 +2390,80 @@
           }
         },
         "required" : [ "code", "message" ]
+      },
+      "EvidenceDetailResponse" : {
+        "type" : "object",
+        "description" : "Evidência como foi enviada ao modelo, copiada no momento da resposta; continua disponível depois da poda do snapshot.",
+        "properties" : {
+          "answerId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "citationLabel" : {
+            "type" : "string"
+          },
+          "citedEndLine" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          },
+          "citedStartLine" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32",
+            "description" : "Trecho estreitado pela citação, se houver."
+          },
+          "contentHash" : {
+            "type" : "string"
+          },
+          "endLine" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "otherPaths" : {
+            "type" : "array",
+            "description" : "Demais caminhos do snapshot com o mesmo conteúdo.",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "path" : {
+            "type" : "string",
+            "description" : "Primeiro caminho em ordem lexicográfica com este conteúdo."
+          },
+          "rank" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Posição do trecho no resultado da busca, a partir de 1."
+          },
+          "ranks" : {
+            "$ref" : "#/components/schemas/RanksResponse"
+          },
+          "snapshotId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "snapshotStatus" : {
+            "type" : "string",
+            "description" : "PRUNED: snapshot removido; só a cópia do trecho está disponível, não o arquivo inteiro.",
+            "enum" : [ "AVAILABLE", "PRUNED" ]
+          },
+          "snippet" : {
+            "type" : "string",
+            "description" : "Cópia do trecho enviado ao modelo."
+          },
+          "startLine" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "validationStatus" : {
+            "type" : "string",
+            "enum" : [ "CITED", "NOT_CITED", "INVALID_RANGE" ]
+          }
+        },
+        "required" : [ "answerId", "citationLabel", "citedEndLine", "citedStartLine", "contentHash", "endLine", "id", "otherPaths", "path", "rank", "ranks", "snapshotId", "snapshotStatus", "snippet", "startLine", "validationStatus" ]
       },
       "EvidenceResponse" : {
         "type" : "object",
@@ -2579,6 +2967,34 @@
           }
         }
       },
+      "PageResponseConversationSummaryResponse" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ConversationSummaryResponse"
+            }
+          },
+          "page" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "size" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "totalItems" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "totalPages" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "items", "page", "size", "totalItems", "totalPages" ]
+      },
       "PageResponseImportResponse" : {
         "type" : "object",
         "properties" : {
@@ -2752,7 +3168,7 @@
         "properties" : {
           "code" : {
             "type" : "string",
-            "enum" : [ "VALIDATION_FAILED", "MALFORMED_REQUEST", "RESOURCE_NOT_FOUND", "METHOD_NOT_ALLOWED", "UNSUPPORTED_MEDIA_TYPE", "INTERNAL_ERROR", "WORKSPACE_NOT_FOUND", "WORKSPACE_NOT_EMPTY", "PROJECT_NOT_FOUND", "LOCAL_ROOTS_NOT_CONFIGURED", "ROOT_NOT_FOUND", "PATH_OUTSIDE_ROOT", "PROJECT_ALREADY_EXISTS", "DIRECTORY_NOT_FOUND", "DIRECTORY_NOT_READABLE", "PROJECT_BUSY", "PROJECT_SOURCE_MISMATCH", "UPLOAD_TOO_LARGE", "IMPORT_NOT_FOUND", "SOURCE_ROOT_NOT_CONFIGURED", "SOURCE_DIRECTORY_NOT_FOUND", "SOURCE_IS_SYMLINK", "SOURCE_NOT_READABLE", "SOURCE_NOT_IMPORTED", "INDEX_JOB_NOT_FOUND", "SNAPSHOT_NOT_FOUND", "SNAPSHOT_NOT_SEARCHABLE", "SNAPSHOT_LEXICAL_MISMATCH", "EMBEDDINGS_NOT_AVAILABLE", "SNAPSHOT_EMBEDDING_MISMATCH", "CONVERSATION_NOT_FOUND", "GENERATION_NOT_AVAILABLE", "EMBEDDING_PROVIDER_UNAVAILABLE", "EMBEDDING_PROVIDER_UNAUTHORIZED", "EMBEDDING_QUOTA_EXCEEDED", "EMBEDDING_REQUEST_REJECTED", "EMBEDDING_RATE_LIMITED" ]
+            "enum" : [ "VALIDATION_FAILED", "MALFORMED_REQUEST", "RESOURCE_NOT_FOUND", "METHOD_NOT_ALLOWED", "UNSUPPORTED_MEDIA_TYPE", "INTERNAL_ERROR", "WORKSPACE_NOT_FOUND", "WORKSPACE_NOT_EMPTY", "PROJECT_NOT_FOUND", "LOCAL_ROOTS_NOT_CONFIGURED", "ROOT_NOT_FOUND", "PATH_OUTSIDE_ROOT", "PROJECT_ALREADY_EXISTS", "DIRECTORY_NOT_FOUND", "DIRECTORY_NOT_READABLE", "PROJECT_BUSY", "PROJECT_SOURCE_MISMATCH", "UPLOAD_TOO_LARGE", "IMPORT_NOT_FOUND", "SOURCE_ROOT_NOT_CONFIGURED", "SOURCE_DIRECTORY_NOT_FOUND", "SOURCE_IS_SYMLINK", "SOURCE_NOT_READABLE", "SOURCE_NOT_IMPORTED", "INDEX_JOB_NOT_FOUND", "SNAPSHOT_NOT_FOUND", "SNAPSHOT_NOT_SEARCHABLE", "SNAPSHOT_LEXICAL_MISMATCH", "EMBEDDINGS_NOT_AVAILABLE", "SNAPSHOT_EMBEDDING_MISMATCH", "CONVERSATION_NOT_FOUND", "ANSWER_NOT_FOUND", "EVIDENCE_NOT_FOUND", "GENERATION_NOT_AVAILABLE", "EMBEDDING_PROVIDER_UNAVAILABLE", "EMBEDDING_PROVIDER_UNAUTHORIZED", "EMBEDDING_QUOTA_EXCEEDED", "EMBEDDING_REQUEST_REJECTED", "EMBEDDING_RATE_LIMITED" ]
           },
           "detail" : {
             "type" : "string"

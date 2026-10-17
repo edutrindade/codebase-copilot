@@ -20,9 +20,11 @@ public class Retrieval {
     public static final int MAX_CANDIDATES = SearchService.MAX_LIMIT;
 
     private final SearchService search;
+    private final SearchSnapshots snapshots;
 
-    Retrieval(SearchService search) {
+    Retrieval(SearchService search, SearchSnapshots snapshots) {
         this.search = search;
+        this.snapshots = snapshots;
     }
 
     public record Request(
@@ -114,5 +116,11 @@ public class Retrieval {
                 candidates,
                 result.embeddingMillis(),
                 result.embeddingTokens());
+    }
+
+    // False when the snapshot was pruned or no longer exists: its files can no longer be opened,
+    // only the copies kept with the answers (D-046).
+    public boolean snapshotAvailable(UUID snapshotId) {
+        return snapshots.find(snapshotId).map(state -> !state.pruned()).orElse(false);
     }
 }

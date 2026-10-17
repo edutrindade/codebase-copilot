@@ -363,6 +363,17 @@ Somados os embeddings do corpus da Etapa 5 (US$ 0,02 a 0,07, uma vez, depois em 
 - `GET /answers/{answerId}`, `GET /projects/{projectId}/evidence/{evidenceId}`, `GET /projects/{projectId}/conversations`, `GET /conversations/{conversationId}`; `openapi.json`.
 - **Testes:** evidência de snapshot podado devolve a cópia com `PRUNED`; evidência e resposta de outro projeto → `404`; paginação e ordem; conversa com resposta `FAILED` e `PENDING`.
 
+**Como foi entregue (16/10/2026)**
+- Em `history`: `AnswerHistory.findEvidence` (escopo do projeto), `listConversations` (paginada) e `findConversation` (`ConversationAnswers`, com as respostas e as evidências da conversa lidas em duas consultas), `StoredConversation` com `questionCount`; `StoredEvidence` ganhou `answerId`.
+- Em `answering`: `AnswerReads`, `AnswerResponses` (a montagem da resposta saiu do `AnswerController`, para servir também às conversas), `GET /answers/{answerId}` e `GET /projects/{projectId}/evidence/{evidenceId}` no `AnswerController`, `ConversationController` (tag "Conversas") com a listagem e a conversa. Registrado na D-068.
+- Em `retrieval`: `Retrieval.snapshotAvailable`.
+- `ANSWER_NOT_FOUND` e `EVIDENCE_NOT_FOUND` (404) no `ErrorCode`, com mensagens pt-BR; `openapi.json` regenerado.
+- **Testes:** `HistoryReadApiIT` (resposta igual à do `POST`; resposta inexistente; evidência com `AVAILABLE` e todos os campos; cópia com `PRUNED` depois da poda e da limpeza dos chunks; evidência de outro projeto e inexistente → `EVIDENCE_NOT_FOUND`, projeto inexistente primeiro; conversas pela pergunta mais recente, páginas, `questionCount`, página além da última, conversa de outro projeto fora da lista; projeto inexistente e `size` fora da faixa; conversa com respostas `ANSWERED`, `FAILED` e `PENDING` em ordem, com as evidências de cada uma; conversa inexistente).
+- **Desvios:**
+  - Sem a porta `SnapshotStates` da P11: implementada em `retrieval`, ela quebraria a regra "`retrieval` não depende de `history`" da mesma P11. Os endpoints ficam em `answering`, que compõe `history` e `retrieval`.
+  - "Resposta de outro projeto" não se aplica a `GET /answers/{answerId}`, que não tem projeto no caminho (como `GET /conversations/{conversationId}`, no contrato da P8); o teste de outro projeto é o da evidência.
+  - A conversa responde `{ conversation, answers }`: cada resposta já traz a pergunta, então as mensagens não são listadas à parte.
+
 ### F6 — Avaliação das respostas
 - `AnswerEvaluationIT`, `mustNotContain` nas anotações (com o validador e o `EvalAnnotationsTest`), cache de respostas, relatório; rodada com o fake (só o harness) e com o modelo real, se houver saldo; sua auditoria da amostra.
 - **Testes:** métricas com respostas conhecidas (validade, sustentação, relevância, abstenção, `mustNotContain`); cache devolve a mesma resposta sem chamar o provedor; chave nova no YAML validada.

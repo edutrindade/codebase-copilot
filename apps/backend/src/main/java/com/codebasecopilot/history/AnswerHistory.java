@@ -4,6 +4,8 @@ import com.codebasecopilot.history.ConversationRepository.Role;
 import com.codebasecopilot.shared.IdGenerator;
 import com.codebasecopilot.shared.error.ApiException;
 import com.codebasecopilot.shared.error.ErrorCode;
+import com.codebasecopilot.shared.pagination.PageRequestParams;
+import com.codebasecopilot.shared.pagination.PageResponse;
 import com.codebasecopilot.shared.persistence.ConstraintViolations;
 import java.time.Clock;
 import java.time.Instant;
@@ -101,6 +103,29 @@ public class AnswerHistory {
     @Transactional(readOnly = true)
     public Optional<StoredAnswer> findAnswer(UUID answerId) {
         return answers.findById(answerId);
+    }
+
+    // Empty when the evidence does not exist or belongs to another project.
+    @Transactional(readOnly = true)
+    public Optional<StoredEvidence> findEvidence(UUID projectId, UUID evidenceId) {
+        return answers.findEvidence(projectId, evidenceId);
+    }
+
+    // Most recently active first (D-030).
+    @Transactional(readOnly = true)
+    public PageResponse<StoredConversation> listConversations(
+            UUID projectId, PageRequestParams params) {
+        return PageResponse.of(
+                conversations.findPage(projectId, params),
+                params,
+                conversations.countByProject(projectId));
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<ConversationAnswers> findConversation(UUID conversationId) {
+        return conversations
+                .find(conversationId)
+                .map(c -> new ConversationAnswers(c, answers.findByConversation(conversationId)));
     }
 
     // The start of the first question on one line, so conversation lists stay readable.

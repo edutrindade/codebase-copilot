@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -20,6 +21,30 @@ import tools.jackson.databind.json.JsonMapper;
 class AnswerRepository {
 
     private static final TypeReference<Map<String, Object>> METADATA = new TypeReference<>() {};
+
+    private static final String ANSWER_COLUMNS =
+            """
+            SELECT a.id, c.project_id, c.id AS conversation_id,
+                   q.content AS question, a.snapshot_id, a.status,
+                   r.content AS text, a.error_code, a.warnings,
+                   a.invalid_citation_count, a.retrieval_mode, a.prompt_version,
+                   a.generation_provider, a.generation_model,
+                   a.retrieval_metadata::text AS retrieval_metadata, a.latency_ms,
+                   a.input_tokens, a.output_tokens, a.estimated_cost,
+                   a.cost_currency, a.cost_status, a.created_at, a.completed_at
+            FROM answers a
+            JOIN messages q ON q.id = a.question_message_id
+            JOIN conversations c ON c.id = q.conversation_id
+            LEFT JOIN messages r ON r.id = a.answer_message_id
+            """;
+
+    private static final String EVIDENCE_COLUMNS =
+            """
+            SELECT e.id, e.answer_id, e.snapshot_id, e.chunk_id, e.citation_label,
+                   e.relative_path, e.other_paths, e.content_hash, e.start_line, e.end_line,
+                   e.cited_start_line, e.cited_end_line, e.snippet, e.rank_lexical,
+                   e.rank_vector, e.rank_path, e.final_rank, e.validation_status
+            """;
 
     private final JdbcClient jdbc;
     private final JsonMapper json;
@@ -149,39 +174,71 @@ class AnswerRepository {
     }
 
     Optional<StoredAnswer> findById(UUID id) {
-        return jdbc.sql(
-                        """
-                        SELECT a.id, c.project_id, c.id AS conversation_id,
-                               q.content AS question, a.snapshot_id, a.status,
-                               r.content AS text, a.error_code, a.warnings,
-                               a.invalid_citation_count, a.retrieval_mode, a.prompt_version,
-                               a.generation_provider, a.generation_model,
-                               a.retrieval_metadata::text AS retrieval_metadata, a.latency_ms,
-                               a.input_tokens, a.output_tokens, a.estimated_cost,
-                               a.cost_currency, a.cost_status, a.created_at, a.completed_at
-                        FROM answers a
-                        JOIN messages q ON q.id = a.question_message_id
-                        JOIN conversations c ON c.id = q.conversation_id
-                        LEFT JOIN messages r ON r.id = a.answer_message_id
-                        WHERE a.id = :id
-                        """)
+        return jdbc.sql(ANSWER_COLUMNS + "WHERE a.id = :id")
                 .param("id", id)
                 .query(this::mapAnswer)
                 .optional()
-                .map(answer -> answer.withEvidence(findEvidence(id)));
+                .map(answer -> answer.withEvidence(evidenceOf(id)));
     }
 
-    private List<StoredEvidence> findEvidence(UUID answerId) {
+    // In the order of the questions; PENDING and FAILED answers included.
+    List<StoredAnswer> findByConversation(UUID conversationId) {
+        List<StoredAnswer> answers =
+                jdbc.sql(
+                                ANSWER_COLUMNS
+                                        + """
+                                        WHERE q.conversation_id = :conversationId
+                                        ORDER BY q.created_at, q.id
+                                        """)
+                        .param("conversationId", conversationId)
+                        .query(this::mapAnswer)
+                        .list();
+        Map<UUID, List<StoredEvidence>> evidence =
+                jdbc
+                        .sql(
+                                EVIDENCE_COLUMNS
+                                        + """
+                                        FROM answer_evidence e
+                                        JOIN answers a ON a.id = e.answer_id
+                                        JOIN messages q ON q.id = a.question_message_id
+                                        WHERE q.conversation_id = :conversationId
+                                        ORDER BY e.final_rank, e.citation_label
+                                        """)
+                        .param("conversationId", conversationId)
+                        .query(AnswerRepository::mapEvidence)
+                        .list()
+                        .stream()
+                        .collect(Collectors.groupingBy(StoredEvidence::answerId));
+        return answers.stream()
+                .map(answer -> answer.withEvidence(evidence.getOrDefault(answer.id(), List.of())))
+                .toList();
+    }
+
+    // Empty when the evidence belongs to another project.
+    Optional<StoredEvidence> findEvidence(UUID projectId, UUID evidenceId) {
         return jdbc.sql(
-                        """
-                        SELECT id, snapshot_id, chunk_id, citation_label, relative_path,
-                               other_paths, content_hash, start_line, end_line,
-                               cited_start_line, cited_end_line, snippet, rank_lexical,
-                               rank_vector, rank_path, final_rank, validation_status
-                        FROM answer_evidence
-                        WHERE answer_id = :answerId
-                        ORDER BY final_rank, citation_label
-                        """)
+                        EVIDENCE_COLUMNS
+                                + """
+                                FROM answer_evidence e
+                                JOIN answers a ON a.id = e.answer_id
+                                JOIN messages q ON q.id = a.question_message_id
+                                JOIN conversations c ON c.id = q.conversation_id
+                                WHERE e.id = :id AND c.project_id = :projectId
+                                """)
+                .param("id", evidenceId)
+                .param("projectId", projectId)
+                .query(AnswerRepository::mapEvidence)
+                .optional();
+    }
+
+    private List<StoredEvidence> evidenceOf(UUID answerId) {
+        return jdbc.sql(
+                        EVIDENCE_COLUMNS
+                                + """
+                                FROM answer_evidence e
+                                WHERE e.answer_id = :answerId
+                                ORDER BY e.final_rank, e.citation_label
+                                """)
                 .param("answerId", answerId)
                 .query(AnswerRepository::mapEvidence)
                 .list();
@@ -221,6 +278,7 @@ class AnswerRepository {
     private static StoredEvidence mapEvidence(ResultSet rs, int rowNum) throws SQLException {
         return new StoredEvidence(
                 rs.getObject("id", UUID.class),
+                rs.getObject("answer_id", UUID.class),
                 rs.getObject("snapshot_id", UUID.class),
                 new AnswerEvidence(
                         rs.getObject("chunk_id", UUID.class),

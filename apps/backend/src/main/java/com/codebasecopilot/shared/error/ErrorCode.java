@@ -34,6 +34,8 @@ public enum ErrorCode {
     EMBEDDINGS_NOT_AVAILABLE(HttpStatus.CONFLICT),
     SNAPSHOT_EMBEDDING_MISMATCH(HttpStatus.CONFLICT),
     CONVERSATION_NOT_FOUND(HttpStatus.NOT_FOUND),
+    ANSWER_NOT_FOUND(HttpStatus.NOT_FOUND),
+    EVIDENCE_NOT_FOUND(HttpStatus.NOT_FOUND),
     GENERATION_NOT_AVAILABLE(HttpStatus.CONFLICT),
     // Provider failures (D-051): the account or the provider is at fault, not the API client.
     EMBEDDING_PROVIDER_UNAVAILABLE(HttpStatus.BAD_GATEWAY),
