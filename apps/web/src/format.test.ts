@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { formatBytes, formatNumber } from './format';
+import { formatBytes, formatCost, formatDuration, formatNumber } from './format';
 
 describe('format', () => {
   test('formats bytes with binary units in pt-BR', () => {
@@ -12,5 +12,15 @@ describe('format', () => {
 
   test('formats counts in pt-BR', () => {
     expect(formatNumber(12345)).toBe('12.345');
+  });
+
+  test('formats durations in milliseconds below one second', () => {
+    expect(formatDuration(120)).toBe('120 ms');
+    expect(formatDuration(1840)).toBe('1,8 s');
+  });
+
+  test('formats small costs with significant digits and tolerates unknown currencies', () => {
+    expect(formatCost(0.000611, 'USD')).toBe('US$\u00a00,000611');
+    expect(formatCost(1.5, 'créditos')).toBe('1.5 créditos');
   });
 });

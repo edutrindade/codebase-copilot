@@ -1,3 +1,10 @@
+import type {
+  Answer,
+  Conversation,
+  Evidence,
+  EvidenceDetail,
+  FileContent,
+} from '../features/ask/api';
 import type { ImportJob, Inventory, Providers, Settings } from '../features/import/api';
 import type { IndexJob, Snapshot } from '../features/project/api';
 import type { Project, Workspace } from '../features/workspaces/api';
@@ -200,6 +207,99 @@ export function snapshotDetail(overrides: Partial<Snapshot> = {}): Snapshot {
     createdAt: '2026-10-16T12:00:00Z',
     completedAt: '2026-10-16T12:05:00Z',
     prunedAt: null,
+    ...overrides,
+  };
+}
+
+const ANSWER_ID = '0192f5c4-0000-7000-8000-000000000601';
+const CONVERSATION_ID = '0192f5c4-0000-7000-8000-000000000501';
+
+export function evidence(overrides: Partial<Evidence> = {}): Evidence {
+  return {
+    id: '0192f5c4-0000-7000-8000-000000000701',
+    citationLabel: 'E1',
+    path: 'src/billing/Refund.java',
+    otherPaths: [],
+    startLine: 1,
+    endLine: 40,
+    citedStartLine: 12,
+    citedEndLine: 14,
+    snippet: 'class Refund {}',
+    validationStatus: 'CITED',
+    rank: 1,
+    ranks: { lexical: 2, vector: 1, path: null },
+    ...overrides,
+  };
+}
+
+export function answer(overrides: Partial<Answer> = {}): Answer {
+  return {
+    answerId: ANSWER_ID,
+    conversationId: CONVERSATION_ID,
+    snapshotId: '0192f5c4-0000-7000-8000-000000000201',
+    question: 'Como o reembolso é calculado?',
+    status: 'ANSWERED',
+    answer: 'O reembolso é o total menos a taxa [E1].',
+    warnings: [],
+    invalidCitationCount: 0,
+    error: null,
+    evidence: [evidence()],
+    model: { provider: 'fake', name: 'fake' },
+    retrieval: { mode: 'HYBRID', promptVersion: 'prompt-v1' },
+    metrics: {
+      latencyMs: 1840,
+      retrievalMs: 120,
+      generationMs: 1690,
+      inputTokens: 4210,
+      outputTokens: 380,
+      estimatedCost: 0.000611,
+      costCurrency: 'USD',
+      costStatus: 'ESTIMATED',
+    },
+    createdAt: '2026-10-16T12:00:00Z',
+    completedAt: '2026-10-16T12:00:02Z',
+    ...overrides,
+  };
+}
+
+export function conversation(answers: Answer[] = [answer()]): Conversation {
+  return {
+    conversation: {
+      id: CONVERSATION_ID,
+      projectId: '0192f5c4-0000-7000-8000-000000000101',
+      title: answers[0]?.question ?? 'Conversa',
+      questionCount: answers.length,
+      createdAt: '2026-10-16T12:00:00Z',
+      updatedAt: '2026-10-16T12:00:02Z',
+    },
+    answers,
+  };
+}
+
+export function evidenceDetail(overrides: Partial<EvidenceDetail> = {}): EvidenceDetail {
+  const { otherPaths, ...base } = evidence();
+  return {
+    ...base,
+    otherPaths,
+    answerId: ANSWER_ID,
+    snapshotId: '0192f5c4-0000-7000-8000-000000000201',
+    snapshotStatus: 'AVAILABLE',
+    activeVersion: 'SAME',
+    contentHash: 'hash-1',
+    ...overrides,
+  };
+}
+
+export function fileContent(overrides: Partial<FileContent> = {}): FileContent {
+  const content = Array.from({ length: 40 }, (_, index) => `line ${index + 1}`).join('\n') + '\n';
+  return {
+    snapshotId: '0192f5c4-0000-7000-8000-000000000201',
+    path: 'src/billing/Refund.java',
+    language: 'java',
+    contentHash: 'hash-1',
+    sizeBytes: content.length,
+    lineCount: 40,
+    content,
     ...overrides,
   };
 }

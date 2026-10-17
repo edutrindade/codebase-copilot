@@ -53,6 +53,8 @@ export const messages = {
       'Este snapshot foi substituído; o trecho guardado na evidência continua disponível.',
     openLocally: 'Abra a interface pelo endereço local (localhost ou 127.0.0.1).',
     reviewExclusions: 'Revise as exclusões e os limites na pré-análise e indexe de novo.',
+    askAgain:
+      'Faça a pergunta de novo. Se o erro continuar, reformule-a ou reduza o número de evidências nas opções avançadas.',
   },
   pagination: {
     label: 'Paginação',
@@ -359,6 +361,152 @@ export const messages = {
       changes: (added: number, modified: number, removed: number, unchanged: number) =>
         `${added} novos, ${modified} alterados, ${removed} removidos, ${unchanged} iguais`,
       noChanges: '—',
+    },
+  },
+  ask: {
+    backToProject: 'Voltar para o projeto',
+    snapshot: (date: string) => `Respostas a partir do snapshot de ${date}.`,
+    outdated: 'O snapshot pode estar desatualizado.',
+    outdatedLink: 'Ver os motivos e indexar de novo',
+    noSnapshot: 'Este projeto ainda não tem um snapshot pronto. Indexe-o para poder perguntar.',
+    openProject: 'Abrir o projeto',
+    indexing: 'Há uma indexação em andamento; as perguntas usam o snapshot ativo até ela terminar.',
+    noGeneration:
+      'Nenhum provedor de geração está configurado no servidor, então não é possível perguntar. Configure o provedor e reinicie o backend.',
+    tabs: {
+      label: 'Áreas da tela de pergunta',
+      conversation: 'Conversa',
+      evidence: 'Evidências',
+      code: 'Código',
+    },
+    conversationTitle: 'Conversa',
+    empty:
+      'Faça uma pergunta sobre o código. A resposta cita os arquivos e as linhas usados como evidência.',
+    suggestionsTitle: 'Sugestões para começar',
+    suggestions: [
+      'Resuma a arquitetura deste projeto.',
+      'Quais são os pontos de entrada?',
+      'Como a aplicação configura o banco de dados?',
+      'Quais integrações externas aparecem no código?',
+    ],
+    form: {
+      label: 'Sua pergunta',
+      hint: (length: number, max: number) =>
+        `${length} de ${max} caracteres. Ctrl+Enter ou ⌘+Enter envia.`,
+      submit: 'Perguntar',
+      submitting: 'Gerando…',
+      empty: 'Escreva uma pergunta antes de enviar.',
+      advanced: 'Opções avançadas',
+      modeLegend: 'Busca das evidências',
+      modes: {
+        HYBRID: 'Híbrida (lexical e vetorial)',
+        LEXICAL: 'Lexical (palavras e identificadores)',
+        VECTOR: 'Vetorial (semelhança de significado)',
+      },
+      vectorUnavailable:
+        'As buscas vetorial e híbrida estão indisponíveis: não há provedor de embeddings configurado ou o snapshot ativo não tem embeddings do modelo configurado.',
+      maxEvidenceLabel: 'Máximo de evidências (1 a 20)',
+    },
+    privacy: {
+      remote: (provider: string, model: string | null) =>
+        `A pergunta e os trechos escolhidos como evidência serão enviados a ${model ? `${provider} (${model})` : provider}, fora desta máquina, para gerar a resposta.`,
+      remoteEmbeddings: (provider: string) =>
+        `Nas buscas vetorial e híbrida, a pergunta também é enviada a ${provider} para gerar o embedding.`,
+      acknowledge: 'Entendi que a pergunta e os trechos serão enviados ao provedor',
+      reminder: (provider: string) => `Perguntas e evidências são enviadas a ${provider}.`,
+    },
+    waiting: {
+      status: 'Buscando evidências e gerando a resposta…',
+      elapsed: (seconds: number) => `${seconds} s`,
+      limit: 'A resposta chega de uma vez, quando estiver pronta; o limite é de 60 segundos.',
+    },
+    question: 'Pergunta',
+    answer: 'Resposta',
+    status: {
+      PENDING: 'Em geração',
+      ANSWERED: 'Respondida',
+      PARTIAL: 'Resposta parcial',
+      ABSTAINED: 'Sem resposta: evidência insuficiente',
+      FAILED: 'Falhou',
+    },
+    pending: 'A resposta ainda está sendo gerada. Volte a esta conversa em instantes.',
+    failed: 'Não foi possível gerar a resposta.',
+    warningHints: {
+      NO_EVIDENCE:
+        'Nada do código pareceu relacionado à pergunta. Reformule-a com nomes de classes, funções ou arquivos, ou tente outra busca nas opções avançadas.',
+      INVALID_CITATIONS_REMOVED: '',
+      NO_VALID_CITATIONS:
+        'Confira as evidências enviadas antes de confiar na resposta: nenhuma foi citada de forma válida.',
+    },
+    citation: (label: string, path: string, lines: string) =>
+      `Abrir a evidência ${label}: ${path}, ${lines}`,
+    showEvidence: 'Ver as evidências desta resposta',
+    olderSnapshot: 'Respondida com um snapshot anterior ao ativo.',
+    lines: (start: number, end: number) =>
+      start === end ? `linha ${start}` : `linhas ${start}–${end}`,
+    metrics: {
+      title: 'Detalhes da resposta',
+      duration: 'Duração total',
+      retrieval: 'Busca',
+      generation: 'Geração',
+      evidence: 'Evidências',
+      evidenceCount: (sent: number, cited: number) =>
+        `${sent} ${sent === 1 ? 'enviada' : 'enviadas'}, ${cited} ${cited === 1 ? 'citada' : 'citadas'}`,
+      tokens: 'Tokens (informados pelo provedor)',
+      tokensValue: (input: string, output: string) => `${input} de entrada, ${output} de saída`,
+      cost: 'Custo',
+      costEstimated: (value: string) => `${value} (estimado pelos tokens e pelo preço configurado)`,
+      costUnknown:
+        'Indisponível: o provedor não informou os tokens ou o preço do modelo não está configurado.',
+      model: 'Modelo',
+      noModel: 'Não consultado',
+      mode: 'Busca usada',
+      unavailable: 'Não medido',
+    },
+    evidence: {
+      title: 'Evidências',
+      empty: 'Escolha uma resposta para ver as evidências enviadas ao modelo.',
+      none: 'Nenhuma evidência foi enviada ao modelo nesta resposta.',
+      forAnswer: (question: string) => `Da pergunta “${question}”`,
+      status: {
+        CITED: 'Citada',
+        INVALID_RANGE: 'Citada com linhas fora do trecho; a citação foi removida da resposta',
+        NOT_CITED: 'Enviada ao modelo, mas não citada',
+      },
+      otherPaths: (count: number) =>
+        count === 1
+          ? 'Mesmo conteúdo em mais 1 caminho:'
+          : `Mesmo conteúdo em mais ${count} caminhos:`,
+      ranks: 'Posição nas buscas',
+      rankLexical: (rank: number) => `lexical ${rank}ª`,
+      rankVector: (rank: number) => `vetorial ${rank}ª`,
+      rankPath: (rank: number) => `caminho ${rank}ª`,
+      open: (label: string) => `Abrir ${label} no visualizador`,
+      selected: 'aberta no visualizador',
+    },
+    viewer: {
+      title: 'Código',
+      empty: 'Escolha uma evidência para ver o arquivo com as linhas destacadas.',
+      highlighted: (lines: string) => `Destacadas: ${lines}.`,
+      citedMarker: 'citada',
+      pruned:
+        'O snapshot desta resposta foi substituído e os arquivos dele foram removidos pela limpeza. Abaixo, o trecho guardado com a evidência.',
+      snippetTitle: 'Trecho enviado ao modelo',
+      fileUnavailable:
+        'Não foi possível abrir o arquivo inteiro. Abaixo, o trecho guardado com a evidência.',
+      activeVersion: {
+        SAME: '',
+        CHANGED: 'Este arquivo mudou desde a resposta: o snapshot ativo tem outra versão.',
+        REMOVED: 'Este arquivo não existe mais no snapshot ativo.',
+        NO_ACTIVE_SNAPSHOT: '',
+      },
+      showCurrent: 'Ver a versão atual',
+      showAnswered: 'Ver a versão da resposta',
+      currentVersion: 'Versão do snapshot ativo; as linhas da evidência podem não corresponder.',
+      answeredVersion: 'Versão do snapshot usado na resposta.',
+      fileInfo: (language: string, lines: number, size: string) =>
+        `${language}, ${lines === 1 ? '1 linha' : `${lines} linhas`}, ${size}`,
+      codeLabel: (path: string) => `Conteúdo de ${path}`,
     },
   },
   indexing: {

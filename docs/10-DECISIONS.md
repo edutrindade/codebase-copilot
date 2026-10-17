@@ -1179,6 +1179,19 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Consequências:** `openapi.json` regenerado; nenhuma mudança no JSON das respostas.  
 **O que levaria à revisão:** o springdoc passar a ler anotações de tipo do jspecify.
 
+### D-075 — Tela de pergunta: espera síncrona, visualizador e conteúdo como texto (P6, P7 e P8 da Etapa 7)
+**Status:** Aceita (17/10/2026; F6 da Etapa 7)  
+**Contexto:** a Etapa 6 deixou o streaming "se a UI pedir"; a resposta é JSON com citações validadas só no fim. O visualizador precisa abrir arquivos de até dezenas de milhares de linhas, e respostas, trechos e caminhos vêm de conteúdo não confiável.  
+**Decisão:**
+- `POST /questions` continua síncrono, sem SSE. A UI mostra a pergunta na hora, "buscando evidências e gerando a resposta" com o tempo decorrido e o limite de 60 s. Uma resposta `FAILED` aparece como resposta, com a `error.message` e a ação pelo código; só os erros HTTP de antes do registro viram alerta, mantendo o rascunho.
+- Visualizador em texto puro, sem realce de sintaxe, sempre virtualizado (`@tanstack/react-virtual`, linhas de altura fixa, sem quebra). Linhas citadas (`citedStartLine`–`citedEndLine`, senão o trecho) com fundo, marcador na margem e texto para leitor de tela; rolagem até elas. `activeVersion` `CHANGED` oferece a versão do snapshot ativo (sem destaque); `PRUNED`, ou o conteúdo indisponível, mostra só o `snippet`.
+- A resposta é texto (`white-space: pre-wrap`); só os marcadores `[En]` de evidências da própria resposta viram botões. Sem markdown, sem links, sem `dangerouslySetInnerHTML` (regra de lint).
+- Modos `VECTOR`/`HYBRID` desabilitados quando não há provedor de embeddings ou o snapshot ativo tem `EMBEDDINGS_MISSING`/`EMBEDDING_MODEL_CHANGED` (a mesma checagem da busca). Com geração remota, o aviso exige confirmação na primeira pergunta do projeto (`localStorage`, separado do da indexação) e depois vira lembrete.
+
+**Motivo:** um streaming do texto mostraria marcadores ainda não validados; virtualizar sempre é um caminho só, testado com um arquivo sintético de 1 MB; texto puro fecha a porta a HTML e links injetados pelo modelo.  
+**Consequências:** a espera é de até 60 s sem texto parcial; arquivos sem realce.  
+**O que levaria à revisão:** latência medida ruim (Etapa 8), legibilidade pedir realce, ou respostas com formatação rica.
+
 ---
 
 ## Decisões em aberto

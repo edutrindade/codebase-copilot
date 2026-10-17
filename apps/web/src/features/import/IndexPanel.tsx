@@ -6,13 +6,7 @@ import { ProblemAlert } from '../../components/ProblemAlert';
 import { messages } from '../../messages';
 import { workspaceKeys } from '../workspaces/api';
 import { getProviders, importKeys, startIndexing, type Providers } from './api';
-import { acknowledgePrivacy, hasAcknowledgedPrivacy } from './privacy';
-
-const PROVIDER_NAMES: Record<Providers['embeddings']['provider'], string> = {
-  openai: 'OpenAI',
-  fake: 'fake',
-  none: 'none',
-};
+import { acknowledgePrivacy, hasAcknowledgedPrivacy, providerName } from './privacy';
 
 interface IndexPanelProps {
   projectId: string;
@@ -119,7 +113,7 @@ function ProviderNotice({
   }
   return (
     <div className="notice notice--warning stack">
-      <p>{messages.privacy.remote(PROVIDER_NAMES[embeddings.provider], embeddings.model)}</p>
+      <p>{messages.privacy.remote(providerName(embeddings.provider), embeddings.model)}</p>
       <p>
         {reviewHref.startsWith('#') ? (
           <a href={reviewHref}>{messages.privacy.review}</a>

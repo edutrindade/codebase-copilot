@@ -19,3 +19,20 @@ export function formatBytes(bytes: number): string {
   }
   return `${numberFormat.format(value)} ${BYTE_UNITS[unit]}`;
 }
+
+export function formatDuration(ms: number): string {
+  return ms < 1000 ? `${ms} ms` : `${numberFormat.format(ms / 1000)} s`;
+}
+
+export function formatCost(value: number, currency: string): string {
+  try {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency,
+      maximumSignificantDigits: 3,
+    }).format(value);
+  } catch {
+    // Not an ISO 4217 code: show the amount as configured on the server.
+    return `${value} ${currency}`;
+  }
+}
