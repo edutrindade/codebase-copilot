@@ -798,7 +798,7 @@ export interface components {
             settingsVersion: number;
             totals: components["schemas"]["InventoryTotalsResponse"];
             truncated: boolean;
-            warnings: components["schemas"]["WarningResponse"][];
+            warnings: components["schemas"]["InventoryWarningResponse"][];
         };
         InventoryTotalsResponse: {
             /** Format: int64 */
@@ -815,6 +815,12 @@ export interface components {
             unreadableFiles: number;
             /** Format: int64 */
             unsupportedFiles: number;
+        };
+        InventoryWarningResponse: {
+            /** @enum {string} */
+            code: "CASE_VARIANT_PROJECT" | "SCAN_LIMIT_REACHED" | "PROJECT_SIZE_LIMIT_EXCEEDED" | "NO_INCLUDED_FILES";
+            message: string;
+            relatedProjectIds: string[];
         };
         LanguageCount: {
             /** Format: int64 */
@@ -865,8 +871,6 @@ export interface components {
             retrievalMs: number | null;
         };
         ModelResponse: {
-            /** Format: int32 */
-            dimensions: number;
             name: string;
             provider: string;
         };
@@ -1051,6 +1055,12 @@ export interface components {
             totals: components["schemas"]["Totals"];
             truncated: boolean;
         };
+        SearchModelResponse: {
+            /** Format: int32 */
+            dimensions: number;
+            name: string;
+            provider: string;
+        };
         SearchRequest: {
             /**
              * Format: int32
@@ -1075,7 +1085,7 @@ export interface components {
             /** @enum {string} */
             mode: "LEXICAL" | "VECTOR" | "HYBRID";
             /** @description null no modo LEXICAL. */
-            model: components["schemas"]["ModelResponse"] | null;
+            model: components["schemas"]["SearchModelResponse"] | null;
             results: components["schemas"]["ResultResponse"][];
             /** Format: uuid */
             snapshotId: string;

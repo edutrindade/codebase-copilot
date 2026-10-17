@@ -64,7 +64,8 @@ class SearchController {
                 result.mode(),
                 model == null
                         ? null
-                        : new ModelResponse(model.provider(), model.model(), model.dimensions()),
+                        : new SearchModelResponse(
+                                model.provider(), model.model(), model.dimensions()),
                 result.lexicalVersion(),
                 result.hits().stream().map(SearchController::result).toList());
     }
@@ -106,12 +107,12 @@ class SearchController {
             UUID snapshotId,
             SearchMode mode,
             @Schema(nullable = true, description = "null no modo LEXICAL.")
-                    @Nullable ModelResponse model,
+                    @Nullable SearchModelResponse model,
             @Schema(nullable = true, description = "Versão do índice lexical; null no modo VECTOR.")
                     @Nullable String lexicalVersion,
             List<ResultResponse> results) {}
 
-    record ModelResponse(String provider, String name, int dimensions) {}
+    record SearchModelResponse(String provider, String name, int dimensions) {}
 
     record ResultResponse(
             UUID chunkId,

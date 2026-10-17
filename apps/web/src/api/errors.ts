@@ -2,6 +2,7 @@ import type { components } from './schema';
 
 export type Problem = components['schemas']['Problem'];
 export type ErrorCode = Problem['code'];
+export type FieldError = components['schemas']['FieldError'];
 
 export class ApiError extends Error {
   readonly status: number;

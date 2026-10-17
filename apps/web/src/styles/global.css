@@ -263,3 +263,260 @@ h2 {
   justify-content: flex-end;
   gap: var(--space-2);
 }
+
+h3 {
+  margin: 0 0 var(--space-2);
+  font-size: 1rem;
+}
+
+.panel {
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.intro p {
+  margin: 0 0 var(--space-2);
+}
+
+.steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-6);
+  margin: 0;
+  padding-left: var(--space-6);
+}
+
+.steps__item--current {
+  font-weight: 600;
+}
+
+.notice {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--color-accent);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+}
+
+.notice--warning {
+  border-left-color: var(--color-warning);
+}
+
+.notice p {
+  margin: 0;
+}
+
+.notice-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.choice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.choice__option,
+.checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.field select,
+.field textarea {
+  padding: var(--space-2) var(--space-3);
+  font: inherit;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.field textarea {
+  font-family: var(--font-mono);
+}
+
+.field--wide {
+  max-width: none;
+}
+
+.field__hint {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.field-error {
+  margin: 0;
+  padding-left: var(--space-4);
+  color: var(--color-danger);
+  font-size: 0.875rem;
+}
+
+.link-button {
+  padding: 0;
+  font: inherit;
+  color: var(--color-accent);
+  background: none;
+  border: none;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.link-button[aria-current] {
+  color: var(--color-text);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.breadcrumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.breadcrumbs li + li::before {
+  content: '/';
+  padding: 0 var(--space-1);
+  color: var(--color-text-muted);
+}
+
+.browser__selected {
+  margin: 0;
+  font-weight: 600;
+}
+
+.browser__list {
+  max-height: 20rem;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.browser__entry {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  font: inherit;
+  color: var(--color-text);
+  text-align: left;
+  background: var(--color-surface);
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  cursor: pointer;
+}
+
+.browser__entry:disabled {
+  cursor: not-allowed;
+}
+
+.totals {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.totals__item {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.totals dt {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.totals dd {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table th,
+.data-table td {
+  padding: var(--space-1) var(--space-3);
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.data-table thead th {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.data-table tbody th {
+  font-weight: normal;
+}
+
+.exclusions,
+.exclusions__examples {
+  margin: 0;
+  padding-left: var(--space-4);
+}
+
+.exclusions p {
+  margin: 0;
+}
+
+.rules {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.rules__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rules__rule {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.rules__patterns {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  overflow-wrap: anywhere;
+}

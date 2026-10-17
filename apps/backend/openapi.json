@@ -2970,7 +2970,7 @@
           "warnings" : {
             "type" : "array",
             "items" : {
-              "$ref" : "#/components/schemas/WarningResponse"
+              "$ref" : "#/components/schemas/InventoryWarningResponse"
             }
           }
         },
@@ -3009,6 +3009,26 @@
           }
         },
         "required" : [ "excludedDirectories", "excludedFiles", "files", "includedBytes", "includedFiles", "unreadableFiles", "unsupportedFiles" ]
+      },
+      "InventoryWarningResponse" : {
+        "type" : "object",
+        "properties" : {
+          "code" : {
+            "type" : "string",
+            "enum" : [ "CASE_VARIANT_PROJECT", "SCAN_LIMIT_REACHED", "PROJECT_SIZE_LIMIT_EXCEEDED", "NO_INCLUDED_FILES" ]
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "relatedProjectIds" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "format" : "uuid"
+            }
+          }
+        },
+        "required" : [ "code", "message", "relatedProjectIds" ]
       },
       "LanguageCount" : {
         "type" : "object",
@@ -3121,10 +3141,6 @@
       "ModelResponse" : {
         "type" : "object",
         "properties" : {
-          "dimensions" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
           "name" : {
             "type" : "string"
           },
@@ -3132,7 +3148,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "dimensions", "name", "provider" ]
+        "required" : [ "name", "provider" ]
       },
       "OptionsRequest" : {
         "type" : "object",
@@ -3589,6 +3605,22 @@
         },
         "required" : [ "byDirectory", "byLanguage", "exclusions", "totals", "truncated" ]
       },
+      "SearchModelResponse" : {
+        "type" : "object",
+        "properties" : {
+          "dimensions" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "provider" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "dimensions", "name", "provider" ]
+      },
       "SearchRequest" : {
         "type" : "object",
         "properties" : {
@@ -3630,7 +3662,7 @@
           "model" : {
             "description" : "null no modo LEXICAL.",
             "oneOf" : [ {
-              "$ref" : "#/components/schemas/ModelResponse"
+              "$ref" : "#/components/schemas/SearchModelResponse"
             }, {
               "type" : "null"
             } ]

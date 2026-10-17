@@ -108,4 +108,156 @@ export const messages = {
     deleteBusy: 'Há uma importação ou indexação em andamento; aguarde o fim para excluir.',
     deleteConfirm: 'Excluir projeto',
   },
+  newProject: {
+    backToWorkspace: 'Voltar para o workspace',
+    steps: {
+      label: 'Etapas da importação',
+      source: 'Origem',
+      upload: 'Envio do ZIP',
+      review: 'Pré-análise e indexação',
+      current: (step: number, total: number) => `Etapa ${step} de ${total}`,
+    },
+    intro: [
+      'Os arquivos da pasta ou do ZIP são só lidos, nunca executados.',
+      'Antes de indexar, você vê quais arquivos serão incluídos e pode ajustar as exclusões. Dependências, saídas de build, binários e arquivos sensíveis por nome (como .env) já vêm excluídos.',
+      'São indexados arquivos de texto (código, configuração, documentação); binários ficam de fora. Há limites de tamanho por arquivo e por projeto, mostrados e ajustáveis na pré-análise.',
+      'Se um provedor remoto estiver configurado, trechos selecionados podem ser enviados a ele; você é avisado antes.',
+    ],
+    sourceLegend: 'De onde vem o código?',
+    sourceLocal: 'Pasta local',
+    sourceLocalHint: 'Uma pasta dentro das raízes permitidas na configuração do servidor.',
+    sourceZip: 'Arquivo ZIP',
+    sourceZipHint: 'Você envia o arquivo depois de criar o projeto.',
+    noRoots:
+      'Nenhuma raiz de pastas locais está configurada no servidor. Use um arquivo ZIP ou configure as raízes permitidas e reinicie o backend.',
+    nameLabel: 'Nome do projeto',
+    create: 'Criar projeto',
+    creating: 'Criando…',
+    browser: {
+      rootLabel: 'Raiz',
+      location: 'Pasta atual',
+      selected: (path: string) => `Pasta selecionada: ${path}`,
+      empty: 'Esta pasta não tem subpastas. Ela pode ser usada como projeto.',
+      truncated: 'A pasta tem mais subpastas do que é possível listar; só as primeiras aparecem.',
+      unreadable: 'sem permissão de leitura',
+      open: (name: string) => `Abrir ${name}`,
+      backToRoot: 'Voltar para a raiz',
+      subfolders: 'Subpastas',
+    },
+    upload: {
+      title: 'Enviar o ZIP',
+      detail:
+        'O arquivo é extraído no servidor com limites de tamanho, quantidade de entradas e caminhos seguros. Nada dentro dele é executado.',
+      fileLabel: 'Arquivo ZIP',
+      submit: 'Enviar',
+      uploading: 'Enviando…',
+      pending: 'Na fila para extração…',
+      extracting: 'Extraindo o arquivo…',
+      rejectedTitle: 'O ZIP foi recusado',
+      failedTitle: 'A extração falhou',
+      tryAnother: 'Escolha outro arquivo e envie de novo.',
+      chooseFile: 'Escolha um arquivo antes de enviar.',
+    },
+  },
+  preAnalysis: {
+    title: 'Pré-análise',
+    detail: 'O que será lido, calculado agora a partir da origem. Nada foi indexado ainda.',
+    scannedAt: (date: string, version: number) =>
+      `Calculada em ${date} com as configurações versão ${version}.`,
+    refresh: 'Recalcular',
+    truncated: 'A varredura parou no limite de entradas; os números abaixo estão incompletos.',
+    totalsTitle: 'Resumo',
+    totals: {
+      files: 'Arquivos encontrados',
+      includedFiles: 'Serão indexados',
+      includedBytes: 'Tamanho estimado',
+      excludedFiles: 'Excluídos',
+      unsupportedFiles: 'Não suportados (binários)',
+      unreadableFiles: 'Ilegíveis',
+      excludedDirectories: 'Pastas excluídas',
+    },
+    languagesTitle: 'Linguagens',
+    languageColumn: 'Linguagem',
+    filesColumn: 'Arquivos',
+    bytesColumn: 'Tamanho',
+    directoriesTitle: 'Pastas do primeiro nível',
+    directoryColumn: 'Pasta',
+    includedColumn: 'Incluídos',
+    excludedColumn: 'Excluídos',
+    unsupportedColumn: 'Não suportados',
+    unreadableColumn: 'Ilegíveis',
+    rootDirectory: '(arquivos da raiz)',
+    none: 'Nenhum.',
+    exclusionsTitle: 'Exclusões e motivos',
+    exclusionCount: (files: number, directories: number) => {
+      const parts: string[] = [];
+      if (directories > 0) {
+        parts.push(directories === 1 ? '1 pasta' : `${directories} pastas`);
+      }
+      if (files > 0 || directories === 0) {
+        parts.push(files === 1 ? '1 arquivo' : `${files} arquivos`);
+      }
+      return parts.join(' e ');
+    },
+    examples: 'Exemplos',
+    reasons: {
+      DEFAULT_RULE: (ruleId: string) => `Regra padrão “${ruleId}”`,
+      CUSTOM_PATTERN: (pattern: string) => `Padrão do projeto “${pattern}”`,
+      SYMLINK: 'Links simbólicos (nunca são seguidos)',
+      SPECIAL_FILE: 'Arquivos especiais (nunca são abertos)',
+      DEPTH_LIMIT: 'Abaixo da profundidade máxima',
+      TOO_LARGE: 'Acima do tamanho máximo por arquivo',
+      BINARY: 'Binários',
+      UNREADABLE: 'Sem permissão de leitura',
+    },
+    warningsTitle: 'Avisos',
+    relatedProject: 'Abrir o outro projeto',
+    blocking:
+      'Resolva os avisos acima antes de indexar: ajuste as exclusões ou os limites e recalcule.',
+  },
+  settings: {
+    title: 'Exclusões e limites',
+    detail:
+      'Valem para a próxima pré-análise e para a próxima indexação. Regras de arquivos sensíveis, controle de versão e mídia não podem ser desativadas.',
+    rulesLegend: 'Regras padrão',
+    ruleEnabled: (id: string) => `Aplicar a regra ${id}`,
+    ruleRequired: 'obrigatória',
+    categories: {
+      SENSITIVE: 'Sensíveis',
+      VCS: 'Controle de versão',
+      DEPENDENCIES: 'Dependências',
+      BUILD_OUTPUT: 'Saída de build',
+      IDE_CACHE: 'IDE e cache',
+      GENERATED: 'Gerados',
+      MEDIA_BINARY: 'Mídia e binários',
+    },
+    patternsLabel: 'Padrões de exclusão do projeto (um por linha)',
+    patternsHint:
+      'Relativos à raiz, com “/” como separador. “*” não cruza pastas, “**” cruza; sem “/” casa o nome em qualquer pasta; “/” no fim restringe a pastas. Ex.: docs/generated/ ou *.min.js',
+    patternError: (pattern: string, message: string) => `${pattern}: ${message}`,
+    maxFileLabel: 'Tamanho máximo por arquivo (KB)',
+    maxProjectLabel: 'Tamanho máximo do projeto (MB)',
+    limitHint: (effective: string) => `Vazio usa o padrão. Valor em vigor: ${effective}.`,
+    save: 'Salvar e recalcular',
+    saving: 'Salvando…',
+    discard: 'Descartar alterações',
+    saved: 'Configurações salvas. A pré-análise foi recalculada.',
+  },
+  privacy: {
+    title: 'Para onde vão os trechos',
+    localOnly:
+      'Com o provedor de embeddings configurado, a indexação não envia trechos para fora desta máquina.',
+    noEmbeddings:
+      'Nenhum provedor de embeddings está configurado: a indexação é só lexical e a busca vetorial fica indisponível.',
+    remote: (provider: string, model: string | null) =>
+      `Os trechos dos arquivos incluídos serão enviados a ${model ? `${provider} (${model})` : provider}, fora desta máquina, para gerar embeddings.`,
+    review: 'Rever as exclusões',
+    acknowledge: 'Entendi que trechos serão enviados ao provedor',
+  },
+  indexing: {
+    start: 'Indexar',
+    starting: 'Iniciando…',
+    dirty: 'Salve ou descarte as alterações nas exclusões antes de indexar.',
+    noIncluded: 'Nenhum arquivo será indexado com as configurações atuais.',
+  },
 } as const;

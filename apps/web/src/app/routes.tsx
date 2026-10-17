@@ -1,5 +1,6 @@
 import type { RouteObject } from 'react-router';
 import { Layout } from '../components/Layout';
+import { NewProjectPage } from '../features/import/NewProjectPage';
 import { NotFoundPage } from '../features/not-found/NotFoundPage';
 import { PendingPage } from '../features/pending/PendingPage';
 import { WorkspacePage } from '../features/workspaces/WorkspacePage';
@@ -16,10 +17,7 @@ export const routes: RouteObject[] = [
         children: [
           { index: true, element: <WorkspacesPage /> },
           { path: 'workspaces/:workspaceId', element: <WorkspacePage /> },
-          {
-            path: 'workspaces/:workspaceId/new',
-            element: <PendingPage title={messages.pages.newProject} />,
-          },
+          { path: 'workspaces/:workspaceId/new', element: <NewProjectPage /> },
           { path: 'projects/:projectId', element: <PendingPage title={messages.pages.project} /> },
           {
             path: 'projects/:projectId/ask',
