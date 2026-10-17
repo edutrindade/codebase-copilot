@@ -1,14 +1,14 @@
 package com.codebasecopilot.providers;
 
-import static com.codebasecopilot.providers.StubEmbeddingServer.component;
-import static com.codebasecopilot.providers.StubEmbeddingServer.vectors;
+import static com.codebasecopilot.providers.StubOpenAiServer.component;
+import static com.codebasecopilot.providers.StubOpenAiServer.vectors;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
 
 import com.codebasecopilot.providers.EmbeddingFailure.Type;
 import com.codebasecopilot.providers.ProviderProperties.Provider;
-import com.codebasecopilot.providers.StubEmbeddingServer.Reply;
+import com.codebasecopilot.providers.StubOpenAiServer.Reply;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
@@ -42,12 +42,12 @@ class OpenAiEmbeddingProviderTest {
     private static final Clock CLOCK =
             Clock.fixed(Instant.parse("2026-10-16T12:00:00Z"), ZoneOffset.UTC);
 
-    private StubEmbeddingServer server;
+    private StubOpenAiServer server;
     private OpenAiEmbeddingProvider provider;
 
     @BeforeEach
     void start() throws IOException {
-        server = new StubEmbeddingServer();
+        server = new StubOpenAiServer();
         provider = provider(server.baseUrl(), Duration.ofSeconds(5));
     }
 

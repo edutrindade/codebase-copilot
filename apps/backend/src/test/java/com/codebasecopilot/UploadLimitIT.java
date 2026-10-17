@@ -24,7 +24,9 @@ import org.springframework.test.context.ContextConfiguration;
             TestProperties.NO_PROJECTS_ROOT,
             TestProperties.MAX_ZIP_BYTES,
             TestProperties.EMBEDDING_PROVIDER,
-            TestProperties.NO_EMBEDDING_API_KEY
+            TestProperties.NO_EMBEDDING_API_KEY,
+            TestProperties.GENERATION_PROVIDER,
+            TestProperties.NO_GENERATION_API_KEY
         })
 @ContextConfiguration(initializers = TestFileSystemInitializer.class)
 @Import(TestcontainersConfiguration.class)

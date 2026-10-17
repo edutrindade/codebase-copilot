@@ -40,6 +40,11 @@ app:
   embeddings:
     provider: ${EMBEDDING_PROVIDER:none}
     api-key: ${EMBEDDING_API_KEY:}
+  # Chat provider for answers (D-063): none, fake or openai. The other app.generation.*
+  # defaults are in GenerationProperties.
+  generation:
+    provider: ${GENERATION_PROVIDER:none}
+    api-key: ${GENERATION_API_KEY:}
 
 springdoc:
   default-produces-media-type: application/json

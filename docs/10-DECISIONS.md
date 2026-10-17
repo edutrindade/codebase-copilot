@@ -134,6 +134,22 @@ Este documento registra decisões aceitas e itens que ainda precisam de validaç
 - O SDK da OpenAI tem repetição própria; o adaptador da F1 a desliga (D-047), para que a política da D-051 seja a única.
 - A troca para o patch 2.0.x seguinte exige repetir esta verificação.
 
+#### Atualização de 16/10/2026 — Spring AI removido (Etapa 6)
+**Contexto:** a Etapa 5 adiou para a Etapa 6 a escolha entre manter o `spring-ai-openai` ou usar só o SDK (P9), porque o `ChatClient`/`ChatModel` poderia se pagar na geração. Até aqui o Spring AI só montava o cliente (`OpenAiSetup`); a chamada de embeddings já ia direto ao SDK.  
+**Opções consideradas:**
+1. Manter o Spring AI e gerar respostas pelo `OpenAiChatModel`.
+2. Usar só o SDK `openai-java`, nos embeddings e no chat.
+
+**Verificação (16/10/2026, F0 da Etapa 6, fontes do `spring-ai-openai` 2.0.1 e bytecode do `spring-ai-model` 2.0.1):**
+- uso de tokens ausente: o `OpenAiChatModel` usa `EmptyUsage`, que devolve **0** tokens; zero e "não informado" ficam iguais (contra a D-054);
+- log: sem `choices`, o modelo faz `logger.warn("No choices returned for prompt: " + prompt)`, e o `Prompt.toString()` traz as mensagens, isto é, instruções, pergunta e trechos de código;
+- repetição desligável e saída estruturada estrita: atendidas pelos dois caminhos.
+
+**Decisão:** opção 2. Saem o `spring-ai-bom` e o `spring-ai-openai`; entra o **`com.openai:openai-java-client-okhttp` 4.49.0**, na mesma versão do `openai-java-core` (propriedade `openai-java.version`, conferida por teste). Ele traz o OkHttp 4.12.0, a mesma versão que o Spring AI trazia. O cliente é montado pelo `OpenAiClients` (módulo `providers`): `baseUrl` e chave sempre explícitos (nunca `fromEnv()`, que leria `OPENAI_*` do ambiente), `maxRetries(0)` e `logLevel(OFF)`.  
+**Motivo:** o que o `ChatClient` acrescenta (advisors, memória, conversores) é o que este projeto controla à mão, e o modelo de chat do Spring AI quebra duas regras já aceitas (D-054 e "não logar prompts").  
+**Consequências:** a D-006 continua valendo (Spring AI "onde for útil", sempre atrás de portas); hoje ele não é útil em nenhum ponto. O ArchUnit continua barrando `org.springframework.ai` e `com.openai` fora de `providers`. A versão-alvo do Spring AI desta decisão deixa de valer até ele voltar ao projeto.  
+**O que levaria à revisão:** um provedor novo (por exemplo, local, na Etapa 9) cuja integração só exista no Spring AI, ou uma versão do Spring AI que corrija os dois pontos acima.
+
 ### D-015 — Build tool (resolve O-002)
 **Status:** Aceita  
 **Decisão:** **Maven com wrapper (`mvnw`)**.  
@@ -690,7 +706,7 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **O que levaria à revisão:** volume de evidências copiadas relevante frente ao conteúdo indexado.
 
 ### D-047 — Provedor inicial de embeddings (O-004, provisória)
-**Status:** Aceita (provisória, 16/10/2026; bake-off adiado na Etapa 5, P8; manter o `spring-ai-openai` é decidido na Etapa 6, P9)  
+**Status:** Aceita (provisória, 16/10/2026; bake-off adiado na Etapa 5, P8; `spring-ai-openai` removido na Etapa 6, ver D-014)  
 **Contexto:** a O-004 pede um provedor de embeddings antes de concluir a Etapa 4, mas a comparação de qualidade depende do corpus da Etapa 5 (O-011).  
 **Opções consideradas:**
 1. OpenAI `text-embedding-3-small`, pelo módulo OpenAI do Spring AI.
@@ -727,6 +743,8 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 - **`spring-ai-openai` mantido** (P9): a escolha entre ele e o SDK sozinho passa para a Etapa 6, junto com a porta de geração, onde o `ChatClient` do Spring AI pode (ou não) se pagar.
 - A guarda dos testes passou a liberar também a tag `eval`, do harness de avaliação (D-062).
 - O teste de fumaça com a chave real continua pendente por falta de saldo.
+
+**Atualização (Etapa 6, F1, 16/10/2026):** o adaptador deixou de usar o `OpenAiSetup` do Spring AI; o cliente vem do `OpenAiClients`, com o SDK sozinho (D-014). Comportamento igual: mesma chave, `base-url`, timeout, sem repetição e sem log. A guarda dos testes passou a se chamar `RealProviderGuard` e barra também `app.generation.provider=openai` (D-063).
 
 **O que levaria à revisão:** resultado do bake-off, mudança de preço ou de política de dados, ou integração da Voyage no Spring AI.
 
@@ -982,6 +1000,41 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Consequências:** o baseline lexical (sem custo) está em `eval/results/2026-10-16-lexical.*`; o vetorial e o híbrido saem do mesmo harness com `EVAL_PROVIDER=openai`, quando houver saldo, junto com o teste de fumaça da Etapa 4. A Etapa 5 fechou sem saldo: a comparação e as decisões que dependem dela (D-017, O-005, saída do canal de caminhos da D-058) esperam essa rodada.  
 **O que levaria à revisão:** corpus maior, bake-off de embeddings (O-004) ou variantes novas da fusão.
 
+### D-063 — Provedor de chat (O-004, provisória)
+**Status:** Aceita (provisória, 16/10/2026; P1 da Etapa 6; F1 entregue)  
+**Contexto:** a O-004 deixou o provedor de chat para a Etapa 6. A escolha decide custo e para onde vão a pergunta e os trechos de código usados como evidência.  
+**Opções consideradas:**
+1. OpenAI, pelo SDK já usado nos embeddings (D-047).
+2. Anthropic (Claude), pelo SDK oficial ou pelo Spring AI: dependência, chave e destino de dados novos.
+3. Entregar a etapa só com o provedor fake.
+
+**Decisão:** opção 1, provisória; a Anthropic fica como candidata na avaliação de respostas.
+- **Modelo padrão `gpt-6-luna`**, com o `gpt-6.1-sol` como comparação na avaliação. Pelas páginas oficiais (consultadas em 16/10/2026): `gpt-6-luna` custa US$ 0,10 por 1M de tokens de entrada, US$ 0,01 em cache e US$ 0,50 de saída (até 272 mil tokens de entrada); `gpt-6.1-sol`, US$ 2,00, US$ 0,10 e US$ 10,00. Os dois têm contexto de 1,05 M de tokens, saída máxima de 128 mil e saída estruturada; o luna aceita raciocínio de `none` a `max`, o sol de `low` a `max`. Fontes: `developers.openai.com/api/docs/pricing`, `/api/docs/models/gpt-6-luna`, `/api/docs/models/gpt-6.1-sol`.
+- **Chat Completions, com `store=false`.** Pela página de uso de dados (`developers.openai.com/api/docs/guides/your-data`, consultada em 16/10/2026), `/v1/chat/completions` não usa os dados para treino, retém por 30 dias para monitoramento de abuso, não guarda estado da aplicação (o cache de prompts pode manter dados criptografados nas GPUs por até 24 horas) e é elegível a Zero Data Retention mediante acordo. O `/v1/responses` guardaria a resposta por pelo menos 30 dias com `store` omitido, e é a Chat Completions que servidores compatíveis e locais implementam (Etapa 9).
+- **Saída estruturada estrita** (`response_format` `json_schema`, `strict: true`): todo campo em `required`, `additionalProperties: false` e opcional como união com `null` (guia de structured outputs, consultado em 16/10/2026).
+- **Configuração própria** (`app.generation.*`), separada dos embeddings: `provider` (`none` padrão, `fake`, `openai`), `model`, `reasoning-effort` (padrão `low`; vazio não envia o parâmetro), `max-output-tokens` (padrão 2.000, inclui o raciocínio), `timeout` (60 s), `base-url` (mesma regra da D-047) e a chave em `GENERATION_API_KEY`, obrigatória com `openai`. A chave dos embeddings não serve à geração: são destinos configurados à parte, mesmo que o valor seja igual.
+- Com `provider=none` não há bean de geração e nada sai da máquina.
+- A guarda dos testes (`RealProviderGuard`) barra também `app.generation.provider=openai`, com a mesma exceção para as tags `smoke` e `eval`; o teste de fumaça é o `GenerationSmokeIT`.
+
+**Motivo:** reaproveita o SDK, a guarda de `base-url`, a classificação de erros (D-051) e a mesma conta dos embeddings; o luna cobre a tarefa (responder com trechos dados, ~6 mil tokens de contexto) por fração de centavo por pergunta.  
+**Consequências:** com `provider=openai`, a pergunta e os trechos escolhidos como evidência saem da máquina. Custo estimado por pergunta com o luna: ~US$ 0,0017 no teto (6.700 tokens de entrada e 2.000 de saída). Os dois modelos têm um único snapshot, sem versão datada para fixar; uma mudança do modelo aparece na avaliação.  
+**O que levaria à revisão:** resultado da avaliação de respostas (luna × sol, ou Anthropic), mudança de preço ou de política de dados, ou provedor local (Etapa 9).
+
+### D-064 — Porta de geração
+**Status:** Aceita (16/10/2026; P3 da Etapa 6; F1 entregue)  
+**Decisão:**
+- `GenerationProvider` em `providers`: `generate(GenerationRequest)` → `GenerationResult`, e `model()` (provedor e modelo). Sem tipos do SDK na assinatura.
+- `GenerationRequest`: instruções (mensagem de sistema), entrada (mensagem do usuário) e o schema da saída (`OutputSchema`: nome e JSON Schema estrito como mapa). O limite de saída e o esforço de raciocínio vêm da configuração, não do pedido.
+- `GenerationResult`: o JSON produzido, ainda não validado, e os tokens de entrada, de saída e de raciocínio, cada um `null` quando o provedor não informa (D-054). Os de saída já incluem os de raciocínio.
+- `GenerationFailure` com os tipos da D-051 e mais `OUTPUT_TRUNCATED` (`finish_reason` `length`) e `REFUSED` (`message.refusal` presente ou `finish_reason` `content_filter`); resposta sem `choices` ou sem conteúdo é `INVALID_REQUEST`. Mensagens só com tipo e status HTTP; a exceção do SDK não é guardada como causa.
+- **Sem repetição:** uma chamada por pedido, porque há uma pessoa esperando (como na busca, D-051). Timeout por chamada, que vira `UNAVAILABLE`.
+- `FakeGenerationProvider` determinístico (D-019): cita o primeiro rótulo de evidência (`E1`, `E2`…) que encontra na entrada, no formato de resposta da Etapa 6, ou se abstém quando não há nenhum; tokens = contagem de termos.
+- Nada de instruções, pergunta, trecho ou saída em log: o adaptador registra só tokens e duração, e um teste numa JVM filha com `OPENAI_LOG=debug` confere que nenhum corpo de pedido ou de resposta aparece.
+
+**Motivo:** o domínio fica livre do SDK e o comportamento de falha é previsível e testável sem rede.  
+**Consequências:** o formato de resposta que o fake produz precisa acompanhar o schema da P6; se o schema mudar, o fake muda junto.  
+**O que levaria à revisão:** necessidade de streaming (Etapa 7), de várias mensagens (perguntas de acompanhamento) ou de ferramentas.
+
 ---
 
 ## Decisões em aberto
@@ -994,7 +1047,8 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 - Provedor de embeddings e de chat podem ser diferentes (a Anthropic, por exemplo, não oferece modelo de embeddings próprio), o que justifica as duas portas separadas.
 
 **Critérios de comparação:** recall@k e MRR no corpus, qualidade em código, custo por 1M de tokens, latência, limites de taxa e política de retenção de dados do provedor.  
-**Estado (16/10/2026, fim da Etapa 5):** embeddings decididos provisoriamente na Etapa 4: OpenAI `text-embedding-3-small`, 1.536 dimensões (D-047), com armazenamento que não exige migração para trocar de modelo (D-048). O bake-off com a Voyage `voyage-code-3` foi adiado (D-047, atualização da Etapa 5): o corpus de avaliação (D-061) e o harness (D-062) estão prontos para ele, mas nem o baseline com a OpenAI rodou ainda, por falta de saldo. O provedor de chat é decidido na Etapa 6.
+**Estado (16/10/2026, fim da Etapa 5):** embeddings decididos provisoriamente na Etapa 4: OpenAI `text-embedding-3-small`, 1.536 dimensões (D-047), com armazenamento que não exige migração para trocar de modelo (D-048). O bake-off com a Voyage `voyage-code-3` foi adiado (D-047, atualização da Etapa 5): o corpus de avaliação (D-061) e o harness (D-062) estão prontos para ele, mas nem o baseline com a OpenAI rodou ainda, por falta de saldo. O provedor de chat é decidido na Etapa 6.  
+**Estado (16/10/2026, Etapa 6):** chat decidido provisoriamente: OpenAI `gpt-6-luna` pela Chat Completions (D-063), com o `gpt-6.1-sol` e a Anthropic como candidatos na avaliação de respostas.
 
 ### O-005 — Comparação final de estratégia lexical e fusão
 **Status:** A validar  

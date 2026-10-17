@@ -162,7 +162,7 @@ Alguns testes ficam fora do `verify` (tags `performance`, `smoke` e `eval`) e s�
 
 - **Chave:** `EMBEDDING_API_KEY` no `.env` (ou no ambiente). O teste usa `provider=openai` qualquer que seja o `EMBEDDING_PROVIDER` do `.env`, e o endereço padrão da OpenAI.
 - **Custo:** algumas centenas de tokens por execução, menos de US$ 0,0001 pelo preço da D-047.
-- Só testes com as tags `smoke` e `eval` podem subir com `provider=openai`; em qualquer outro teste, a guarda dos testes (`RealEmbeddingProviderGuard`) impede o contexto de subir.
+- Só testes com as tags `smoke` e `eval` podem subir com `provider=openai`; em qualquer outro teste, a guarda dos testes (`RealProviderGuard`) impede o contexto de subir.
 
 **Avaliação de recuperação** (`RetrievalEvaluationIT`, D-062): indexa os corpora de `eval/` e mede Recall@k, MRR, Precision@10, cobertura de arquivos e latência das buscas lexical, vetorial e híbrida. Grava os resultados em `eval/results/`. Os corpora externos são baixados à parte (instruções em `eval/README.md`).
 

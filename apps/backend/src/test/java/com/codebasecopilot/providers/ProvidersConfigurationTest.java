@@ -20,8 +20,56 @@ class ProvidersConfigurationTest {
         runner.run(
                 context -> {
                     assertThat(context).doesNotHaveBean(EmbeddingProvider.class);
+                    assertThat(context).doesNotHaveBean(GenerationProvider.class);
                     assertThat(context).hasSingleBean(EmbeddingRetry.class);
                 });
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"fake", "FAKE"})
+    void fakeGenerationProvider(String provider) {
+        runner.withPropertyValues(
+                        "app.generation.provider=" + provider, "app.generation.model=demo")
+                .run(
+                        context -> {
+                            assertThat(context)
+                                    .getBean(GenerationProvider.class)
+                                    .isInstanceOf(FakeGenerationProvider.class);
+                            assertThat(context.getBean(GenerationProvider.class).model())
+                                    .isEqualTo(new GenerationModel("fake", "demo"));
+                            assertThat(context).doesNotHaveBean(EmbeddingProvider.class);
+                        });
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"openai", "OpenAI", "open-ai"})
+    void openAiGenerationProvider(String provider) {
+        runner.withPropertyValues(
+                        "app.generation.provider=" + provider, "app.generation.api-key=sk-test")
+                .run(
+                        context -> {
+                            assertThat(context)
+                                    .getBean(GenerationProvider.class)
+                                    .isInstanceOf(OpenAiGenerationProvider.class);
+                            assertThat(context).doesNotHaveBean(EmbeddingProvider.class);
+                        });
+    }
+
+    @Test
+    void embeddingsAndGenerationAreSelectedIndependently() {
+        runner.withPropertyValues(
+                        "app.embeddings.provider=fake",
+                        "app.generation.provider=openai",
+                        "app.generation.api-key=sk-test")
+                .run(
+                        context -> {
+                            assertThat(context)
+                                    .getBean(EmbeddingProvider.class)
+                                    .isInstanceOf(FakeEmbeddingProvider.class);
+                            assertThat(context)
+                                    .getBean(GenerationProvider.class)
+                                    .isInstanceOf(OpenAiGenerationProvider.class);
+                        });
     }
 
     @ParameterizedTest

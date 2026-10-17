@@ -300,6 +300,17 @@ Somados os embeddings do corpus da Etapa 5 (US$ 0,02 a 0,07, uma vez, depois em 
 - Teste de fumaça (tag `smoke`) com a chave real, se houver saldo.
 - **Testes:** classificação de cada erro do provedor contra um servidor HTTP de teste (401, 403, 429 de cota e de taxa, 5xx, timeout, corpo ilegível); uso ausente vira `null`; truncamento e recusa; uma única chamada por pedido (sem repetição); nenhum corpo em log com `OPENAI_LOG=debug` (JVM filha, como na D-047); chave nunca no `toString` nem em mensagens; `provider=none` sem bean.
 
+**Como foi entregue (16/10/2026)**
+- Em `providers`: `GenerationProvider`, `GenerationRequest` (com `OutputSchema`), `GenerationResult`, `GenerationModel`, `GenerationFailure`, `GenerationProperties` (`app.generation.*`), `FakeGenerationProvider`, `OpenAiGenerationProvider` e `OpenAiClients` (cliente do SDK, quota e validação de `base-url`, agora comuns aos dois adaptadores). Registrado na D-063 e na D-064; D-014, D-047 e O-004 atualizadas.
+- `pom.xml`: saem `spring-ai-bom` e `spring-ai-openai`; entra `openai-java-client-okhttp` 4.49.0. O `OpenAiEmbeddingProvider` passou a usar o `OpenAiClients`, sem mudança de comportamento.
+- `application.yml` e `.env.example`: `GENERATION_PROVIDER` (padrão `none`) e `GENERATION_API_KEY`.
+- Testes: `RealEmbeddingProviderGuard` virou `RealProviderGuard` e barra os dois provedores; `TestProperties.GENERATION_PROVIDER` (`fake`) entrou em todos os contextos de teste que fixavam o de embeddings; `StubEmbeddingServer` virou `StubOpenAiServer`, com `/v1/chat/completions`.
+- **Testes:** `OpenAiGenerationProviderTest` (saída e uso; corpo do pedido com modelo, mensagens de sistema e de usuário, `max_completion_tokens`, `reasoning_effort`, `store=false` e schema estrito; esforço vazio não enviado; uso ausente e sem detalhe de raciocínio viram `null`; `length` → truncado; recusa e `content_filter` → recusado; sem conteúdo, sem `choices` e corpo ilegível → inválido; 401/403, 429 de cota e de taxa, 5xx e 408 sem repetição, 4xx, timeout, conexão recusada; nada da chave, do corpo do provedor, da entrada ou da saída em mensagens ou logs); `FakeGenerationProviderTest`; `GenerationPropertiesTest` (padrões, chave obrigatória e separada da dos embeddings, esforços aceitos, limites, `base-url`, chave fora do `toString` e das falhas de inicialização); `ProvidersConfigurationTest` (beans por provedor, seleção independente de embeddings e geração); `OpenAiLogLevelTest` com o modo `generation`; `OpenAiSdkVersionTest` (as duas dependências do SDK na mesma versão); `RealProviderGuardTest` para as duas propriedades.
+- `GenerationSmokeIT` (tag `smoke`): uma pergunta curta com um trecho sintético e um schema estrito, conferindo status, rótulo citado e tokens. **Não executado:** depende de saldo.
+- **Desvios:**
+  - O limite de saída e o esforço de raciocínio ficaram na configuração, não no `GenerationRequest` (a P3 os punha no pedido): quem monta o prompt não precisa conhecê-los.
+  - A mensagem de instruções vai como `system`, não `developer`: servidores compatíveis e locais conhecem `system`, e a OpenAI aceita os dois.
+
 ### F2 — Histórico (V10)
 - Migração, repositórios em `history`, recuperação de `PENDING` na inicialização.
 - **Testes:** cascata na remoção do projeto; poda de snapshot e limpeza de chunks não apagam evidências; `CHECK`s de estado (`FAILED` exige `error_code`, `PENDING` não tem métricas); conversa de outro projeto; recuperação de `PENDING` vencido e preservação do recente.

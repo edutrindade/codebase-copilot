@@ -33,6 +33,8 @@ public final class TestProperties {
     // application.yml imports the developer's .env; tests never call a real provider (D-047).
     public static final String EMBEDDING_PROVIDER = "app.embeddings.provider=fake";
     public static final String NO_EMBEDDING_API_KEY = "app.embeddings.api-key=";
+    public static final String GENERATION_PROVIDER = "app.generation.provider=fake";
+    public static final String NO_GENERATION_API_KEY = "app.generation.api-key=";
 
     private TestProperties() {}
 }

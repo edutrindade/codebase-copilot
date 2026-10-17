@@ -88,7 +88,8 @@ import tools.jackson.databind.json.JsonMapper;
             TestProperties.WORK_ROOT_LABEL,
             TestProperties.WORK_ROOT_PATH,
             TestProperties.INDEX_POLL_INTERVAL,
-            "app.embeddings.provider=${EVAL_PROVIDER:none}"
+            "app.embeddings.provider=${EVAL_PROVIDER:none}",
+            "app.generation.provider=none"
         })
 @AutoConfigureMockMvc
 @ContextConfiguration(initializers = TestFileSystemInitializer.class)

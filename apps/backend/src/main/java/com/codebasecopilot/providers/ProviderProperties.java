@@ -2,8 +2,6 @@ package com.codebasecopilot.providers;
 
 import java.net.URI;
 import java.time.Duration;
-import java.util.Locale;
-import java.util.Set;
 import org.jspecify.annotations.Nullable;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
@@ -23,9 +21,6 @@ public record ProviderProperties(
         @Nullable String apiKey) {
 
     public static final String OFFICIAL_BASE_URL = "https://api.openai.com/v1";
-
-    // The base URL decides where the key and code chunks are sent (D-047).
-    private static final Set<String> LOOPBACK_HOSTS = Set.of("localhost", "127.0.0.1");
 
     // pgvector cannot build an HNSW index on vector columns above this (O-004, D-048).
     public static final int MAX_DIMENSIONS = 2000;
@@ -58,7 +53,7 @@ public record ProviderProperties(
         if (!isPositive(timeout)) {
             throw invalid("timeout must be positive");
         }
-        validateBaseUrl(baseUrl);
+        OpenAiClients.validateBaseUrl(baseUrl, "app.embeddings.base-url");
         if (provider == Provider.OPENAI && (apiKey == null || apiKey.isBlank())) {
             throw invalid("api-key is required when provider is openai (set EMBEDDING_API_KEY)");
         }
@@ -85,22 +80,6 @@ public record ProviderProperties(
                         timeout,
                         baseUrl,
                         apiKey == null || apiKey.isBlank() ? "<none>" : "<redacted>");
-    }
-
-    // Error messages never echo the value: a URL with user info could carry a credential.
-    private static void validateBaseUrl(URI url) {
-        String scheme = url.getScheme() == null ? "" : url.getScheme().toLowerCase(Locale.ROOT);
-        String host = url.getHost() == null ? "" : url.getHost().toLowerCase(Locale.ROOT);
-        if (host.isEmpty() || !(scheme.equals("https") || scheme.equals("http"))) {
-            throw invalid("base-url must be an absolute http(s) URL");
-        }
-        if (url.getRawUserInfo() != null) {
-            throw invalid("base-url must not contain user info");
-        }
-        if (scheme.equals("http") && !LOOPBACK_HOSTS.contains(host)) {
-            throw invalid(
-                    "base-url must use https (http is allowed only for localhost or 127.0.0.1)");
-        }
     }
 
     private static boolean isPositive(Duration duration) {

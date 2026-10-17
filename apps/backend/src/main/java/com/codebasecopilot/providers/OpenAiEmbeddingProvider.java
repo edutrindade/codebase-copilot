@@ -2,9 +2,7 @@ package com.codebasecopilot.providers;
 
 import com.codebasecopilot.providers.EmbeddingFailure.Type;
 import com.openai.client.OpenAIClient;
-import com.openai.core.LogLevel;
 import com.openai.core.RequestOptions;
-import com.openai.core.Timeout;
 import com.openai.core.http.Headers;
 import com.openai.errors.OpenAIException;
 import com.openai.errors.OpenAIInvalidDataException;
@@ -12,7 +10,6 @@ import com.openai.errors.OpenAIServiceException;
 import com.openai.models.embeddings.CreateEmbeddingResponse;
 import com.openai.models.embeddings.Embedding;
 import com.openai.models.embeddings.EmbeddingCreateParams;
-import io.micrometer.observation.ObservationRegistry;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -22,26 +19,16 @@ import java.time.format.DateTimeParseException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.TreeSet;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.ai.openai.setup.OpenAiSetup;
 
-// The client comes from Spring AI's OpenAiSetup, but the call goes straight to the SDK: Spring
-// AI's OpenAiEmbeddingModel fails when the response has no usage, and usage is optional (D-054).
+// Calls the SDK directly: usage is optional in the response (D-054), and the client is built
+// by OpenAiClients, without retries or logging (D-047, D-051).
 final class OpenAiEmbeddingProvider implements EmbeddingProvider, AutoCloseable {
 
     static final String NAME = "openai";
-
-    private static final String INSUFFICIENT_QUOTA = "insufficient_quota";
-    private static final Set<String> QUOTA_CODES =
-            Set.of(
-                    "credit_balance_exhausted",
-                    "organization_spend_limit_exceeded",
-                    "project_spend_limit_exceeded",
-                    "organization_usage_limit_exceeded");
 
     // Embeddings guide and API reference (developers.openai.com, consulted on 16/10/2026):
     // 8192 tokens per input, 2048 inputs and 300,000 tokens summed per request (D-054).
@@ -65,32 +52,12 @@ final class OpenAiEmbeddingProvider implements EmbeddingProvider, AutoCloseable 
         this.model = new ModelInfo(NAME, properties.model(), properties.dimensions());
         this.limits = limitsOf(properties.model());
         this.clock = clock;
-        Duration timeout = properties.timeout();
-        this.requestOptions =
-                RequestOptions.builder()
-                        .timeout(Timeout.builder().connect(timeout).request(timeout).build())
-                        .build();
-        // No SDK retries: EmbeddingRetry is the only retry layer (D-051). Logging off, since
-        // OPENAI_LOG=debug in the environment would log request bodies.
-        this.client =
-                OpenAiSetup.setupSyncClient(
-                                properties.baseUrl().toString(),
-                                properties.apiKey(),
-                                null,
-                                null,
-                                null,
-                                null,
-                                false,
-                                false,
-                                properties.model(),
-                                timeout,
-                                0,
-                                null,
-                                null,
-                                ObservationRegistry.NOOP,
-                                null,
-                                List.of())
-                        .withOptions(options -> options.maxRetries(0).logLevel(LogLevel.OFF));
+        String apiKey = properties.apiKey();
+        if (apiKey == null) {
+            throw new IllegalStateException("app.embeddings.api-key is required");
+        }
+        this.client = OpenAiClients.create(properties.baseUrl(), apiKey, properties.timeout());
+        this.requestOptions = OpenAiClients.requestOptions(properties.timeout());
     }
 
     @Override
@@ -202,7 +169,10 @@ final class OpenAiEmbeddingProvider implements EmbeddingProvider, AutoCloseable 
         Type type =
                 switch (status) {
                     case 401, 403 -> Type.UNAUTHORIZED;
-                    case 429 -> quotaExceeded(e) ? Type.QUOTA_EXCEEDED : Type.RATE_LIMITED;
+                    case 429 ->
+                            OpenAiClients.quotaExceeded(e)
+                                    ? Type.QUOTA_EXCEEDED
+                                    : Type.RATE_LIMITED;
                     case 408, 409 -> Type.UNAVAILABLE;
                     default -> status >= 500 ? Type.UNAVAILABLE : Type.INVALID_REQUEST;
                 };
@@ -211,13 +181,6 @@ final class OpenAiEmbeddingProvider implements EmbeddingProvider, AutoCloseable 
                         ? retryAfter(e.headers())
                         : null;
         return new EmbeddingFailure(type, status, retryAfter, "embedding provider error");
-    }
-
-    // A 429 is told apart by error.code; error.type may still be insufficient_quota (OpenAI
-    // error codes guide, consulted on 16/10/2026). The code is read, never logged (D-051).
-    private static boolean quotaExceeded(OpenAIServiceException e) {
-        return e.code().filter(QUOTA_CODES::contains).isPresent()
-                || e.type().filter(INSUFFICIENT_QUOTA::equals).isPresent();
     }
 
     private @Nullable Duration retryAfter(Headers headers) {
