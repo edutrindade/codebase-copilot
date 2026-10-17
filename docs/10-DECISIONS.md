@@ -1035,6 +1035,21 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Consequências:** o formato de resposta que o fake produz precisa acompanhar o schema da P6; se o schema mudar, o fake muda junto.  
 **O que levaria à revisão:** necessidade de streaming (Etapa 7), de várias mensagens (perguntas de acompanhamento) ou de ferramentas.
 
+### D-065 — Histórico de perguntas e respostas
+**Status:** Aceita (16/10/2026; P7 e parte da P8 da Etapa 6; F2 entregue)  
+**Contexto:** as respostas precisam guardar a pergunta, o texto, as evidências enviadas ao modelo e as métricas, sobreviver à poda de snapshots (D-046) e não segurar transação durante a chamada ao provedor.  
+**Decisão:**
+- Migração V10 com `conversations`, `messages`, `answers` e `answer_evidence`, no módulo `history`, que `answering` usa pela API pública `AnswerHistory` (`start`, `complete`, `findAnswer`, `failPendingCreatedBefore`).
+- Ajustes em relação a `05-DATA-MODEL.md`: `conversations` sem `snapshot_id` (cada resposta guarda o seu) e com `title` = a primeira pergunta numa linha, até 100 caracteres; `messages` só com `USER` e `ASSISTANT`; `answers` com `PENDING`, `snapshot_id`, `retrieval_mode`, `prompt_version`, `generation_provider`/`generation_model`, `error_code`, `warnings`, `invalid_citation_count` e `retrieval_metadata` (nunca texto); `answer_evidence` com `id`, `rank_path`, `cited_start_line`/`cited_end_line` e `validation_status` (`CITED`, `NOT_CITED`, `INVALID_RANGE`), guardando todas as evidências enviadas ao modelo, citadas ou não.
+- Snapshot e chunk referenciados sem FK (D-046); tudo apagado em cascata a partir do projeto (D-021).
+- `CHECK`s de estado: `PENDING` sem conclusão, erro, mensagem de resposta, latência ou tokens e com custo `UNKNOWN`; `FAILED` com erro e sem mensagem de resposta; `ANSWERED` e `PARTIAL` com mensagem de resposta; `ABSTAINED` com ou sem texto (a abstenção sem evidência não chama o modelo). `ESTIMATED` exige custo e moeda, `UNKNOWN` proíbe os dois. Linhas citadas só em evidência `CITED`, as duas juntas e dentro do intervalo da evidência.
+- Escrita em duas transações curtas: `start` cria a conversa (ou valida que ela é do projeto, senão `CONVERSATION_NOT_FOUND`), a mensagem `USER` e a resposta `PENDING`; `complete` trava a resposta e só a conclui se ainda estiver `PENDING`, gravando a mensagem `ASSISTANT` (quando há texto) e as evidências. Uma resposta já recuperada ou apagada com o projeto devolve `false`, sem erro.
+- **Recuperação:** na inicialização, `AnswerRecovery` (em `answering`) marca `FAILED` com `ANSWER_INTERRUPTED` as respostas `PENDING` criadas há mais que o timeout de embeddings somado ao de geração, o máximo que um pedido espera pelos provedores. As mais recentes ficam, porque podem ser de outra instância em execução.
+
+**Motivo:** o histórico (F-07) continua verificável depois da poda, e os `CHECK`s impedem estados que a API não saberia mostrar.  
+**Consequências:** `05-DATA-MODEL.md` é atualizado no fechamento da etapa. O texto da pergunta e da resposta fica só no banco local, nunca em log.  
+**O que levaria à revisão:** perguntas de acompanhamento com histórico no prompt (Etapa 8), retenção de conversas fora da remoção do projeto, ou volume de evidências copiadas relevante (D-046).
+
 ---
 
 ## Decisões em aberto

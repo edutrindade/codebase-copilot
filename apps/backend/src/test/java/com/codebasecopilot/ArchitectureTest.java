@@ -101,4 +101,24 @@ class ArchitectureTest {
                     .should()
                     .dependOnClassesThat()
                     .resideInAPackage("com.codebasecopilot.indexing..");
+
+    @ArchTest
+    static final ArchRule historyDoesNotDependOnAnsweringOrRetrieval =
+            noClasses()
+                    .that()
+                    .resideInAPackage("com.codebasecopilot.history..")
+                    .should()
+                    .dependOnClassesThat()
+                    .resideInAnyPackage(
+                            "com.codebasecopilot.answering..", "com.codebasecopilot.retrieval..");
+
+    @ArchTest
+    static final ArchRule retrievalDoesNotDependOnAnsweringOrHistory =
+            noClasses()
+                    .that()
+                    .resideInAPackage("com.codebasecopilot.retrieval..")
+                    .should()
+                    .dependOnClassesThat()
+                    .resideInAnyPackage(
+                            "com.codebasecopilot.answering..", "com.codebasecopilot.history..");
 }

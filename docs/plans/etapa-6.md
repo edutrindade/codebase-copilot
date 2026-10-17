@@ -315,6 +315,17 @@ Somados os embeddings do corpus da Etapa 5 (US$ 0,02 a 0,07, uma vez, depois em 
 - Migração, repositórios em `history`, recuperação de `PENDING` na inicialização.
 - **Testes:** cascata na remoção do projeto; poda de snapshot e limpeza de chunks não apagam evidências; `CHECK`s de estado (`FAILED` exige `error_code`, `PENDING` não tem métricas); conversa de outro projeto; recuperação de `PENDING` vencido e preservação do recente.
 
+**Como foi entregue (16/10/2026)**
+- `V10__create_history.sql` com as quatro tabelas, `CHECK`s de estado, de custo e das linhas citadas, e índices para a listagem de conversas, as mensagens em ordem e a recuperação de `PENDING`. Registrado na D-065.
+- Em `history`: `AnswerHistory` (`start`, `complete`, `findAnswer`, `failPendingCreatedBefore`), `ConversationRepository`, `AnswerRepository` e os tipos públicos (`NewQuestion`, `PendingAnswer`, `AnswerOutcome`, `AnswerMetrics`, `AnswerEvidence`, `StoredAnswer`, `StoredEvidence`, `AnswerStatus`, `EvidenceValidation`, `CostStatus`). `CONVERSATION_NOT_FOUND` entrou no `ErrorCode`, com mensagens pt-BR; `openapi.json` regenerado.
+- Em `answering`: `AnswerRecovery` e `AnswerErrorCode` (por ora só `ANSWER_INTERRUPTED`; a F4 completa).
+- ArchUnit: `history` não depende de `answering` nem de `retrieval`; `retrieval` não depende de `answering` nem de `history`.
+- **Testes:** `HistorySchemaIT` (`CHECK`s de estado, custo, modo, papel e linhas citadas; rótulo único por resposta; uma resposta por pergunta); `AnswerHistoryIT` (conversa nova e existente, título, conversa de outro projeto e inexistente, projeto inexistente sem nada gravado, resposta completa com evidências e metadados, `FAILED` sem mensagem, abstenção sem texto, conclusão única, conclusão depois da remoção do projeto, cascata, evidência que sobrevive à poda do snapshot e à limpeza de chunks e conteúdos); `AnswerRecoveryIT` (vencida vira `ANSWER_INTERRUPTED`, recente e concluída ficam, recuperada não é concluída depois); `AnswerHistoryTest` (título).
+- **Desvios:**
+  - A recuperação ficou em `answering`, não em `history`: o corte depende dos timeouts dos provedores, que `history` não precisa conhecer. O corte é o timeout de embeddings somado ao de geração.
+  - O código de erro é texto em `history` (os códigos de `FAILED` são de `answering`).
+  - `ABSTAINED` pode não ter mensagem de resposta: a abstenção sem evidência (P4) não chama o modelo, e o texto exibido sai da mensagem pt-BR na F4.
+
 ### F3 — Contexto, prompt e validação
 - `ContextAssembler`, `PromptBuilder` e `CitationValidator`, puros, em `answering`; fachada `Retrieval`.
 - **Testes:** orçamento de tokens, `maxEvidence`, limite por arquivo, sobreposição pulada, rótulos em ordem; delimitador aleatório e conteúdo que tenta fechar o bloco; validador com rótulo inventado, linhas fora e invertidas, marcador sem citação, citação sem marcador, JSON inválido e fora do schema, status final em cada combinação.
