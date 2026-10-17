@@ -1098,6 +1098,21 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Consequências:** `06-API-CONTRACTS.md` §8 a §10 atualizados no fechamento da etapa.  
 **O que levaria à revisão:** busca ou filtros no histórico, conversas longas o bastante para pedir paginação das respostas, ou a abertura do arquivo inteiro do snapshot (`GET /snapshots/{snapshotId}/files/content`).
 
+### D-069 — Avaliação de respostas (P10 da Etapa 6)
+**Status:** Aceita (16/10/2026; F6 da Etapa 6 entregue; rodada com o modelo real pendente de saldo no provedor)  
+**Contexto:** o aceite da Etapa 6 pede citações inválidas sinalizadas e abstenção quando falta evidência; `08` §4 pede validade de citação, abstenção e vazamento medidos no corpus da D-061, com correção e suporte por auditoria humana.  
+**Decisão:**
+- **`AnswerEvaluationIT`**, tag `eval`, fora do `verify`. Indexa os corpora como o harness da D-062 (a preparação passou para `EvalCorpora`, usada pelos dois) e faz as 40 perguntas, inclusive as com `mustAbstain`, por `POST /questions`, cada uma numa conversa nova. Provedor de chat em `EVAL_GENERATION_PROVIDER` (`fake` por padrão; `openai` com a chave de `GENERATION_API_KEY`); embeddings em `EVAL_PROVIDER`, como na D-062; modo `HYBRID` com embeddings e `LEXICAL` sem, ou `EVAL_RETRIEVAL_MODE`.
+- **`mustNotContain`** nas anotações: textos que não podem aparecer na resposta, comparados sem diferenciar maiúsculas. Obrigatório nas categorias `PROMPT_INJECTION` e `EXCLUDED_SECRET`; o `verify` confere que os textos da fixture existem nela (um erro de digitação faria a checagem passar sempre). Na fixture: o token sintético do `.npmrc` (fx-08 e fx-09) e o que o `CONTRIBUTING.md` injetado pede para dizer (fx-08).
+- **Métricas automáticas** (`AnswerQuality`, pura, com testes no `verify`), sobre a resposta como a API a devolve: validade de citação (citações válidas / emitidas, contadas por evidência, porque o validador junta as citações repetidas de uma evidência); respostas sustentadas (`ANSWERED`/`PARTIAL` com ao menos uma citação válida); citação relevante (linhas citadas sobrepondo um intervalo esperado, pela regra da `RetrievalMetrics`; indício de suporte, não prova); abstenção correta nas perguntas com `mustAbstain` e indevida nas demais; vazamento; falhas. Resumo geral, por corpus, categoria e idioma; tokens (média e p95), custo estimado (total e médio) e latência (média e p95).
+- **Cache de respostas** (`GenerationCache`): cada resultado do provedor fica em `DATA_DIR/eval-cache/answers/<provedor>-<modelo>-reasoning-<esforço>/<sha256 do pedido>.json` (ou em `EVAL_CACHE_DIR`). O nonce aleatório dos delimitadores (D-066) é normalizado antes do hash; sem isso, nenhum pedido se repetiria. O arquivo guarda a saída do modelo e os tokens, nunca o prompt; falhas não entram. Uma resposta em cache mantém os tokens e o custo da chamada original e fica fora da latência.
+- **Resultados:** `<data>-answers-<provedor>-<modelo>-<esforço>-<modo>.json` (métricas, referências das evidências sem o trecho, texto da resposta) e `.md` em pt-BR, com o resumo e, por pergunta, a resposta ao lado dos trechos citados e caixas para a auditoria humana (correta, sustentada, nota). Com o modelo real, em `eval/results/`, versionados; com o fake, em `apps/backend/target/eval-results/`, sem versionar, porque só testam o harness.
+- Sem metas numéricas (`08` §9): a primeira rodada real é o baseline.
+
+**Motivo:** passar pelo endpoint mede o fluxo que a pessoa usa (recuperação, contexto, prompt, validação e custo); o cache torna a rodada paga barata de refazer e as métricas reproduzíveis, já que a resposta do modelo não é determinística.  
+**Consequências:** a rodada com o fake na fixture roda em segundos e exercita o harness inteiro; a rodada real (custo estimado abaixo de US$ 0,15 com o `gpt-6-luna`, F0) e a auditoria esperam saldo, como a rodada da Etapa 5. A comparação com o `gpt-6.1-sol` e com o esforço `none` sai do mesmo harness, mudando só a configuração.  
+**O que levaria à revisão:** LLM como juiz (Etapa 8), corpus maior, perguntas de acompanhamento ou um provedor que informe custo.
+
 ---
 
 ## Decisões em aberto

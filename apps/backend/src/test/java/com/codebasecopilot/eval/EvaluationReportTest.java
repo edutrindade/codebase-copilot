@@ -90,6 +90,7 @@ class EvaluationReportTest {
                         Difficulty.EASY,
                         List.of(new ExpectedRange("src/A.java", 1, 10, List.of())),
                         false,
+                        List.of(),
                         null);
         Question missed =
                 new Question(
@@ -100,6 +101,7 @@ class EvaluationReportTest {
                         Difficulty.HARD,
                         List.of(new ExpectedRange("src/B.java", 1, 10, List.of())),
                         false,
+                        List.of(),
                         null);
         RetrievedChunk a = new RetrievedChunk(List.of("src/A.java", "src/Copy.java"), 1, 20);
         RetrievedChunk b = new RetrievedChunk(List.of("src/B.java"), 1, 20);

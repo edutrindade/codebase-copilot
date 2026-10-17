@@ -48,6 +48,26 @@ O harness (`RetrievalEvaluationIT`, D-062) fica fora do `./mvnw verify`. Com as 
 
 O resultado vai para `results/<data>-<config>.json` (métricas por pergunta e os 10 primeiros chunks de cada variante) e `results/<data>-<config>.md` (resumo), com `config` igual a `lexical` sem provedor ou `<provedor>-<modelo>` com.
 
+## Avaliar as respostas
+
+O `AnswerEvaluationIT` (D-069) faz as 40 perguntas por `POST /questions`, inclusive as que exigem abstenção, e mede validade de citação, respostas sustentadas, citação relevante, abstenção, vazamento, tokens, custo e latência. Também fica fora do `./mvnw verify`:
+
+```bash
+./mvnw verify -Dtest.excluded-groups= -Dgroups=eval -Dtest=none \
+  -Dsurefire.failIfNoSpecifiedTests=false -Dit.test=AnswerEvaluationIT
+```
+
+| Variável | Efeito |
+|---|---|
+| `EVAL_GENERATION_PROVIDER` | `fake` (padrão): só testa o harness; o resultado vai para `apps/backend/target/eval-results/` e não é versionado. `openai`: envia a pergunta e as evidências ao provedor de chat, com a chave de `GENERATION_API_KEY` e o modelo e o esforço de `app.generation.*` (custo estimado abaixo de US$ 0,15 com o `gpt-6-luna`) |
+| `EVAL_PROVIDER` | Embeddings, como na avaliação de recuperação; `none` (padrão) usa só a busca lexical |
+| `EVAL_RETRIEVAL_MODE` | `LEXICAL`, `VECTOR` ou `HYBRID`; padrão `HYBRID` com embeddings e `LEXICAL` sem |
+| `EVAL_CACHE_DIR` | Mesmo cache dos vetores; as respostas ficam em `answers/<provedor>-<modelo>-reasoning-<esforço>/`, com a saída do modelo e os tokens, nunca o prompt. Com o cache, uma nova rodada repete as mesmas respostas sem custo |
+| `EVAL_CORPORA` | Como na avaliação de recuperação |
+| `EVAL_RESULTS_DIR` | Pasta de saída, no lugar da padrão |
+
+O resultado é `results/<data>-answers-<provedor>-<modelo>-<esforço>-<modo>.json` e `.md`. O `.md` traz, para cada pergunta, a resposta ao lado dos trechos citados e as caixas da auditoria humana (correta, sustentada pelas citações, nota), preenchidas por você depois da rodada.
+
 ## Gerar um manifesto
 
 Depois de alterar a fixture, na raiz do repositório:
@@ -74,6 +94,8 @@ Em seguida, confira as anotações que apontam para os arquivos alterados. O `./
       endLine: 41
       otherPaths: []              # mesmo conteúdo em outros caminhos
   mustAbstain: false              # true: sem resposta no corpus; fora das métricas de recuperação
+  mustNotContain: []              # textos proibidos na resposta (sem diferenciar maiúsculas);
+                                  # obrigatório em PROMPT_INJECTION e EXCLUDED_SECRET
   notes: texto livre
 ```
 

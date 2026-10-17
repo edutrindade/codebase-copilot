@@ -378,6 +378,16 @@ Somados os embeddings do corpus da Etapa 5 (US$ 0,02 a 0,07, uma vez, depois em 
 - `AnswerEvaluationIT`, `mustNotContain` nas anotações (com o validador e o `EvalAnnotationsTest`), cache de respostas, relatório; rodada com o fake (só o harness) e com o modelo real, se houver saldo; sua auditoria da amostra.
 - **Testes:** métricas com respostas conhecidas (validade, sustentação, relevância, abstenção, `mustNotContain`); cache devolve a mesma resposta sem chamar o provedor; chave nova no YAML validada.
 
+**Como foi entregue (16/10/2026)**
+- Em `com.codebasecopilot.eval` (fontes de teste): `AnswerQuality` (métricas), `GenerationCache` (cache de respostas, com o nonce normalizado na chave), `AnswerEvaluationReport` (JSON e `.md` com a auditoria), `EvalCorpora` (preparação dos corpora, extraída do `RetrievalEvaluationIT`) e `EvalCaches` (os dois caches nos contextos de avaliação). `AnswerEvaluationIT` em `answering`. Registrado na D-069.
+- `mustNotContain` em `QuestionSet`/`QuestionSets`, obrigatório em `PROMPT_INJECTION` e `EXCLUDED_SECRET`; fx-08 e fx-09 anotadas. `eval/README.md` com a avaliação de respostas e o campo novo.
+- **Testes:** `AnswerQualityTest` (validade com citações inválidas e de intervalo, sustentação, relevância pelas linhas citadas e por `otherPaths`, relevância não medida sem resposta ou com `mustAbstain`, vazamento sem diferenciar maiúsculas, resumo e taxas sem denominador); `GenerationCacheTest` (segunda rodada sem chamar o provedor, nonce diferente acerta o cache, pergunta, modelo ou esforço diferentes erram, só a saída no arquivo, arquivo corrompido buscado de novo, falha não guardada); `AnswerEvaluationReportTest` (nomes, métricas e uso no JSON, sem trechos no JSON, resposta em cache fora da latência, `.md` com linhas citadas e caixas de auditoria, cerca maior que as crases do trecho); `QuestionSetsTest` e `EvalAnnotationsTest` (chave nova, categorias que a exigem, textos proibidos presentes na fixture).
+- **Rodadas:** com o fake, na fixture e sem embeddings (`LEXICAL`): o harness completo em segundos; a segunda rodada teve 10 acertos e nenhuma chamada ao provedor. O `RetrievalEvaluationIT` refatorado deu, na fixture, o mesmo resultado do baseline versionado. **Rodada com o modelo real e sua auditoria: não executadas** (sem saldo confirmado).
+- **Desvios:**
+  - O nome do resultado inclui o esforço de raciocínio e o modo de recuperação (`answers-<provedor>-<modelo>-<esforço>-<modo>`), para as comparações previstas (`gpt-6.1-sol`, esforço `none`) não sobrescreverem umas às outras; a pasta do cache também separa o esforço.
+  - A auditoria humana entra no próprio `.md` (caixas "Correta" e "Sustentada pelas citações" e uma nota por pergunta), sem arquivo à parte.
+  - A rodada com o fake vai para `apps/backend/target/eval-results/`, para não se misturar aos resultados versionados.
+
 ### F7 — Fechamento
 - Aceite: citações inválidas rejeitadas ou sinalizadas e abstenção sem evidência suficiente, demonstradas em teste e, havendo saldo, na avaliação real.
 - Decisões: D-063 em diante; O-004 com o provedor de chat; D-014 (P2); D-046 com a implementação; D-047 (P9 resolvida).

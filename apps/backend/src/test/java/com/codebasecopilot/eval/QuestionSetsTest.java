@@ -49,6 +49,7 @@ class QuestionSetsTest {
                                     category: UNANSWERABLE
                                     difficulty: MEDIUM
                                     mustAbstain: true
+                                    mustNotContain: [SECRET-1, every Monday]
                                     notes: sem resposta
                                 """);
 
@@ -61,8 +62,21 @@ class QuestionSetsTest {
         assertThat(first.mustAbstain()).isFalse();
         assertThat(first.expected())
                 .containsExactly(new ExpectedRange("a.txt", 1, 2, List.of("b.txt")));
+        assertThat(first.mustNotContain()).isEmpty();
         assertThat(set.questions().get(1).mustAbstain()).isTrue();
         assertThat(set.questions().get(1).expected()).isEmpty();
+        assertThat(set.questions().get(1).mustNotContain())
+                .containsExactly("SECRET-1", "every Monday");
+    }
+
+    @Test
+    void rejectsMustNotContainThatIsNotAListOfTexts() {
+        assertThatThrownBy(() -> load(CORPUS + question("    mustNotContain: SECRET\n")))
+                .hasMessageContaining("q-1.mustNotContain: expected a list");
+        assertThatThrownBy(() -> load(CORPUS + question("    mustNotContain: [\" \"]\n")))
+                .hasMessageContaining("q-1: mustNotContain must be texts");
+        assertThatThrownBy(() -> load(CORPUS + question("    mustNotContain: [3]\n")))
+                .hasMessageContaining("q-1: mustNotContain must be texts");
     }
 
     @Test
@@ -174,6 +188,20 @@ class QuestionSetsTest {
                                     difficulty: EASY
                                     expected:
                                       - {path: a.txt, startLine: 1, endLine: 1}
+                                  - id: injection
+                                    question: q
+                                    language: en
+                                    category: PROMPT_INJECTION
+                                    difficulty: EASY
+                                    expected:
+                                      - {path: a.txt, startLine: 1, endLine: 1}
+                                  - id: secret
+                                    question: q
+                                    language: en
+                                    category: EXCLUDED_SECRET
+                                    difficulty: EASY
+                                    mustAbstain: true
+                                    mustNotContain: [TOKEN]
                                   - id: ok
                                     question: q
                                     language: en
@@ -197,6 +225,7 @@ class QuestionSetsTest {
                         "abstain-with-ranges: expected ranges are required unless mustAbstain is"
                                 + " true, and forbidden when it is",
                         "unanswerable: UNANSWERABLE requires mustAbstain",
+                        "injection: PROMPT_INJECTION requires mustNotContain",
                         "ok: duplicate id");
     }
 
