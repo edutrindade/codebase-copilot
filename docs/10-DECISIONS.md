@@ -948,7 +948,7 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 - Um chunk é identificado pelo id; os caminhos e o conteúdo vêm de qualquer canal (são iguais em todos).
 - Desempate determinístico: maior score, melhor rank individual, primeiro caminho, linha inicial e id do chunk (como texto, a ordem do banco).
 - Canal com lista vazia não soma nada; o de caminhos só participa quando a pergunta cita um arquivo do snapshot (D-058).
-- No modo `HYBRID`, cada canal busca `max(app.retrieval.candidates, limit)` resultados (padrão **50**) antes de fundir. Os canais são consultados em sequência (vetorial, lexical, caminhos), sem paralelismo.
+- No modo `HYBRID`, cada canal busca `max(app.retrieval.candidates, limit)` resultados (padrão **50**) antes de fundir. Os canais são consultados em sequência (vetorial, lexical, caminhos), sem paralelismo. **Revisto pela D-080 (17/10/2026):** o lexical e o de caminhos rodam em paralelo com o embedding da pergunta e o vetorial.
 - `k`, pesos e profundidade são parâmetros da função, para a avaliação (F6) variá-los sobre as mesmas listas, sem consultar o banco de novo.
 
 **Motivo:** RRF dispensa normalizar scores de naturezas diferentes (cosseno, `ts_rank_cd`, similaridade de trigramas) e premia o que aparece bem em mais de um canal.  
@@ -1241,6 +1241,28 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Motivo:** o hono tem camadas (roteadores intercambiáveis, middlewares, adaptadores), o que dá perguntas de fluxo e de arquitetura, e é o maior corpus, útil também para a P6.  
 **Consequências:** a avaliação completa exige extrair três corpora externos. No hono, o canal de caminhos piora o Recall@10 (0,432 para 0,295), ao contrário dos outros corpora: entrada para a F4. O push protection do GitHub bloqueia uma chave `sk_test_` da Stripe mesmo sintética, então a fixture usa um token `xoxb-` sem o formato numérico do Slack; na F6, os testes do padrão da Stripe montam o valor por concatenação, sem o literal no código.  
 **O que levaria à revisão:** anotações ambíguas na revisão, ou um corpus que não separe as variantes da P3.
+
+### D-080 — Medições de desempenho, metas e limites (P6 da Etapa 8)
+**Status:** Aceita (17/10/2026; F2 da Etapa 8; metas e limites confirmados por você)  
+**Contexto:** os limites da D-035, de `app.indexing.*`, o `max-chunks-per-job` e a limpeza de órfãos (D-052) eram hipóteses. Faltavam números do conjunto (varredura, import, indexação, busca, pergunta, memória e armazenamento) num projeto do tamanho do limite.  
+**Decisão:**
+- **Harness** `PerformanceEvaluationIT` (tag `performance`, fora do `verify`; `eval/README.md`): mede pela API, com os provedores `fake`, a fixture, os corpora externos e um repositório sintético determinístico (`SyntheticRepository`: 3.000 arquivos, ~46 mil chunks, com a forma do código dos corpora). Resultado em `eval/results/<data>-perf.*`, só com tamanhos, contagens e durações.
+- **Busca híbrida em paralelo** (revisa a D-059): no `HYBRID`, os canais lexical e de caminhos rodam em threads virtuais enquanto a thread da requisição gera o vetor da pergunta e consulta o vetorial. Com 46 mil chunks, o p95 do `HYBRID` caiu de 1,06–1,58 s (três rodadas, `2026-10-17-perf-sequencial.*`) para **676 ms**, e o da pergunta sem o provedor de 0,77–1,10 s para **620 ms** (`2026-10-17-perf.*`). Com o provedor real, a chamada de embeddings também passa a correr em paralelo com o lexical.
+- **Metas:** busca híbrida com p95 ≤ 1 s com 50 mil chunks e ≤ 200 ms até 5 mil; pergunta sem o provedor ≤ 1 s com 50 mil; reindexação sem mudanças abaixo de 10% da completa. Todas atendidas: nos corpora reais (até 2.050 chunks) o `HYBRID` fica em até 90 ms de p95; a reindexação sem mudanças leva 3,1 s contra 41–45 s da completa (7–8%).
+- **Pior caso fora da meta:** pergunta com um termo presente em quase todo chunk, `HYBRID` com p95 de 1,06 s, dominado pelo lexical. Fica registrado; a alavanca é o IDF no lexical, só se o uso real mostrar o caso.
+- **Limites mantidos, com os números:**
+  - `max-chunks-per-job` (50 mil): é onde a busca chega perto de 1 s; ~110–140 MB de texto já o atingem. Projetos maiores falham no limite, com a mensagem atual.
+  - `max-project-bytes` (500 MB) e demais limites da D-035: a varredura de 3.000 arquivos leva 0,1–0,3 s; nada pede mudança. O limite de chunks é o que vale na prática para projetos só de código.
+  - Import ZIP (100 MB): 34–47 MB importados em menos de 1 s.
+  - `app.indexing.*`: a indexação completa de 46 mil chunks leva 41–45 s, dos quais ~28 s na etapa lexical; o heap chega a 313 MB e o RSS a 546 MB (heap máximo de 4 GB). Nenhum lote pede ajuste.
+  - Limpeza de órfãos (D-052): `FINALIZING` de 50 a 800 ms, inclusive com 10% dos arquivos alterados.
+  - HNSW (D-049): não agora; o vetorial exato fica em 0,36–0,70 s de p95 com 46 mil chunks, e a troca muda o ranking, o que só dá para validar com vetores reais (F3).
+  - Pular o hash por tamanho e data: não, a reindexação sem mudanças já está abaixo de 10%.
+- **Armazenamento:** ~960 MB para 46 mil chunks no sintético (`chunk_lexical` 443 MB, vetores 381 MB); nos corpora reais, ~7 vezes o tamanho do texto. A poda mantém 4 snapshots; com 10% dos arquivos mudando por rodada, o total cresce até a poda alcançar.
+
+**Motivo:** os números mostram que a soma dos canais era o principal custo da busca grande, e paralelizar não muda nenhum resultado.  
+**Consequências:** cada busca híbrida usa até três conexões do pool ao mesmo tempo (o padrão do Hikari é 10). No Mac com Docker, o disco da VM satura depois de alguns GB escritos e a indexação completa chega a 89–91 s, com o tempo extra na etapa que estiver gravando (esperas `DataFileExtend` e `WalWrite` no `pg_stat_activity`); por isso as durações são comparadas em faixas, e não por uma rodada.  
+**O que levaria à revisão:** busca acima da meta com o provedor real, projetos reais acima de 50 mil chunks, ou máquina com disco mais lento.
 
 ---
 

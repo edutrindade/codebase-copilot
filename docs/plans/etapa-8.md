@@ -266,6 +266,12 @@ O Spring Boot 4.1.1 é o último 4.1.x publicado no Maven Central, então não h
 - `PerformanceEvaluationIT` e o repositório sintético (P6); primeira rodada versionada.
 - Revisão dos limites com os números; metas confirmadas com você; D-0xx.
 
+**Resultado (17/10/2026)**
+- `PerformanceEvaluationIT`, `SyntheticRepository` e `PerformanceReport`, com testes do gerador e do relatório; rodadas em `eval/results/2026-10-17-perf-sequencial.*` (antes) e `2026-10-17-perf.*` (depois).
+- Metas confirmadas por você: busca híbrida com p95 ≤ 1 s com 50 mil chunks e ≤ 200 ms até 5 mil; atendidas depois de paralelizar os canais do `HYBRID` (p95 de 1,06–1,58 s para 676 ms com 46 mil chunks).
+- Limites mantidos, com os números (`max-chunks-per-job`, D-035, ZIP, `app.indexing.*`, D-052); HNSW e o hash por data ficam de fora. Registro na D-080.
+- **Desvio:** a tag ficou `performance`, a dos harnesses de desempenho existentes, e não `perf`. O gerador sintético foi ajustado depois da primeira rodada, porque tinha identificadores quase todos únicos e nenhuma linha em branco, o que inflava o lexical em 3 a 4 vezes.
+
 ### F3 — Rodadas com o provedor real (depende de saldo)
 - As rodadas da P2, a sua auditoria das respostas, e as revisões da D-017, O-005, D-058 e O-004.
 - **Adiada (17/10/2026)** para depois de todas as etapas do roteiro; a F4 roda só o que não precisa do provedor.

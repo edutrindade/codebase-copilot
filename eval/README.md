@@ -80,6 +80,23 @@ O `AnswerEvaluationIT` (D-069) faz as 80 perguntas por `POST /questions`, inclus
 
 O resultado é `results/<data>-answers-<provedor>-<modelo>-<esforço>-<modo>.json` e `.md`. O `.md` traz, para cada pergunta, a resposta ao lado dos trechos citados e as caixas da auditoria humana (correta, sustentada pelas citações, nota), preenchidas por você depois da rodada.
 
+## Medir o desempenho
+
+O `PerformanceEvaluationIT` (P6 da Etapa 8) mede, pela API e com os provedores `fake`, a varredura, o import ZIP, cada etapa da indexação (completa, sem mudanças e depois de reescrever 10% dos arquivos), a busca em cada modo, a pergunta sem o tempo do provedor, heap e RSS e o armazenamento de cada tabela. Roda na fixture, em cada corpus externo com a variável definida e num repositório sintético gerado (~3.000 arquivos, ~50 mil chunks). Fica fora do `./mvnw verify`:
+
+```bash
+./mvnw verify -Dtest.excluded-groups= -Dgroups=performance -Dtest=none \
+  -Dsurefire.failIfNoSpecifiedTests=false -Dit.test=PerformanceEvaluationIT
+```
+
+| Variável | Efeito |
+|---|---|
+| `EVAL_CORPORA` | Como na avaliação de recuperação; o sintético roda sempre |
+| `EVAL_SYNTHETIC_FILES` | Quantidade de arquivos do sintético, para conferir o harness em segundos |
+| `EVAL_RESULTS_DIR` | Pasta de saída, no lugar de `results/` |
+
+O resultado é `results/<data>-perf.json` e `.md`, com a máquina e as versões. Só tem tamanhos, contagens e durações: nenhum caminho, conteúdo ou pergunta.
+
 ## Gerar um manifesto
 
 Depois de alterar a fixture, na raiz do repositório:

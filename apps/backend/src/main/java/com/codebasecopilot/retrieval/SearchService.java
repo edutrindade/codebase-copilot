@@ -18,6 +18,10 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.Executor;
 import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -121,31 +125,49 @@ class SearchService {
         Map<Channel, List<SearchHit>> lists = new EnumMap<>(Channel.class);
         Map<Channel, Long> millis = new EnumMap<>(Channel.class);
         int depth = mode == SearchMode.HYBRID ? Math.max(properties.candidates(), limit) : limit;
+        // In HYBRID the lexical and path channels run on other threads while this one embeds the
+        // question and runs the vector channel, so the latency is the slowest channel, not the sum.
+        Map<Channel, CompletableFuture<Timed>> others = new EnumMap<>(Channel.class);
+        if (mode == SearchMode.HYBRID) {
+            others.put(Channel.LEXICAL, async(() -> lexical.search(snapshotId, text, depth)));
+            others.put(
+                    Channel.PATH,
+                    async(
+                            () ->
+                                    path.search(
+                                            snapshotId,
+                                            text,
+                                            PathSearch.DEFAULT_THRESHOLD,
+                                            depth)));
+        }
         Long embeddingMillis = null;
         Long embeddingTokens = null;
-        if (provider != null) {
-            ModelInfo model = provider.model();
-            long start = System.nanoTime();
-            EmbeddingResult embedded = embed(provider, text);
-            embeddingMillis = (System.nanoTime() - start) / 1_000_000;
-            embeddingTokens = embedded.tokens();
-            float[] queryVector = embedded.vectors().getFirst();
-            timed(
-                    Channel.VECTOR,
-                    lists,
-                    millis,
-                    () -> vector.search(snapshotId, model, queryVector, depth));
+        try {
+            if (provider != null) {
+                ModelInfo model = provider.model();
+                long start = System.nanoTime();
+                EmbeddingResult embedded = embed(provider, text);
+                embeddingMillis = (System.nanoTime() - start) / 1_000_000;
+                embeddingTokens = embedded.tokens();
+                float[] queryVector = embedded.vectors().getFirst();
+                put(
+                        Channel.VECTOR,
+                        timed(() -> vector.search(snapshotId, model, queryVector, depth)),
+                        lists,
+                        millis);
+            }
+            if (mode == SearchMode.LEXICAL) {
+                put(
+                        Channel.LEXICAL,
+                        timed(() -> lexical.search(snapshotId, text, depth)),
+                        lists,
+                        millis);
+            }
+        } catch (RuntimeException e) {
+            others.values().forEach(SearchService::awaitQuietly);
+            throw e;
         }
-        if (mode.usesLexical()) {
-            timed(Channel.LEXICAL, lists, millis, () -> lexical.search(snapshotId, text, depth));
-        }
-        if (mode == SearchMode.HYBRID) {
-            timed(
-                    Channel.PATH,
-                    lists,
-                    millis,
-                    () -> path.search(snapshotId, text, PathSearch.DEFAULT_THRESHOLD, depth));
-        }
+        others.forEach((channel, future) -> put(channel, join(future), lists, millis));
 
         List<RankedHit> hits =
                 switch (mode) {
@@ -242,14 +264,51 @@ class SearchService {
         return provider;
     }
 
-    private static void timed(
-            Channel channel,
-            Map<Channel, List<SearchHit>> lists,
-            Map<Channel, Long> millis,
-            Supplier<List<SearchHit>> search) {
+    private record Timed(List<SearchHit> hits, long millis) {}
+
+    private static final Executor CHANNELS =
+            task -> Thread.ofVirtual().name("search-channel").start(task);
+
+    private static Timed timed(Supplier<List<SearchHit>> search) {
         long start = System.nanoTime();
-        lists.put(channel, search.get());
-        millis.put(channel, (System.nanoTime() - start) / 1_000_000);
+        List<SearchHit> hits = search.get();
+        return new Timed(hits, (System.nanoTime() - start) / 1_000_000);
+    }
+
+    private static CompletableFuture<Timed> async(Supplier<List<SearchHit>> search) {
+        return CompletableFuture.supplyAsync(() -> timed(search), CHANNELS);
+    }
+
+    private static Timed join(CompletableFuture<Timed> future) {
+        try {
+            return future.join();
+        } catch (CompletionException e) {
+            if (e.getCause() instanceof RuntimeException cause) {
+                throw cause;
+            }
+            if (e.getCause() instanceof Error cause) {
+                throw cause;
+            }
+            throw e;
+        }
+    }
+
+    // Lets a channel finish before the failure propagates, so it does not outlive the request.
+    private static void awaitQuietly(CompletableFuture<Timed> future) {
+        try {
+            future.join();
+        } catch (CompletionException | CancellationException e) {
+            // The failure that is propagating matters more than this one.
+        }
+    }
+
+    private static void put(
+            Channel channel,
+            Timed timed,
+            Map<Channel, List<SearchHit>> lists,
+            Map<Channel, Long> millis) {
+        lists.put(channel, timed.hits());
+        millis.put(channel, timed.millis());
     }
 
     private static Map<Channel, Integer> sizes(Map<Channel, List<SearchHit>> lists) {
