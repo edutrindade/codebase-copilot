@@ -141,7 +141,8 @@ class SnapshotController {
     record SnapshotResponse(
             UUID id,
             UUID projectId,
-            @Schema(allowableValues = {"BUILDING", "READY", "PARTIAL", "FAILED"}) String status,
+            @Schema(allowableValues = {"BUILDING", "READY", "PARTIAL", "FAILED", "CANCELLED"})
+                    String status,
             boolean active,
             int settingsVersion,
             String chunkingVersion,

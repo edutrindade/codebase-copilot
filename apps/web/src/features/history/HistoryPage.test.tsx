@@ -53,6 +53,47 @@ describe('HistoryPage', () => {
     expect(pages).toEqual(['0', '1']);
   });
 
+  test('deletes a conversation after confirmation and refreshes the list', async () => {
+    let items = [summary];
+    const deleted: string[] = [];
+    server.use(
+      http.get(projectUrl, () => HttpResponse.json(base)),
+      http.get(`${projectUrl}/conversations`, () => HttpResponse.json(page(items))),
+      http.delete(`/api/v1/conversations/${summary.id}`, () => {
+        deleted.push(summary.id);
+        items = [];
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    renderRoute(`/projects/${base.id}/history`);
+
+    await userEvent.click(await screen.findByRole('button', { name: text.delete(summary.title) }));
+    const dialog = await screen.findByRole('alertdialog', { name: text.deleteTitle });
+    expect(dialog).toHaveTextContent(summary.title);
+    expect(await axeViolations()).toEqual([]);
+    await userEvent.click(within(dialog).getByRole('button', { name: text.deleteConfirm }));
+
+    expect(await screen.findByRole('heading', { name: text.emptyTitle })).toBeInTheDocument();
+    expect(deleted).toEqual([summary.id]);
+  });
+
+  test('a failed deletion keeps the dialog open with the problem', async () => {
+    server.use(
+      http.get(projectUrl, () => HttpResponse.json(base)),
+      http.get(`${projectUrl}/conversations`, () => HttpResponse.json(page([summary]))),
+      http.delete(`/api/v1/conversations/${summary.id}`, () =>
+        problem(404, 'CONVERSATION_NOT_FOUND', { title: 'Conversa não encontrada' }),
+      ),
+    );
+    renderRoute(`/projects/${base.id}/history`);
+
+    await userEvent.click(await screen.findByRole('button', { name: text.delete(summary.title) }));
+    const dialog = await screen.findByRole('alertdialog', { name: text.deleteTitle });
+    await userEvent.click(within(dialog).getByRole('button', { name: text.deleteConfirm }));
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Conversa não encontrada');
+  });
+
   test('without conversations, invites to ask only when there is an active snapshot', async () => {
     server.use(
       http.get(projectUrl, () => HttpResponse.json(base)),

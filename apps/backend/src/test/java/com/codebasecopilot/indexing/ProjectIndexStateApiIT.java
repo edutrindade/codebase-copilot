@@ -53,7 +53,8 @@ class ProjectIndexStateApiIT {
                 .bodyJson()
                 .isLenientlyEqualTo(
                         """
-                        {"activeSnapshot": null, "indexing": null, "outdatedReasons": []}
+                        {"activeSnapshot": null, "indexing": null, "lastJob": null,
+                         "outdatedReasons": []}
                         """);
     }
 
@@ -121,6 +122,45 @@ class ProjectIndexStateApiIT {
         assertThat(mvc.get().uri("/api/v1/workspaces/{id}/projects", workspaceId))
                 .bodyJson()
                 .isLenientlyEqualTo("{\"items\": [{\"indexing\": %s}]}".formatted(expected));
+    }
+
+    @Test
+    void lastEndedJobAppearsInProjectAndList() {
+        String projectId = client.localProject(workspaceId, "work", "inventory-repo");
+        String completed = client.runJob(projectId).read("$.id");
+        assertThat(mvc.get().uri("/api/v1/projects/{id}", projectId))
+                .bodyJson()
+                .isLenientlyEqualTo(
+                        """
+                        {"lastJob": {"id": "%s", "status": "COMPLETED", "errorCode": null}}
+                        """
+                                .formatted(completed));
+        UUID id = UUID.fromString(projectId);
+        UUID failed = insertIndexJob(jdbc, id, insertSnapshot(jdbc, id, "FAILED"), "FAILED");
+        // now() in the database may lag the application clock that dated the first job.
+        jdbc.sql(
+                        """
+                        UPDATE index_jobs
+                        SET created_at = (SELECT max(created_at) FROM index_jobs)
+                                         + interval '1 second'
+                        WHERE id = :id
+                        """)
+                .param("id", failed)
+                .update();
+        insertIndexJob(jdbc, id, insertSnapshot(jdbc, id, "BUILDING"), "RUNNING");
+        String expected =
+                """
+                {"id": "%s", "status": "FAILED", "errorCode": "INDEX_IO_ERROR"}
+                """
+                        .formatted(failed);
+
+        assertThat(mvc.get().uri("/api/v1/projects/{id}", projectId))
+                .bodyJson()
+                .isLenientlyEqualTo("{\"lastJob\": %s}".formatted(expected));
+        assertThat(mvc.get().uri("/api/v1/workspaces/{id}/projects", workspaceId))
+                .bodyJson()
+                .isLenientlyEqualTo("{\"items\": [{\"lastJob\": %s}]}".formatted(expected));
+        assertThat((Object) project(projectId).read("$.lastJob.finishedAt")).isNotNull();
     }
 
     private DocumentContext project(String projectId) {

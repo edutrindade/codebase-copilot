@@ -74,6 +74,11 @@ class ConversationRepository {
                 .single();
     }
 
+    // Messages, answers and their evidence go with it (ON DELETE CASCADE).
+    boolean delete(UUID id) {
+        return jdbc.sql("DELETE FROM conversations WHERE id = :id").param("id", id).update() == 1;
+    }
+
     void insertMessage(UUID id, UUID conversationId, Role role, String content, Instant now) {
         jdbc.sql(
                         """

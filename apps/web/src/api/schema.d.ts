@@ -38,7 +38,11 @@ export interface paths {
         get: operations["getConversation"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Remove uma conversa
+         * @description Remove as perguntas, as respostas e as evidências copiadas. Uma resposta ainda PENDING é descartada quando o provedor responder.
+         */
+        delete: operations["deleteConversation"];
         options?: never;
         head?: never;
         patch?: never;
@@ -72,6 +76,26 @@ export interface paths {
         get: operations["getIndexJob"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/index-jobs/{jobId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancela um job de indexação
+         * @description Um job PENDING termina na hora como CANCELLED; num job RUNNING o pedido fica registrado (cancelRequested) e o job para na próxima etapa ou lote. O snapshot ativo não muda.
+         */
+        post: operations["cancelIndexJob"];
         delete?: never;
         options?: never;
         head?: never;
@@ -314,6 +338,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{projectId}/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Uso agregado do projeto
+         * @description Calculado sobre os jobs de indexação e as respostas guardadas; conversas removidas saem da conta.
+         */
+        get: operations["getProjectUsage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/snapshots/{snapshotId}": {
         parameters: {
             query?: never;
@@ -510,6 +554,20 @@ export interface components {
              * @description Momento da pergunta mais recente.
              */
             updatedAt: string;
+        };
+        CostUsageResponse: {
+            currency: string | null;
+            /** @description Soma das respostas com custo ESTIMATED; null se nenhuma tem. */
+            estimatedCost: number | null;
+            /** Format: int64 */
+            inputTokens: number;
+            /** Format: int64 */
+            outputTokens: number;
+            /**
+             * Format: int64
+             * @description Respostas que chamaram o modelo e ficaram com custo UNKNOWN.
+             */
+            unknownCostAnswers: number;
         };
         CountsResponse: {
             /** Format: int64 */
@@ -758,6 +816,8 @@ export interface components {
         IndexJobResponse: {
             /** Format: int32 */
             attempts: number;
+            /** @description Cancelamento pedido e ainda não concluído, ou concluído. */
+            cancelRequested: boolean;
             /** Format: date-time */
             completedAt: string | null;
             /** Format: date-time */
@@ -775,9 +835,11 @@ export interface components {
             /** Format: date-time */
             startedAt: string | null;
             /** @enum {string} */
-            status: "PENDING" | "RUNNING" | "COMPLETED" | "FAILED";
+            status: "PENDING" | "RUNNING" | "COMPLETED" | "FAILED" | "CANCELLED";
         };
         IndexingResponse: {
+            /** @description Cancelamento pedido; o job para na próxima etapa ou lote. */
+            cancelRequested: boolean;
             /** Format: uuid */
             id: string;
             progress: components["schemas"]["ProgressResponse"] | null;
@@ -785,6 +847,29 @@ export interface components {
             stage: "SCANNING" | "PROCESSING_FILES" | "LEXICAL" | "EMBEDDING" | "FINALIZING" | null;
             /** @enum {string} */
             status: "PENDING" | "RUNNING";
+        };
+        IndexingUsageResponse: {
+            /**
+             * Format: int64
+             * @description Dos jobs COMPLETED.
+             */
+            averageDurationMs: number | null;
+            /** Format: int64 */
+            cancelled: number;
+            /** Format: int64 */
+            completed: number;
+            /** Format: int64 */
+            failed: number;
+            /**
+             * Format: int64
+             * @description Dos jobs COMPLETED.
+             */
+            p95DurationMs: number | null;
+            /**
+             * Format: int64
+             * @description Todos os jobs, inclusive os em andamento.
+             */
+            total: number;
         };
         InventoryResponse: {
             byDirectory: components["schemas"]["DirectoryCountResponse"][];
@@ -835,6 +920,16 @@ export interface components {
             /** Format: int64 */
             files: number;
             language: string;
+        };
+        LastJobResponse: {
+            /** @description Código estável da falha, quando FAILED. */
+            errorCode: string | null;
+            /** Format: date-time */
+            finishedAt: string;
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            status: "COMPLETED" | "FAILED" | "CANCELLED";
         };
         LexicalResponse: {
             version: string;
@@ -967,7 +1062,7 @@ export interface components {
         };
         Problem: {
             /** @enum {string} */
-            code: "VALIDATION_FAILED" | "MALFORMED_REQUEST" | "RESOURCE_NOT_FOUND" | "METHOD_NOT_ALLOWED" | "UNSUPPORTED_MEDIA_TYPE" | "INTERNAL_ERROR" | "WORKSPACE_NOT_FOUND" | "WORKSPACE_NOT_EMPTY" | "PROJECT_NOT_FOUND" | "LOCAL_ROOTS_NOT_CONFIGURED" | "ROOT_NOT_FOUND" | "PATH_OUTSIDE_ROOT" | "PROJECT_ALREADY_EXISTS" | "DIRECTORY_NOT_FOUND" | "DIRECTORY_NOT_READABLE" | "PROJECT_BUSY" | "PROJECT_SOURCE_MISMATCH" | "UPLOAD_TOO_LARGE" | "IMPORT_NOT_FOUND" | "SOURCE_ROOT_NOT_CONFIGURED" | "SOURCE_DIRECTORY_NOT_FOUND" | "SOURCE_IS_SYMLINK" | "SOURCE_NOT_READABLE" | "SOURCE_NOT_IMPORTED" | "INDEX_JOB_NOT_FOUND" | "SNAPSHOT_NOT_FOUND" | "SNAPSHOT_NOT_SEARCHABLE" | "SNAPSHOT_LEXICAL_MISMATCH" | "EMBEDDINGS_NOT_AVAILABLE" | "SNAPSHOT_EMBEDDING_MISMATCH" | "CONVERSATION_NOT_FOUND" | "ANSWER_NOT_FOUND" | "EVIDENCE_NOT_FOUND" | "GENERATION_NOT_AVAILABLE" | "SNAPSHOT_PRUNED" | "FILE_NOT_FOUND" | "FILE_NOT_INDEXED" | "FORBIDDEN_HOST" | "FORBIDDEN_ORIGIN" | "EMBEDDING_PROVIDER_UNAVAILABLE" | "EMBEDDING_PROVIDER_UNAUTHORIZED" | "EMBEDDING_QUOTA_EXCEEDED" | "EMBEDDING_REQUEST_REJECTED" | "EMBEDDING_RATE_LIMITED";
+            code: "VALIDATION_FAILED" | "MALFORMED_REQUEST" | "RESOURCE_NOT_FOUND" | "METHOD_NOT_ALLOWED" | "UNSUPPORTED_MEDIA_TYPE" | "INTERNAL_ERROR" | "WORKSPACE_NOT_FOUND" | "WORKSPACE_NOT_EMPTY" | "PROJECT_NOT_FOUND" | "LOCAL_ROOTS_NOT_CONFIGURED" | "ROOT_NOT_FOUND" | "PATH_OUTSIDE_ROOT" | "PROJECT_ALREADY_EXISTS" | "DIRECTORY_NOT_FOUND" | "DIRECTORY_NOT_READABLE" | "PROJECT_BUSY" | "PROJECT_SOURCE_MISMATCH" | "UPLOAD_TOO_LARGE" | "IMPORT_NOT_FOUND" | "SOURCE_ROOT_NOT_CONFIGURED" | "SOURCE_DIRECTORY_NOT_FOUND" | "SOURCE_IS_SYMLINK" | "SOURCE_NOT_READABLE" | "SOURCE_NOT_IMPORTED" | "INDEX_JOB_NOT_FOUND" | "JOB_NOT_ACTIVE" | "SNAPSHOT_NOT_FOUND" | "SNAPSHOT_NOT_SEARCHABLE" | "SNAPSHOT_LEXICAL_MISMATCH" | "EMBEDDINGS_NOT_AVAILABLE" | "SNAPSHOT_EMBEDDING_MISMATCH" | "CONVERSATION_NOT_FOUND" | "ANSWER_NOT_FOUND" | "EVIDENCE_NOT_FOUND" | "GENERATION_NOT_AVAILABLE" | "SNAPSHOT_PRUNED" | "FILE_NOT_FOUND" | "FILE_NOT_INDEXED" | "FORBIDDEN_HOST" | "FORBIDDEN_ORIGIN" | "EMBEDDING_PROVIDER_UNAVAILABLE" | "EMBEDDING_PROVIDER_UNAUTHORIZED" | "EMBEDDING_QUOTA_EXCEEDED" | "EMBEDDING_REQUEST_REJECTED" | "EMBEDDING_RATE_LIMITED";
             detail: string;
             errors?: components["schemas"]["FieldError"][];
             instance: string;
@@ -991,6 +1086,8 @@ export interface components {
             /** Format: uuid */
             id: string;
             indexing: components["schemas"]["IndexingResponse"] | null;
+            /** @description Último job de indexação terminado; null se nenhum terminou. */
+            lastJob: components["schemas"]["LastJobResponse"] | null;
             name: string;
             outdatedReasons: ("SETTINGS_CHANGED" | "SOURCE_REIMPORTED" | "CHUNKING_CHANGED" | "EMBEDDING_MODEL_CHANGED" | "EMBEDDINGS_MISSING" | "LEXICAL_INDEX_MISSING" | "LEXICAL_INDEX_CHANGED")[];
             source: components["schemas"]["LocalFolderSourceResponse"] | components["schemas"]["ZipSourceResponse"];
@@ -1014,6 +1111,30 @@ export interface components {
              * @description Ausente: snapshot ativo do projeto.
              */
             snapshotId?: string | null;
+        };
+        QuestionUsageResponse: {
+            /** Format: int64 */
+            abstained: number;
+            /** Format: int64 */
+            answered: number;
+            /** Format: int64 */
+            failed: number;
+            /**
+             * Format: int64
+             * @description Das respostas terminadas.
+             */
+            p50LatencyMs: number | null;
+            /**
+             * Format: int64
+             * @description Das respostas terminadas.
+             */
+            p95LatencyMs: number | null;
+            /** Format: int64 */
+            partial: number;
+            /** Format: int64 */
+            pending: number;
+            /** Format: int64 */
+            total: number;
         };
         /** @description Posição do trecho em cada busca, a partir de 1; null quando ela não o trouxe. */
         RanksResponse: {
@@ -1165,7 +1286,7 @@ export interface components {
             /** Format: uuid */
             sourceImportId: string | null;
             /** @enum {string} */
-            status: "BUILDING" | "READY" | "PARTIAL" | "FAILED";
+            status: "BUILDING" | "READY" | "PARTIAL" | "FAILED" | "CANCELLED";
         };
         SourceResponse: {
             type: string;
@@ -1193,6 +1314,11 @@ export interface components {
             maxFileBytes?: number | null;
             /** Format: int64 */
             maxProjectBytes?: number | null;
+        };
+        UsageResponse: {
+            cost: components["schemas"]["CostUsageResponse"];
+            indexing: components["schemas"]["IndexingUsageResponse"];
+            questions: components["schemas"]["QuestionUsageResponse"];
         };
         WarningResponse: {
             /** @enum {string} */
@@ -1324,6 +1450,53 @@ export interface operations {
             };
         };
     };
+    deleteConversation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Erro (ProblemDetail). Códigos: VALIDATION_FAILED. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Erro (ProblemDetail). Códigos: CONVERSATION_NOT_FOUND. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Erro (ProblemDetail). Códigos: INTERNAL_ERROR. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     getImport: {
         parameters: {
             query?: never;
@@ -1404,6 +1577,64 @@ export interface operations {
             };
             /** @description Erro (ProblemDetail). Códigos: INDEX_JOB_NOT_FOUND. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Erro (ProblemDetail). Códigos: INTERNAL_ERROR. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    cancelIndexJob: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                jobId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IndexJobResponse"];
+                };
+            };
+            /** @description Erro (ProblemDetail). Códigos: VALIDATION_FAILED. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Erro (ProblemDetail). Códigos: INDEX_JOB_NOT_FOUND. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Erro (ProblemDetail). Códigos: JOB_NOT_ACTIVE. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2313,6 +2544,55 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PageResponseSnapshotResponse"];
+                };
+            };
+            /** @description Erro (ProblemDetail). Códigos: VALIDATION_FAILED. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Erro (ProblemDetail). Códigos: PROJECT_NOT_FOUND. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Erro (ProblemDetail). Códigos: INTERNAL_ERROR. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getProjectUsage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UsageResponse"];
                 };
             };
             /** @description Erro (ProblemDetail). Códigos: VALIDATION_FAILED. */

@@ -28,6 +28,7 @@ describe('WorkspacePage', () => {
                 status: 'RUNNING',
                 stage: 'PROCESSING_FILES',
                 progress: { total: 10, completed: 4 },
+                cancelRequested: false,
               },
             }),
             project({

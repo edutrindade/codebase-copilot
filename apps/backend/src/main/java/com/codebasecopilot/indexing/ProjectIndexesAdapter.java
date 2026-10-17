@@ -21,8 +21,8 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 
-// Active snapshot, running job and outdated reasons of a page of projects, in three batch
-// queries (D-044).
+// Active snapshot, running job, last ended job and outdated reasons of a page of projects, in
+// four batch queries (D-044, D-084).
 @Component
 class ProjectIndexesAdapter implements ProjectIndexes {
 
@@ -60,6 +60,9 @@ class ProjectIndexesAdapter implements ProjectIndexes {
         Map<UUID, IndexJob> running =
                 jobs.findActiveByProjects(projectIds).stream()
                         .collect(Collectors.toMap(IndexJob::projectId, Function.identity()));
+        Map<UUID, IndexJob> ended =
+                jobs.findLastEndedByProjects(projectIds).stream()
+                        .collect(Collectors.toMap(IndexJob::projectId, Function.identity()));
         Map<UUID, Integer> versions = settingsVersions.find(projectIds);
         ModelInfo model = provider == null ? null : provider.model();
         Map<UUID, IndexState> states = new HashMap<>();
@@ -74,6 +77,7 @@ class ProjectIndexesAdapter implements ProjectIndexes {
                     new IndexState(
                             snapshot == null ? null : activeSnapshot(snapshot),
                             job == null ? null : indexing(job),
+                            lastJob(ended.get(project.id())),
                             outdatedReasons(
                                     project,
                                     snapshot,
@@ -136,12 +140,24 @@ class ProjectIndexesAdapter implements ProjectIndexes {
                         c.bytes()));
     }
 
+    private static @Nullable LastJob lastJob(@Nullable IndexJob job) {
+        if (job == null) {
+            return null;
+        }
+        return new LastJob(
+                job.id(),
+                job.status().name(),
+                Objects.requireNonNull(job.completedAt()),
+                job.errorCode() == null ? null : job.errorCode().name());
+    }
+
     private static Indexing indexing(IndexJob job) {
         return new Indexing(
                 job.id(),
                 job.status().name(),
                 job.stage() == null ? null : job.stage().name(),
                 job.progressTotal(),
-                job.progressCompleted());
+                job.progressCompleted(),
+                job.cancelRequested());
     }
 }

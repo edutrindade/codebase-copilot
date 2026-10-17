@@ -106,6 +106,11 @@ class ProjectController {
             SourceResponse source,
             @Schema(nullable = true) @Nullable ActiveSnapshotResponse activeSnapshot,
             @Schema(nullable = true) @Nullable IndexingResponse indexing,
+            @Schema(
+                            nullable = true,
+                            description =
+                                    "Último job de indexação terminado; null se nenhum terminou.")
+                    @Nullable LastJobResponse lastJob,
             @ArraySchema(
                             schema =
                                     @Schema(
@@ -169,7 +174,15 @@ class ProjectController {
                                                     indexing.total(),
                                                     indexing.completed() == null
                                                             ? 0
-                                                            : indexing.completed())),
+                                                            : indexing.completed()),
+                                    indexing.cancelRequested()),
+                    index.lastJob() == null
+                            ? null
+                            : new LastJobResponse(
+                                    index.lastJob().id(),
+                                    index.lastJob().status(),
+                                    index.lastJob().finishedAt(),
+                                    index.lastJob().errorCode()),
                     index.outdatedReasons(),
                     project.createdAt());
         }
@@ -202,9 +215,18 @@ class ProjectController {
                                 "FINALIZING"
                             })
                     @Nullable String stage,
-            @Schema(nullable = true) @Nullable ProgressResponse progress) {}
+            @Schema(nullable = true) @Nullable ProgressResponse progress,
+            @Schema(description = "Cancelamento pedido; o job para na próxima etapa ou lote.")
+                    boolean cancelRequested) {}
 
     record ProgressResponse(int total, int completed) {}
+
+    record LastJobResponse(
+            UUID id,
+            @Schema(allowableValues = {"COMPLETED", "FAILED", "CANCELLED"}) String status,
+            Instant finishedAt,
+            @Schema(nullable = true, description = "Código estável da falha, quando FAILED.")
+                    @Nullable String errorCode) {}
 
     @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type")
     @JsonSubTypes({

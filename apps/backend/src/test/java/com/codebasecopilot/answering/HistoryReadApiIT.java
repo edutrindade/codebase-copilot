@@ -3,6 +3,7 @@ package com.codebasecopilot.answering;
 import static com.codebasecopilot.ImportJobRows.insertWorkspace;
 import static com.codebasecopilot.answering.Questions.ask;
 import static com.codebasecopilot.answering.Questions.body;
+import static com.codebasecopilot.answering.Questions.historyRows;
 import static com.codebasecopilot.answering.Questions.json;
 import static com.codebasecopilot.answering.Questions.projectOf;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -13,6 +14,9 @@ import static org.mockito.Mockito.reset;
 import com.codebasecopilot.DatabaseCleaner;
 import com.codebasecopilot.IntegrationTest;
 import com.codebasecopilot.history.AnswerHistory;
+import com.codebasecopilot.history.AnswerMetrics;
+import com.codebasecopilot.history.AnswerOutcome;
+import com.codebasecopilot.history.AnswerStatus;
 import com.codebasecopilot.history.NewQuestion;
 import com.codebasecopilot.history.PendingAnswer;
 import com.codebasecopilot.providers.GenerationFailure;
@@ -265,8 +269,75 @@ class HistoryReadApiIT {
         assertThat((String) json(result).read("$.code")).isEqualTo("CONVERSATION_NOT_FOUND");
     }
 
+    @Test
+    void deletesAConversationWithItsAnswersAndEvidence() throws IOException {
+        UUID projectId = indexedProject();
+        DocumentContext removed = json(ask(mvc, projectId, question("First refund?")));
+        String conversationId = removed.read("$.conversationId");
+        ask(mvc, projectId, followUp("Second refund?", conversationId));
+        DocumentContext kept = json(ask(mvc, projectId, question("Other refund?")));
+        PendingAnswer pending =
+                history.start(
+                        new NewQuestion(
+                                projectId,
+                                UUID.fromString(conversationId),
+                                "Third refund?",
+                                UUID.fromString(removed.read("$.snapshotId")),
+                                "HYBRID",
+                                "prompt-v1"));
+
+        MvcTestResult result =
+                mvc.delete().uri("/api/v1/conversations/{id}", conversationId).exchange();
+
+        assertThat(result).hasStatus(HttpStatus.NO_CONTENT);
+        assertThat(mvc.get().uri("/api/v1/conversations/{id}", conversationId))
+                .hasStatus(HttpStatus.NOT_FOUND);
+        assertThat(mvc.get().uri("/api/v1/answers/{id}", removed.read("$.answerId").toString()))
+                .hasStatus(HttpStatus.NOT_FOUND);
+        assertThat(evidence(projectId, removed.read("$.evidence[0].id")))
+                .hasStatus(HttpStatus.NOT_FOUND);
+        assertThat(mvc.get().uri("/api/v1/answers/{id}", kept.read("$.answerId").toString()))
+                .hasStatusOk();
+        assertThat((List<String>) json(conversations(projectId, "")).read("$.items[*].id"))
+                .containsExactly(kept.read("$.conversationId").toString());
+        assertThat(
+                        history.complete(
+                                pending.answerId(),
+                                new AnswerOutcome(
+                                        AnswerStatus.FAILED,
+                                        null,
+                                        "GENERATION_PROVIDER_UNAVAILABLE",
+                                        List.of(),
+                                        0,
+                                        "fake",
+                                        "fake-chat",
+                                        null,
+                                        AnswerMetrics.none(),
+                                        List.of())))
+                .isFalse();
+        assertThat(historyRows(jdbc)).isEqualTo(historyRowsOf(kept.read("$.answerId")));
+    }
+
+    @Test
+    void rejectsDeletingAnUnknownConversation() {
+        MvcTestResult result =
+                mvc.delete().uri("/api/v1/conversations/{id}", UUID.randomUUID()).exchange();
+
+        assertThat(result).hasStatus(HttpStatus.NOT_FOUND);
+        assertThat((String) json(result).read("$.code")).isEqualTo("CONVERSATION_NOT_FOUND");
+    }
+
     private UUID indexedProject() throws IOException {
         return projectOf(jdbc, projects.indexedSnapshot("src/RefundService.java", SERVICE));
+    }
+
+    // Conversation, two messages, the answer and its evidence: what one answered question leaves.
+    private int historyRowsOf(String answerId) {
+        return 4
+                + jdbc.sql("SELECT count(*) FROM answer_evidence WHERE answer_id = :id")
+                        .param("id", UUID.fromString(answerId))
+                        .query(Integer.class)
+                        .single();
     }
 
     private String activeVersion(UUID projectId, String evidenceId) {

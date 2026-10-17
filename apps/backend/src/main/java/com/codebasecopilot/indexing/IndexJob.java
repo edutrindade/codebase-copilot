@@ -14,6 +14,7 @@ record IndexJob(
         @Nullable Integer progressCompleted,
         int attemptCount,
         @Nullable IndexErrorCode errorCode,
+        boolean cancelRequested,
         Instant createdAt,
         @Nullable Instant startedAt,
         @Nullable Instant completedAt) {}

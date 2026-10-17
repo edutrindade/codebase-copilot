@@ -2,11 +2,14 @@ import { messages } from '../../messages';
 import type { Project } from './api';
 
 export type ProjectStatus =
-  'INDEXING' | 'AWAITING_UPLOAD' | 'NOT_INDEXED' | 'OUTDATED' | 'PARTIAL' | 'READY';
+  'INDEXING' | 'FAILED' | 'AWAITING_UPLOAD' | 'NOT_INDEXED' | 'OUTDATED' | 'PARTIAL' | 'READY';
 
 export function projectStatus(project: Project): ProjectStatus {
   if (project.indexing) {
     return 'INDEXING';
+  }
+  if (project.lastJob?.status === 'FAILED') {
+    return 'FAILED';
   }
   if (!project.activeSnapshot) {
     return project.source.type === 'ZIP' && !project.source.currentImport

@@ -4,5 +4,6 @@ enum IndexJobStatus {
     PENDING,
     RUNNING,
     COMPLETED,
-    FAILED
+    FAILED,
+    CANCELLED
 }

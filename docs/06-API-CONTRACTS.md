@@ -230,6 +230,7 @@ Retorna metadados, origem, snapshot ativo e estado de indexação (D-044). A lis
     "counts": { "files": 980, "indexedFiles": 975, "unsupportedFiles": 4, "failedFiles": 1, "chunks": 4120, "bytes": 7340032 }
   },
   "indexing": null,
+  "lastJob": { "id": "…", "status": "FAILED", "finishedAt": "2026-10-16T13:00:02Z", "errorCode": "SCAN_LIMIT_REACHED" },
   "outdatedReasons": ["SETTINGS_CHANGED"],
   "createdAt": "2026-10-15T12:00:00.123456Z"
 }
@@ -238,7 +239,8 @@ Retorna metadados, origem, snapshot ativo e estado de indexação (D-044). A lis
 `source` é polimórfico, com discriminador `type`. Para projetos `ZIP`, traz `type` e `currentImport` (`id` e `status`), `null` até o primeiro upload concluído. O import atual só muda quando um novo upload conclui com sucesso; um import em andamento aparece em `GET /projects/{projectId}/imports` (§6).
 
 - `activeSnapshot`: snapshot usado nas consultas (`READY` ou `PARTIAL`), `null` antes da primeira indexação concluída (D-044).
-- `indexing`: job de indexação ativo `{ id, status, stage, progress: { total, completed } }`, ou `null`.
+- `indexing`: job de indexação ativo `{ id, status, stage, progress: { total, completed }, cancelRequested }`, ou `null`.
+- `lastJob` (D-084): o último job de indexação terminado `{ id, status, finishedAt, errorCode }`, com `status` `COMPLETED`, `FAILED` ou `CANCELLED` e `errorCode` só em `FAILED`; `null` se nenhum terminou. A lista de projetos usa para mostrar "a última indexação falhou".
 - `outdatedReasons`: por que o snapshot ativo pode não refletir a origem: `SETTINGS_CHANGED` (configurações alteradas depois dele), `SOURCE_REIMPORTED` (projeto ZIP com outro import atual), `CHUNKING_CHANGED` (estratégia de chunking nova), `EMBEDDING_MODEL_CHANGED` (provedor, modelo ou dimensão configurados diferentes dos do snapshot) e `EMBEDDINGS_MISSING` (snapshot indexado sem embeddings, com provedor agora configurado), `LEXICAL_INDEX_MISSING` (snapshot sem índice lexical) e `LEXICAL_INDEX_CHANGED` (índice lexical de outra versão do tokenizador). `EMBEDDING_MODEL_CHANGED` e `EMBEDDINGS_MISSING` só aparecem com provedor configurado (D-050); os dois lexicais, sempre (D-056). Lista vazia quando está em dia ou sem snapshot. Mudanças no disco de uma pasta local não são detectadas; o usuário reindexa.
 
 Erros: `404 PROJECT_NOT_FOUND`.
@@ -402,13 +404,15 @@ Erros, nesta ordem:
   "progress": { "total": 980, "completed": 400 },
   "attempts": 1,
   "error": null,
+  "cancelRequested": false,
   "createdAt": "2026-10-16T12:00:00Z",
   "startedAt": "2026-10-16T12:00:01Z",
   "completedAt": null
 }
 ```
 
-- `status`: `PENDING`, `RUNNING`, `COMPLETED` ou `FAILED`.
+- `status`: `PENDING`, `RUNNING`, `COMPLETED`, `FAILED` ou `CANCELLED`.
+- `cancelRequested` (D-084): cancelamento pedido; num job `RUNNING`, ele para na próxima etapa ou lote.
 - `stage`: `SCANNING`, `PROCESSING_FILES`, `LEXICAL`, `EMBEDDING` ou `FINALIZING` (`null` antes de começar). `progress` conta arquivos; nas etapas `LEXICAL` e `EMBEDDING`, conta os chunks sem índice lexical da versão atual e os chunks a enviar ao provedor (D-050, D-056). Com `provider=none`, a etapa `EMBEDDING` é pulada.
 - `attempts`: quantas vezes o job foi retirado da fila. Um job interrompido (queda da aplicação, por exemplo) volta à fila quando o heartbeat vence e é retomado automaticamente, até `app.indexing.max-attempts` (padrão 3).
 - `error.code` (D-044): `SOURCE_ROOT_NOT_CONFIGURED`, `SOURCE_DIRECTORY_NOT_FOUND`, `SOURCE_IS_SYMLINK`, `SOURCE_NOT_READABLE`, `SOURCE_NOT_IMPORTED`, `SCAN_LIMIT_REACHED`, `PROJECT_SIZE_LIMIT_EXCEEDED`, `NO_INCLUDED_FILES`, `INDEX_IO_ERROR` ou `INDEX_ATTEMPTS_EXHAUSTED`; `error.message` em pt-BR, sem caminhos.
@@ -418,6 +422,13 @@ Erros, nesta ordem:
 Não há `retry`: um job `FAILED` é refeito criando outro, que reaproveita o conteúdo já gravado (D-045).
 
 Erros: `404 INDEX_JOB_NOT_FOUND`.
+
+### `POST /index-jobs/{jobId}/cancel`
+Cancela um job de indexação (D-084). Sem corpo. Um job `PENDING` termina na hora como `CANCELLED`; num job `RUNNING` o pedido é registrado (`cancelRequested: true`) e o job termina como `CANCELLED` na próxima etapa ou no próximo lote de arquivos, de índice lexical ou de embeddings. O snapshot que ele construía fica `CANCELLED`, sem arquivos; o snapshot ativo não muda; embeddings já gravados ficam no cache e não são pagos de novo. Um pedido que chega depois da última verificação não impede a conclusão: o job pode terminar `COMPLETED`. Pedidos repetidos num job ativo são aceitos. A importação ZIP não é cancelável.
+
+Response: `202 Accepted` com o job no formato de `GET /index-jobs/{jobId}`.
+
+Erros: `404 INDEX_JOB_NOT_FOUND`; `409 JOB_NOT_ACTIVE` (o job já terminou).
 
 ### `GET /projects/{projectId}/index-jobs`
 Lista os jobs de indexação do projeto, do mais novo para o mais antigo, no formato acima. Paginada (§1, D-030).
@@ -667,6 +678,27 @@ Lista as conversas do projeto, paginada (§1, D-030), pela pergunta mais recente
 
 ### `GET /conversations/{conversationId}`
 Retorna `{ conversation, answers }`: a conversa no formato da listagem e as respostas na ordem das perguntas, cada uma no formato de `GET /answers/{answerId}` (com a pergunta e as evidências), inclusive `FAILED` e `PENDING`. Erro: `404 CONVERSATION_NOT_FOUND`.
+
+### `DELETE /conversations/{conversationId}`
+Remove a conversa com as perguntas, as respostas e as evidências copiadas (D-084). Uma resposta ainda `PENDING` é descartada quando o provedor responder. Não há retenção automática: o histórico fica até a pessoa excluir a conversa ou o projeto (D-021). Response: `204 No Content`. Erro: `404 CONVERSATION_NOT_FOUND`.
+
+### `GET /projects/{projectId}/usage`
+Uso agregado do projeto (D-084, `03` §9), calculado a cada leitura sobre `index_jobs` e `answers`, sem tabela de eventos nem telemetria:
+
+```json
+{
+  "indexing": { "total": 3, "completed": 2, "failed": 1, "cancelled": 0, "averageDurationMs": 1500, "p95DurationMs": 2100 },
+  "questions": { "total": 4, "answered": 2, "partial": 1, "abstained": 1, "failed": 0, "pending": 0, "p50LatencyMs": 820, "p95LatencyMs": 1900 },
+  "cost": { "inputTokens": 12000, "outputTokens": 800, "estimatedCost": 0.0125, "currency": "USD", "unknownCostAnswers": 1 }
+}
+```
+
+- `indexing.total` inclui jobs em andamento; durações (de `startedAt` a `completedAt`) só dos `COMPLETED`, `null` sem nenhum.
+- Latências das respostas terminadas, `null` sem nenhuma.
+- `estimatedCost`: soma das respostas com custo `ESTIMATED` (D-054), `null` se nenhuma; `unknownCostAnswers`: respostas que chamaram o modelo e ficaram `UNKNOWN` (preço não configurado ou tokens não informados).
+- Conversas removidas saem da conta. "Evidências abertas" não é contado (exigiria a UI gravar eventos).
+
+Erro: `404 PROJECT_NOT_FOUND`.
 
 ## 11. Contratos e implementação
 

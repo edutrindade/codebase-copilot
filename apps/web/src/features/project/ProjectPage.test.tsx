@@ -12,6 +12,7 @@ import {
   providers,
   readySnapshot,
   snapshotDetail,
+  usage,
 } from '../../test/fixtures';
 import { problem } from '../../test/problems';
 import { renderRoute } from '../../test/render';
@@ -33,6 +34,7 @@ function handlers(
     http.get(`${projectUrl}/snapshots`, () => HttpResponse.json(page([snapshotDetail()]))),
     http.get(`/api/v1/snapshots/${snapshotId}`, () => HttpResponse.json(snapshotDetail())),
     http.get(`/api/v1/snapshots/${snapshotId}/files`, () => HttpResponse.json(page([]))),
+    http.get(`${projectUrl}/usage`, () => HttpResponse.json(usage())),
     http.get('/api/v1/system/providers', () =>
       HttpResponse.json(
         options.providerNone
@@ -169,6 +171,7 @@ describe('ProjectPage', () => {
         status: 'RUNNING',
         stage: 'PROCESSING_FILES',
         progress: { total: 10, completed: 4 },
+        cancelRequested: false,
       },
     });
     let snapshotCalls = 0;
@@ -251,6 +254,7 @@ describe('ProjectPage', () => {
             status: 'PENDING',
             stage: null,
             progress: null,
+            cancelRequested: false,
           },
         });
         return HttpResponse.json(indexJob(base.id), { status: 202 });
@@ -287,6 +291,79 @@ describe('ProjectPage', () => {
     expect(
       screen.queryByRole('button', { name: messages.project.indexTitle }),
     ).not.toBeInTheDocument();
+  });
+
+  test('cancels the running indexing after confirmation and says it was asked', async () => {
+    const jobId = '0192f5c4-0000-7000-8000-000000000301';
+    const running = {
+      id: jobId,
+      status: 'RUNNING' as const,
+      stage: 'PROCESSING_FILES' as const,
+      progress: { total: 10, completed: 4 },
+      cancelRequested: false,
+    };
+    let current = project({ activeSnapshot: readySnapshot(), indexing: running });
+    const cancelled: string[] = [];
+    server.use(
+      ...handlers(() => current),
+      http.post(`/api/v1/index-jobs/${jobId}/cancel`, () => {
+        cancelled.push(jobId);
+        current = { ...current, indexing: { ...running, cancelRequested: true } };
+        return HttpResponse.json(indexJob(base.id, { status: 'RUNNING', cancelRequested: true }), {
+          status: 202,
+        });
+      }),
+    );
+    renderRoute(`/projects/${base.id}`);
+    const text = messages.project.progress;
+
+    await userEvent.click(await screen.findByRole('button', { name: text.cancelLabel }));
+    const dialog = await screen.findByRole('alertdialog', { name: text.cancelTitle });
+    expect(dialog).toHaveTextContent(text.cancelDetail);
+    await userEvent.click(within(dialog).getByRole('button', { name: text.cancelConfirm }));
+
+    expect(await screen.findByText(text.cancelRequested)).toBeInTheDocument();
+    expect(cancelled).toEqual([jobId]);
+    expect(screen.queryByRole('button', { name: text.cancelLabel })).not.toBeInTheDocument();
+    expect(await axeViolations()).toEqual([]);
+  });
+
+  test('a cancelled last job is explained, with the previous snapshot still in use', async () => {
+    const current = project({ activeSnapshot: readySnapshot() });
+    server.use(
+      ...handlers(() => current, {
+        jobs: [
+          indexJob(base.id, {
+            status: 'CANCELLED',
+            cancelRequested: true,
+            completedAt: '2026-10-16T12:05:00Z',
+          }),
+        ],
+      }),
+    );
+    renderRoute(`/projects/${base.id}`);
+
+    expect(await screen.findByText(messages.project.cancelled.title)).toBeInTheDocument();
+    expect(screen.getByText(messages.project.cancelled.previousInUse)).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  test('shows the aggregated usage of the project', async () => {
+    const current = project({ activeSnapshot: readySnapshot() });
+    server.use(...handlers(() => current));
+    renderRoute(`/projects/${base.id}`);
+    const text = messages.project.usage;
+
+    const panel = await screen.findByRole('region', { name: text.title });
+    await within(panel).findByText(text.indexing);
+    const totals = (title: string) =>
+      within(panel).getByRole('heading', { name: title }).parentElement as HTMLElement;
+    expect(within(totals(text.indexing)).getByText(text.failed).nextSibling).toHaveTextContent('1');
+    expect(totals(text.indexing)).toHaveTextContent('1,5 s');
+    expect(totals(text.questions)).toHaveTextContent('820 ms');
+    expect(totals(text.tokens)).toHaveTextContent('12.000');
+    expect(totals(text.tokens)).toHaveTextContent('US$');
+    expect(panel).toHaveTextContent(text.unknownCost(1));
   });
 
   test('an unknown project explains it without a retry', async () => {

@@ -298,6 +298,52 @@ class AnswerRepository {
                         EvidenceValidation.valueOf(rs.getString("validation_status"))));
     }
 
+    // Removed conversations take their answers out of the aggregates (D-084).
+    AnswerUsage usage(UUID projectId) {
+        return jdbc.sql(
+                        """
+                        SELECT count(*) AS questions,
+                               count(*) FILTER (WHERE a.status = 'ANSWERED') AS answered,
+                               count(*) FILTER (WHERE a.status = 'PARTIAL') AS partial,
+                               count(*) FILTER (WHERE a.status = 'ABSTAINED') AS abstained,
+                               count(*) FILTER (WHERE a.status = 'FAILED') AS failed,
+                               count(*) FILTER (WHERE a.status = 'PENDING') AS pending,
+                               round(percentile_cont(0.5) WITHIN GROUP (ORDER BY a.latency_ms))::bigint
+                                   AS p50_ms,
+                               round(percentile_cont(0.95) WITHIN GROUP (ORDER BY a.latency_ms))::bigint
+                                   AS p95_ms,
+                               coalesce(sum(a.input_tokens), 0) AS input_tokens,
+                               coalesce(sum(a.output_tokens), 0) AS output_tokens,
+                               sum(a.estimated_cost) AS cost,
+                               min(a.cost_currency) AS currency,
+                               count(*) FILTER (WHERE a.generation_model IS NOT NULL
+                                                  AND a.cost_status = 'UNKNOWN')
+                                   AS unknown_cost
+                        FROM answers a
+                        JOIN messages q ON q.id = a.question_message_id
+                        JOIN conversations c ON c.id = q.conversation_id
+                        WHERE c.project_id = :projectId
+                        """)
+                .param("projectId", projectId)
+                .query(
+                        (rs, rowNum) ->
+                                new AnswerUsage(
+                                        rs.getLong("questions"),
+                                        rs.getLong("answered"),
+                                        rs.getLong("partial"),
+                                        rs.getLong("abstained"),
+                                        rs.getLong("failed"),
+                                        rs.getLong("pending"),
+                                        rs.getObject("p50_ms", Long.class),
+                                        rs.getObject("p95_ms", Long.class),
+                                        rs.getLong("input_tokens"),
+                                        rs.getLong("output_tokens"),
+                                        rs.getBigDecimal("cost"),
+                                        rs.getString("currency"),
+                                        rs.getLong("unknown_cost")))
+                .single();
+    }
+
     private static List<String> strings(Array array) throws SQLException {
         return List.of((String[]) array.getArray());
     }

@@ -10,29 +10,20 @@
     "description" : "Generated server url"
   } ],
   "tags" : [ {
-    "description" : "Resultados das indexações: contagens, mudanças, inventário e arquivos.",
-    "name" : "Snapshots"
-  }, {
     "description" : "Provedores configurados no backend e para onde vão os trechos de código.",
     "name" : "Sistema"
   }, {
     "description" : "Perguntas sobre o código do projeto, respondidas com evidências citadas.",
     "name" : "Respostas"
   }, {
-    "description" : "Pré-análise dos arquivos do projeto, calculada a cada chamada.",
-    "name" : "Inventário"
-  }, {
-    "description" : "Exclusões e limites usados na varredura e na indexação.",
-    "name" : "Configurações do projeto"
-  }, {
     "description" : "Agrupam os projetos de quem usa a ferramenta.",
     "name" : "Workspaces"
   }, {
+    "description" : "Indexações, perguntas, tokens e custo estimado do projeto.",
+    "name" : "Uso"
+  }, {
     "description" : "Projetos de pasta local ou ZIP, com origem e estado da indexação.",
     "name" : "Projetos"
-  }, {
-    "description" : "Histórico de perguntas e respostas do projeto.",
-    "name" : "Conversas"
   }, {
     "description" : "Navegação nas pastas que o backend permite usar como origem de projetos.",
     "name" : "Raízes locais"
@@ -45,6 +36,18 @@
   }, {
     "description" : "Envio e acompanhamento de arquivos ZIP de projetos.",
     "name" : "Importação ZIP"
+  }, {
+    "description" : "Resultados das indexações: contagens, mudanças, inventário e arquivos.",
+    "name" : "Snapshots"
+  }, {
+    "description" : "Pré-análise dos arquivos do projeto, calculada a cada chamada.",
+    "name" : "Inventário"
+  }, {
+    "description" : "Exclusões e limites usados na varredura e na indexação.",
+    "name" : "Configurações do projeto"
+  }, {
+    "description" : "Histórico de perguntas e respostas do projeto.",
+    "name" : "Conversas"
   } ],
   "paths" : {
     "/api/v1/answers/{answerId}" : {
@@ -107,6 +110,56 @@
       }
     },
     "/api/v1/conversations/{conversationId}" : {
+      "delete" : {
+        "description" : "Remove as perguntas, as respostas e as evidências copiadas. Uma resposta ainda PENDING é descartada quando o provedor responder.",
+        "operationId" : "deleteConversation",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "conversationId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: VALIDATION_FAILED."
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: CONVERSATION_NOT_FOUND."
+          },
+          "500" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
+          }
+        },
+        "summary" : "Remove uma conversa",
+        "tags" : [ "Conversas" ]
+      },
       "get" : {
         "description" : "Respostas na ordem das perguntas, no formato de GET /answers/{answerId}, inclusive as FAILED e as ainda PENDING.",
         "operationId" : "getConversation",
@@ -278,6 +331,75 @@
           }
         },
         "summary" : "Busca um job de indexação",
+        "tags" : [ "Indexação" ]
+      }
+    },
+    "/api/v1/index-jobs/{jobId}/cancel" : {
+      "post" : {
+        "description" : "Um job PENDING termina na hora como CANCELLED; num job RUNNING o pedido fica registrado (cancelRequested) e o job para na próxima etapa ou lote. O snapshot ativo não muda.",
+        "operationId" : "cancelIndexJob",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "jobId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/IndexJobResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: VALIDATION_FAILED."
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: INDEX_JOB_NOT_FOUND."
+          },
+          "409" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: JOB_NOT_ACTIVE."
+          },
+          "500" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
+          }
+        },
+        "summary" : "Cancela um job de indexação",
         "tags" : [ "Indexação" ]
       }
     },
@@ -1457,6 +1579,65 @@
         "tags" : [ "Snapshots" ]
       }
     },
+    "/api/v1/projects/{projectId}/usage" : {
+      "get" : {
+        "description" : "Calculado sobre os jobs de indexação e as respostas guardadas; conversas removidas saem da conta.",
+        "operationId" : "getProjectUsage",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UsageResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: VALIDATION_FAILED."
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: PROJECT_NOT_FOUND."
+          },
+          "500" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
+          }
+        },
+        "summary" : "Uso agregado do projeto",
+        "tags" : [ "Uso" ]
+      }
+    },
     "/api/v1/snapshots/{snapshotId}" : {
       "get" : {
         "operationId" : "getSnapshot",
@@ -2282,6 +2463,32 @@
         },
         "required" : [ "createdAt", "id", "projectId", "questionCount", "title", "updatedAt" ]
       },
+      "CostUsageResponse" : {
+        "type" : "object",
+        "properties" : {
+          "currency" : {
+            "type" : [ "string", "null" ]
+          },
+          "estimatedCost" : {
+            "type" : [ "number", "null" ],
+            "description" : "Soma das respostas com custo ESTIMATED; null se nenhuma tem."
+          },
+          "inputTokens" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "outputTokens" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "unknownCostAnswers" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "Respostas que chamaram o modelo e ficaram com custo UNKNOWN."
+          }
+        },
+        "required" : [ "currency", "estimatedCost", "inputTokens", "outputTokens", "unknownCostAnswers" ]
+      },
       "CountsResponse" : {
         "type" : "object",
         "properties" : {
@@ -2854,6 +3061,10 @@
             "type" : "integer",
             "format" : "int32"
           },
+          "cancelRequested" : {
+            "type" : "boolean",
+            "description" : "Cancelamento pedido e ainda não concluído, ou concluído."
+          },
           "completedAt" : {
             "type" : [ "string", "null" ],
             "format" : "date-time"
@@ -2898,14 +3109,18 @@
           },
           "status" : {
             "type" : "string",
-            "enum" : [ "PENDING", "RUNNING", "COMPLETED", "FAILED" ]
+            "enum" : [ "PENDING", "RUNNING", "COMPLETED", "FAILED", "CANCELLED" ]
           }
         },
-        "required" : [ "attempts", "completedAt", "createdAt", "error", "id", "progress", "projectId", "snapshotId", "stage", "startedAt", "status" ]
+        "required" : [ "attempts", "cancelRequested", "completedAt", "createdAt", "error", "id", "progress", "projectId", "snapshotId", "stage", "startedAt", "status" ]
       },
       "IndexingResponse" : {
         "type" : "object",
         "properties" : {
+          "cancelRequested" : {
+            "type" : "boolean",
+            "description" : "Cancelamento pedido; o job para na próxima etapa ou lote."
+          },
           "id" : {
             "type" : "string",
             "format" : "uuid"
@@ -2926,7 +3141,40 @@
             "enum" : [ "PENDING", "RUNNING" ]
           }
         },
-        "required" : [ "id", "progress", "stage", "status" ]
+        "required" : [ "cancelRequested", "id", "progress", "stage", "status" ]
+      },
+      "IndexingUsageResponse" : {
+        "type" : "object",
+        "properties" : {
+          "averageDurationMs" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64",
+            "description" : "Dos jobs COMPLETED."
+          },
+          "cancelled" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "completed" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "failed" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "p95DurationMs" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64",
+            "description" : "Dos jobs COMPLETED."
+          },
+          "total" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "Todos os jobs, inclusive os em andamento."
+          }
+        },
+        "required" : [ "averageDurationMs", "cancelled", "completed", "failed", "p95DurationMs", "total" ]
       },
       "InventoryResponse" : {
         "type" : "object",
@@ -3063,6 +3311,28 @@
           }
         },
         "required" : [ "bytes", "files", "language" ]
+      },
+      "LastJobResponse" : {
+        "type" : "object",
+        "properties" : {
+          "errorCode" : {
+            "type" : [ "string", "null" ],
+            "description" : "Código estável da falha, quando FAILED."
+          },
+          "finishedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "COMPLETED", "FAILED", "CANCELLED" ]
+          }
+        },
+        "required" : [ "errorCode", "finishedAt", "id", "status" ]
       },
       "LexicalResponse" : {
         "type" : "object",
@@ -3370,7 +3640,7 @@
         "properties" : {
           "code" : {
             "type" : "string",
-            "enum" : [ "VALIDATION_FAILED", "MALFORMED_REQUEST", "RESOURCE_NOT_FOUND", "METHOD_NOT_ALLOWED", "UNSUPPORTED_MEDIA_TYPE", "INTERNAL_ERROR", "WORKSPACE_NOT_FOUND", "WORKSPACE_NOT_EMPTY", "PROJECT_NOT_FOUND", "LOCAL_ROOTS_NOT_CONFIGURED", "ROOT_NOT_FOUND", "PATH_OUTSIDE_ROOT", "PROJECT_ALREADY_EXISTS", "DIRECTORY_NOT_FOUND", "DIRECTORY_NOT_READABLE", "PROJECT_BUSY", "PROJECT_SOURCE_MISMATCH", "UPLOAD_TOO_LARGE", "IMPORT_NOT_FOUND", "SOURCE_ROOT_NOT_CONFIGURED", "SOURCE_DIRECTORY_NOT_FOUND", "SOURCE_IS_SYMLINK", "SOURCE_NOT_READABLE", "SOURCE_NOT_IMPORTED", "INDEX_JOB_NOT_FOUND", "SNAPSHOT_NOT_FOUND", "SNAPSHOT_NOT_SEARCHABLE", "SNAPSHOT_LEXICAL_MISMATCH", "EMBEDDINGS_NOT_AVAILABLE", "SNAPSHOT_EMBEDDING_MISMATCH", "CONVERSATION_NOT_FOUND", "ANSWER_NOT_FOUND", "EVIDENCE_NOT_FOUND", "GENERATION_NOT_AVAILABLE", "SNAPSHOT_PRUNED", "FILE_NOT_FOUND", "FILE_NOT_INDEXED", "FORBIDDEN_HOST", "FORBIDDEN_ORIGIN", "EMBEDDING_PROVIDER_UNAVAILABLE", "EMBEDDING_PROVIDER_UNAUTHORIZED", "EMBEDDING_QUOTA_EXCEEDED", "EMBEDDING_REQUEST_REJECTED", "EMBEDDING_RATE_LIMITED" ]
+            "enum" : [ "VALIDATION_FAILED", "MALFORMED_REQUEST", "RESOURCE_NOT_FOUND", "METHOD_NOT_ALLOWED", "UNSUPPORTED_MEDIA_TYPE", "INTERNAL_ERROR", "WORKSPACE_NOT_FOUND", "WORKSPACE_NOT_EMPTY", "PROJECT_NOT_FOUND", "LOCAL_ROOTS_NOT_CONFIGURED", "ROOT_NOT_FOUND", "PATH_OUTSIDE_ROOT", "PROJECT_ALREADY_EXISTS", "DIRECTORY_NOT_FOUND", "DIRECTORY_NOT_READABLE", "PROJECT_BUSY", "PROJECT_SOURCE_MISMATCH", "UPLOAD_TOO_LARGE", "IMPORT_NOT_FOUND", "SOURCE_ROOT_NOT_CONFIGURED", "SOURCE_DIRECTORY_NOT_FOUND", "SOURCE_IS_SYMLINK", "SOURCE_NOT_READABLE", "SOURCE_NOT_IMPORTED", "INDEX_JOB_NOT_FOUND", "JOB_NOT_ACTIVE", "SNAPSHOT_NOT_FOUND", "SNAPSHOT_NOT_SEARCHABLE", "SNAPSHOT_LEXICAL_MISMATCH", "EMBEDDINGS_NOT_AVAILABLE", "SNAPSHOT_EMBEDDING_MISMATCH", "CONVERSATION_NOT_FOUND", "ANSWER_NOT_FOUND", "EVIDENCE_NOT_FOUND", "GENERATION_NOT_AVAILABLE", "SNAPSHOT_PRUNED", "FILE_NOT_FOUND", "FILE_NOT_INDEXED", "FORBIDDEN_HOST", "FORBIDDEN_ORIGIN", "EMBEDDING_PROVIDER_UNAVAILABLE", "EMBEDDING_PROVIDER_UNAUTHORIZED", "EMBEDDING_QUOTA_EXCEEDED", "EMBEDDING_REQUEST_REJECTED", "EMBEDDING_RATE_LIMITED" ]
           },
           "detail" : {
             "type" : "string"
@@ -3440,6 +3710,14 @@
               "type" : "null"
             } ]
           },
+          "lastJob" : {
+            "description" : "Último job de indexação terminado; null se nenhum terminou.",
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/LastJobResponse"
+            }, {
+              "type" : "null"
+            } ]
+          },
           "name" : {
             "type" : "string"
           },
@@ -3462,7 +3740,7 @@
             "format" : "uuid"
           }
         },
-        "required" : [ "activeSnapshot", "createdAt", "id", "indexing", "name", "outdatedReasons", "source", "workspaceId" ]
+        "required" : [ "activeSnapshot", "createdAt", "id", "indexing", "lastJob", "name", "outdatedReasons", "source", "workspaceId" ]
       },
       "ProvidersResponse" : {
         "type" : "object",
@@ -3502,6 +3780,46 @@
             "description" : "Ausente: snapshot ativo do projeto."
           }
         }
+      },
+      "QuestionUsageResponse" : {
+        "type" : "object",
+        "properties" : {
+          "abstained" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "answered" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "failed" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "p50LatencyMs" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64",
+            "description" : "Das respostas terminadas."
+          },
+          "p95LatencyMs" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64",
+            "description" : "Das respostas terminadas."
+          },
+          "partial" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "pending" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "total" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [ "abstained", "answered", "failed", "p50LatencyMs", "p95LatencyMs", "partial", "pending", "total" ]
       },
       "RanksResponse" : {
         "type" : "object",
@@ -3871,7 +4189,7 @@
           },
           "status" : {
             "type" : "string",
-            "enum" : [ "BUILDING", "READY", "PARTIAL", "FAILED" ]
+            "enum" : [ "BUILDING", "READY", "PARTIAL", "FAILED", "CANCELLED" ]
           }
         },
         "required" : [ "active", "changes", "chunkingVersion", "completedAt", "counts", "createdAt", "embedding", "id", "inventory", "lexical", "projectId", "prunedAt", "settingsVersion", "sourceImportId", "status" ]
@@ -3949,6 +4267,21 @@
             "format" : "int64"
           }
         }
+      },
+      "UsageResponse" : {
+        "type" : "object",
+        "properties" : {
+          "cost" : {
+            "$ref" : "#/components/schemas/CostUsageResponse"
+          },
+          "indexing" : {
+            "$ref" : "#/components/schemas/IndexingUsageResponse"
+          },
+          "questions" : {
+            "$ref" : "#/components/schemas/QuestionUsageResponse"
+          }
+        },
+        "required" : [ "cost", "indexing", "questions" ]
       },
       "WarningResponse" : {
         "type" : "object",

@@ -87,6 +87,20 @@ public class AnswerHistory {
         return true;
     }
 
+    // A PENDING answer of the conversation is discarded when the provider returns: complete
+    // finds nothing to finish.
+    @Transactional
+    public void deleteConversation(UUID conversationId) {
+        if (!conversations.delete(conversationId)) {
+            throw new ApiException(ErrorCode.CONVERSATION_NOT_FOUND);
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public AnswerUsage usage(UUID projectId) {
+        return answers.usage(projectId);
+    }
+
     @Transactional
     public int failPendingCreatedBefore(Instant cutoff, String errorCode) {
         return answers.failPendingCreatedBefore(cutoff, errorCode, now());

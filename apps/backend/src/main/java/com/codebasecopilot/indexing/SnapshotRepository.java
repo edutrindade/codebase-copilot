@@ -149,12 +149,21 @@ class SnapshotRepository {
     }
 
     void markFailed(UUID id, Instant now) {
+        markEnded(id, SnapshotStatus.FAILED, now);
+    }
+
+    void markCancelled(UUID id, Instant now) {
+        markEnded(id, SnapshotStatus.CANCELLED, now);
+    }
+
+    private void markEnded(UUID id, SnapshotStatus status, Instant now) {
         jdbc.sql(
                         """
-                        UPDATE snapshots SET status = 'FAILED', completed_at = :now
+                        UPDATE snapshots SET status = :status, completed_at = :now
                         WHERE id = :id AND status = 'BUILDING'
                         """)
                 .param("id", id)
+                .param("status", status.name())
                 .param("now", Timestamps.of(now))
                 .update();
     }

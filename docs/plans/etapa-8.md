@@ -317,6 +317,15 @@ O Spring Boot 4.1.1 é o último 4.1.x publicado no Maven Central, então não h
 ### F7 — Operação
 - Cancelamento, exclusão de conversa, `lastJob`, `GET /usage` (P7), backend e UI, com testes.
 
+**Resultado (17/10/2026)**
+- Cancelamento: `POST /index-jobs/{id}/cancel`, migração `V12` (`cancel_requested_at`, `CANCELLED` em jobs e snapshots), pedido conferido pelo heartbeat; na UI, "Cancelar" no progresso com confirmação e aviso de cancelamento pedido, e o resumo explica a última indexação cancelada.
+- `DELETE /conversations/{id}` e "Excluir" no histórico, com confirmação; sem retenção automática.
+- `lastJob` no `ProjectResponse`; a lista e o resumo mostram "A última indexação falhou".
+- `GET /projects/{id}/usage` e o painel "Uso" no resumo.
+- Testes: `IndexCancelIT` (job em execução para no lote seguinte sem mudar o ativo; job pendente termina na hora; pedido antes de uma queda honrado pela próxima tentativa; job terminado e inexistente), `ProjectIndexStateApiIT` (`lastJob` no projeto e na lista), `HistoryReadApiIT` (exclusão em cascata, resposta pendente descartada), `UsageApiIT`; na UI, cancelamento, job cancelado, uso, exclusão de conversa e o estado "falhou".
+- Contrato: `openapi.json` e `schema.d.ts` regenerados, só aditivo. Registro na D-084; `06` atualizado.
+- **Desvios:** `cancelRequested` também no `indexing` do projeto (não previsto), para a UI mostrar o pedido sem consultar o job. O snapshot do job cancelado ganhou o status próprio `CANCELLED`, em vez de `FAILED`, para a lista de snapshots não mostrar falha.
+
 ### F8 — Empacotamento
 - Perfil `with-ui`, fallback da SPA, cabeçalhos, divisão do build, E2E contra o jar (P8).
 

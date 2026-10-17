@@ -106,6 +106,10 @@ class IndexRunner {
             if (outcomes.fail(claim, e.code())) {
                 log.info("Index job {} failed: {}", claim.jobId(), e.code());
             }
+        } catch (IndexCancelled e) {
+            if (outcomes.cancel(claim)) {
+                log.info("Index job {} cancelled", claim.jobId());
+            }
         } catch (LostClaimException e) {
             log.info("Index job {} attempt {} lost its claim", claim.jobId(), claim.attempt());
         } catch (RuntimeException e) {

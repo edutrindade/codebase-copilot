@@ -278,7 +278,7 @@ class ProjectServiceTest {
     void getFillsIndexStateFromPortOrDefaultsToNone() {
         Project project = zipProject(null);
         ProjectIndexes.IndexState state =
-                new ProjectIndexes.IndexState(null, null, List.of("SETTINGS_CHANGED"));
+                new ProjectIndexes.IndexState(null, null, null, List.of("SETTINGS_CHANGED"));
         when(repository.findById(ID)).thenReturn(Optional.of(project));
         when(indexes.find(List.of(project))).thenReturn(Map.of(ID, state));
 

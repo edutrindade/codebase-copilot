@@ -1,12 +1,18 @@
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams, useSearchParams } from 'react-router';
 import { ApiError } from '../../api/errors';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { Loading } from '../../components/Loading';
 import { Pagination, pageFromSearch } from '../../components/Pagination';
 import { ProblemAlert } from '../../components/ProblemAlert';
 import { formatDateTime } from '../../format';
 import { messages } from '../../messages';
-import { askKeys, listConversations, type ConversationSummary } from '../ask/api';
+import {
+  askKeys,
+  deleteConversation,
+  listConversations,
+  type ConversationSummary,
+} from '../ask/api';
 import { getProject, importKeys } from '../import/api';
 
 export function HistoryPage() {
@@ -94,6 +100,16 @@ export function HistoryPage() {
 
 function ConversationItem({ conversation }: { conversation: ConversationSummary }) {
   const text = messages.history;
+  const queryClient = useQueryClient();
+
+  async function remove() {
+    await deleteConversation(conversation.id);
+    queryClient.removeQueries({ queryKey: askKeys.conversation(conversation.id) });
+    await queryClient.invalidateQueries({
+      queryKey: ['projects', conversation.projectId],
+    });
+  }
+
   return (
     <li className="card">
       <div className="card__main">
@@ -109,6 +125,21 @@ function ConversationItem({ conversation }: { conversation: ConversationSummary 
           {text.createdAt(formatDateTime(conversation.createdAt))}
         </p>
       </div>
+      <ConfirmDialog
+        trigger={messages.confirm.deleteTrigger}
+        triggerLabel={text.delete(conversation.title)}
+        title={text.deleteTitle}
+        description={
+          <>
+            <p>
+              <strong>{conversation.title}</strong>
+            </p>
+            <p>{text.deleteDetail}</p>
+          </>
+        }
+        confirmLabel={text.deleteConfirm}
+        onConfirm={remove}
+      />
     </li>
   );
 }

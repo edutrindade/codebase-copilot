@@ -133,7 +133,8 @@ class IndexWorker implements SmartLifecycle {
         }
     }
 
-    // Jobs that already used every attempt (the worker died each time) fail instead of starting.
+    // Jobs that already used every attempt (the worker died each time) fail instead of starting;
+    // jobs whose cancellation was requested before a crash or a requeue end as CANCELLED.
     Optional<Claim> claimNext() {
         while (true) {
             Optional<Optional<Claim>> result =
@@ -141,12 +142,16 @@ class IndexWorker implements SmartLifecycle {
                             transactions.execute(
                                     tx -> {
                                         Instant now = now();
-                                        Optional<Claim> locked =
+                                        Optional<IndexJobRepository.Locked> locked =
                                                 jobs.lockNext(now.minus(properties.leaseTimeout()));
                                         if (locked.isEmpty()) {
                                             return Optional.<Claim>empty();
                                         }
-                                        Claim current = locked.get();
+                                        Claim current = locked.get().claim();
+                                        if (locked.get().cancelRequested()) {
+                                            outcomes.cancel(current);
+                                            return null;
+                                        }
                                         if (current.attempt() >= properties.maxAttempts()) {
                                             outcomes.fail(
                                                     current,

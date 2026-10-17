@@ -96,6 +96,7 @@ export const messages = {
     sourceZip: 'Arquivo ZIP',
     status: {
       INDEXING: 'Indexando',
+      FAILED: 'A última indexação falhou',
       AWAITING_UPLOAD: 'Aguardando o ZIP',
       NOT_INDEXED: 'Não indexado',
       OUTDATED: 'Desatualizado',
@@ -279,6 +280,49 @@ export const messages = {
       files: (completed: number, total: number) => `${completed} de ${total} arquivos`,
       chunks: (completed: number, total: number) => `${completed} de ${total} trechos`,
       attempt: (attempt: number) => `Tentativa ${attempt}`,
+      cancel: 'Cancelar',
+      cancelLabel: 'Cancelar a indexação',
+      cancelTitle: 'Cancelar a indexação?',
+      cancelDetail:
+        'O trabalho feito até aqui é descartado e o snapshot ativo continua em uso. Embeddings já calculados ficam guardados e não são pagos de novo.',
+      cancelConfirm: 'Cancelar indexação',
+      cancelDismiss: 'Continuar indexando',
+      cancelWorking: 'Cancelando…',
+      cancelRequested:
+        'Cancelamento pedido; a indexação para ao fim da etapa ou do lote em andamento.',
+    },
+    cancelled: {
+      title: 'A última indexação foi cancelada',
+      previousInUse: 'O snapshot anterior continua em uso nas perguntas.',
+      at: (date: string) => `Cancelada em ${date}.`,
+    },
+    usage: {
+      title: 'Uso',
+      detail:
+        'Calculado sobre as indexações e as conversas guardadas; conversas excluídas saem da conta.',
+      indexing: 'Indexações',
+      questions: 'Perguntas',
+      tokens: 'Tokens e custo',
+      total: 'Total',
+      completed: 'Concluídas',
+      failed: 'Com falha',
+      cancelled: 'Canceladas',
+      averageDuration: 'Duração média',
+      p95Duration: 'Duração p95',
+      answered: 'Respondidas',
+      partial: 'Parciais',
+      abstained: 'Sem resposta',
+      pending: 'Em andamento',
+      p50Latency: 'Latência p50',
+      p95Latency: 'Latência p95',
+      inputTokens: 'Tokens de entrada',
+      outputTokens: 'Tokens de saída',
+      estimatedCost: 'Custo estimado',
+      unknownCost: (count: number) =>
+        count === 1
+          ? '1 resposta sem custo estimado (preço não configurado ou tokens não informados).'
+          : `${count} respostas sem custo estimado (preço não configurado ou tokens não informados).`,
+      none: '—',
     },
     failure: {
       title: 'A última indexação falhou',
@@ -358,6 +402,7 @@ export const messages = {
         READY: 'Pronto',
         PARTIAL: 'Parcial',
         FAILED: 'Falhou',
+        CANCELLED: 'Cancelado',
       },
       changes: (added: number, modified: number, removed: number, unchanged: number) =>
         `${added} novos, ${modified} alterados, ${removed} removidos, ${unchanged} iguais`,
@@ -521,6 +566,11 @@ export const messages = {
     questionCount: (count: number) => (count === 1 ? '1 pergunta' : `${count} perguntas`),
     updatedAt: (date: string) => `Última pergunta em ${date}`,
     createdAt: (date: string) => `Iniciada em ${date}`,
+    delete: (title: string) => `Excluir a conversa “${title}”`,
+    deleteTitle: 'Excluir esta conversa?',
+    deleteDetail:
+      'Remove as perguntas, as respostas e as evidências guardadas desta conversa. Esta ação não pode ser desfeita.',
+    deleteConfirm: 'Excluir conversa',
   },
   indexing: {
     start: 'Indexar',
