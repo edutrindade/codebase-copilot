@@ -2,7 +2,7 @@
 
 Ferramenta local-first que responde perguntas sobre um repositório com evidências verificáveis (arquivo + linhas). A documentação do produto e da arquitetura está em [`docs/`](docs/README.md), e as decisões técnicas em [`docs/10-DECISIONS.md`](docs/10-DECISIONS.md).
 
-> Estado atual: Etapa 7 do [roadmap](docs/09-IMPLEMENTATION-ROADMAP.md) concluída (UX completa do MVP). Pela UI em `apps/web` dá para criar workspaces, importar uma pasta local ou um ZIP, revisar a pré-análise, indexar, perguntar, abrir as evidências no visualizador e rever as conversas. Próxima: Etapa 8 (qualidade e hardening).
+> Estado atual: Etapa 8 do [roadmap](docs/09-IMPLEMENTATION-ROADMAP.md) concluída (qualidade e hardening). Pela UI dá para criar workspaces, importar uma pasta local ou um ZIP, revisar a pré-análise, indexar (e cancelar), perguntar, abrir as evidências no visualizador, rever e excluir conversas e ver o uso do projeto; tudo num processo só com `java -jar` (seção "Executar empacotado"). Limitações e recuperação de falhas: [`docs/11-OPERATIONS.md`](docs/11-OPERATIONS.md). As medições com o provedor real ficam para quando houver saldo. Próxima: Etapa 9 (recursos posteriores ao MVP).
 
 ## Pré-requisitos
 
@@ -241,6 +241,8 @@ Com o backend no ar:
 O backend só atende a própria máquina (D-072): escuta em `127.0.0.1` e recusa com `403` requisições endereçadas a outro nome que não `localhost`/`127.0.0.1`/`[::1]` (`FORBIDDEN_HOST`) e mudanças de estado vindas de páginas fora das origens da UI (`FORBIDDEN_ORIGIN`). As listas ficam em `app.http.allowed-hosts` e `app.http.allowed-origins` (padrão: o Vite em `localhost`/`127.0.0.1`, portas 5173 e 4173); a própria origem do backend é aceita em qualquer porta (D-085), e curl e scripts, que não enviam `Origin`, passam.
 
 ## Executar empacotado (UI e API num processo)
+
+Backup, recuperação de falhas e limitações conhecidas: [`docs/11-OPERATIONS.md`](docs/11-OPERATIONS.md).
 
 ```bash
 cd apps/backend

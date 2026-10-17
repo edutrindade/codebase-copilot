@@ -1354,6 +1354,22 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Consequências:** o perfil exige Node 22 e npm; ao alternar entre os builds é preciso `clean` (o `static/` copiado fica em `target/classes`). A CSP existe em dois lugares (`csp.ts` e `SecurityHeadersFilter`). Executar o jar de fora de `apps/backend` continua sem achar o `.env`.  
 **O que levaria à revisão:** distribuição para outras máquinas (instalador, imagem Docker), uma UI que precise de recursos de outra origem, ou a Swagger UI sob a CSP estrita.
 
+### D-086 — O que fica fora da Etapa 8 e fechamento (P9 da Etapa 8)
+**Status:** Aceita (17/10/2026; F9 da Etapa 8)  
+**Contexto:** a lista de pendências trazia itens que a etapa podia fazer, mas sem evidência de que valessem o custo; e a etapa fecha sem as rodadas com o provedor real (decisão de 17/10/2026 de deixar o saldo para o fim do roteiro).  
+**Decisão:**
+- **Não nesta etapa, com o motivo:**
+  - **Realce de sintaxe no visualizador:** ninguém relatou problema de legibilidade, e seria um parser sobre conteúdo não confiável (D-075).
+  - **Perguntas de acompanhamento com o histórico no prompt:** sem evidência de uso; aumenta o custo por pergunta e a superfície de injeção (P5 da Etapa 6). Cada pergunta segue independente, com a conversa só para organizar o histórico.
+  - **Nova recuperação quando falta suporte:** só depois de a avaliação real mostrar abstenção indevida relevante.
+  - **LLM como juiz:** 80 perguntas ainda cabem na auditoria humana; um juiz exige outro provedor e calibração contra a própria auditoria.
+- **Pendente até haver saldo (F3):** testes de fumaça das Etapas 4 e 6; avaliação de recuperação com vetores (`VECTOR`, `LEXICAL_VECTOR`, `HYBRID`) e a varredura de fusão com eles; avaliação de respostas com o `gpt-6-luna` e a auditoria humana; as candidatas da D-081 (nomes de arquivo no `PathSearch`, chunking de 80 linhas); revisão da D-017, da O-004, da O-005 e da O-010; custo medido por pergunta (`07` §9); metas de qualidade do `08` §9.
+- **Aceite da etapa** (*resultados do conjunto de avaliação e riscos conhecidos são documentados*): parcial, como nas Etapas 5 a 7. Os resultados lexicais e de desempenho estão no `08` §9, e os riscos, limitações e a recuperação de falhas no `11-OPERATIONS.md`; os resultados com o provedor real ficam para a F3.
+
+**Motivo:** manter o escopo no que tem evidência e não gastar o corpus de avaliação em mudanças que só ele poderia justificar.  
+**Consequências:** a Etapa 9 começa com a F3 da Etapa 8 como pré-requisito para qualquer mudança de ranking (reranking, AST), pela regra da D-081.  
+**O que levaria à revisão:** pedidos de uso (acompanhamento, realce), ou a avaliação real mostrando abstenção indevida ou um teto do `lines-v1`.
+
 ---
 
 ## Decisões em aberto

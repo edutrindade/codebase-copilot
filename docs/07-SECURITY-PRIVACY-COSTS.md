@@ -157,7 +157,7 @@ O provedor de chat é escolhido por `GENERATION_PROVIDER` (`app.generation.provi
 A API não tem autenticação: quem alcança a porta lê o código indexado e pode apagar projetos. Com a UI no browser, uma página qualquer também pode tentar chamar `localhost`. Mitigações (D-072):
 - o backend escuta só em `127.0.0.1` (`SERVER_ADDRESS`; trocar por `0.0.0.0` expõe a API à rede e exige ajustar `app.http.allowed-hosts`);
 - requisições com `Host` fora de `app.http.allowed-hosts` (padrão `localhost`, `127.0.0.1`, `[::1]`, em qualquer porta) respondem `403 FORBIDDEN_HOST`, o que barra o DNS rebinding;
-- `POST`, `PUT`, `PATCH` e `DELETE` com cabeçalho `Origin` fora de `app.http.allowed-origins` (padrão: os servidores do Vite em `localhost`/`127.0.0.1`, portas 5173 e 4173) respondem `403 FORBIDDEN_ORIGIN`, o que barra o CSRF, inclusive o upload `multipart`, que o browser envia sem preflight. Sem `Origin` (curl, scripts), passa;
+- `POST`, `PUT`, `PATCH` e `DELETE` com cabeçalho `Origin` fora de `app.http.allowed-origins` (padrão: os servidores do Vite em `localhost`/`127.0.0.1`, portas 5173 e 4173) respondem `403 FORBIDDEN_ORIGIN`, o que barra o CSRF, inclusive o upload `multipart`, que o browser envia sem preflight. Sem `Origin` (curl, scripts), passa. A própria origem do backend passa em qualquer porta, para a UI empacotada (D-085);
 - nenhuma origem cruzada é liberada por CORS: o browser continua impedindo outras páginas de ler as respostas;
 - o proxy do Vite repassa a `Origin` do browser sem reescrever, para que um CSRF que passe por ele também seja recusado; o próprio Vite recusa `Host` desconhecido.
 
@@ -215,14 +215,16 @@ Desde a Etapa 3, o conteúdo dos arquivos indexados fica no PostgreSQL (`file_co
 
 ## 11. Checklist antes de lançar
 
-- [ ] Nenhum código do repositório é executado.
-- [ ] ZIP Slip e bombas de descompressão são testados.
-- [ ] Caminhos ficam confinados à raiz.
-- [ ] Exclusões são aplicadas antes de embeddings e geração.
-- [ ] Conteúdo sensível não é logado.
-- [ ] Prompt injection é coberto por testes.
-- [ ] Citações são validadas no backend.
-- [ ] Usuário é informado sobre envio a provedores remotos.
-- [ ] Backend só aceita conexões e requisições locais (D-072).
-- [ ] Exclusão de projeto remove os dados esperados.
-- [ ] Dependências e configurações têm revisão de segurança.
+Conferido no fechamento da Etapa 8 (17/10/2026), cada item com o que o sustenta; todos os testes citados rodam no `./mvnw verify` ou no `npm run check`, salvo indicação.
+
+- [x] **Nenhum código do repositório é executado.** Regra ArchUnit que proíbe `ProcessBuilder`, `Process` e `Runtime.exec` no código de produção (`ArchitectureTest`); conteúdo, nomes e pergunta hostis aparecem como texto na UI (`e2e/hostile-content.spec.ts`, no `npm run e2e`) (D-082).
+- [x] **ZIP Slip e bombas de descompressão são testados.** `ZipExtractorTest` (caminhos inseguros em 10 variantes, controles bidirecionais, NFD × NFC, profundidade, tamanho declarado falso, taxa de compressão, total e quantidade de entradas, ZIP aninhado, comentário e extra field máximos) e `UploadLimitIT` (D-035, D-082).
+- [x] **Caminhos ficam confinados à raiz.** `LocalRootsApiIT.rejectsPathsOutsideRoot`, `SafeScannerTest.neverFollowsLinksInsideOrOutsideTheRoot`, `SourceFileReaderTest.linkOrFifoInPlaceOfTheFileIsNeverOpened`, `ConfinedPathsTest`. Links físicos e pontos de montagem são limitação documentada (`11-OPERATIONS.md` §5).
+- [x] **Exclusões são aplicadas antes de embeddings e geração.** `ExcludedContentIT`: a fixture inteira indexada e as perguntas de segredo feitas com provedores espiões, sem nenhum conteúdo excluído (por nome ou por conteúdo) chegando a eles; `SensitiveContentIT` (D-082, D-083).
+- [x] **Conteúdo sensível não é logado.** `AnswerApiIT.questionAnswerAndCodeNeverReachTheLogs`, `ImportApiIT.rejectedImportKeepsCurrentAndHidesEntryNames` e `ExcludedContentIT`, que confere os logs da indexação e das respostas (sem caminhos, conteúdo, perguntas nem segredos).
+- [x] **Prompt injection é coberto por testes** — a parte estrutural. `PromptBuilderTest` (nonce forjado, delimitador no caminho, imitação do JSON de saída e de rótulos, instrução em nome de arquivo e de diretório, linha longa), `AnswerApiIT.injectedInstructionsStayInsideTheirEvidenceBlock` e `labelsWrittenInTheContentAreNotEvidence`. O efeito sobre o modelo real (perguntas `PROMPT_INJECTION` da avaliação de respostas) está pendente de saldo (F3).
+- [x] **Citações são validadas no backend.** `CitationValidatorTest` (40 casos) e `AnswerApiIT.inventedLabelIsFlaggedAndRemoved` (D-066).
+- [x] **Usuário é informado sobre envio a provedores remotos.** `GET /system/providers` com `remote` (`ProvidersApiIT`) e o aviso com confirmação antes de indexar e de perguntar (testes de `NewProjectPage` e `ChatPage`) (D-073).
+- [x] **Backend só aceita conexões e requisições locais (D-072).** `LocalAccessFilterIT` (escuta em `127.0.0.1`, `Host` e `Origin`, inclusive a própria origem do backend empacotado) e `e2e/packaged.spec.ts` (D-085).
+- [x] **Exclusão de projeto remove os dados esperados.** `IndexSchemaIT.deletingProjectCascadesThroughEverything`, `ProjectApiIT.deletesProject` e o teste da pasta do import removida do `DATA_DIR`; conversas também podem ser excluídas uma a uma (`HistoryReadApiIT`, D-084). Backups ficam a cargo de quem opera (§10).
+- [x] **Dependências e configurações têm revisão de segurança.** `npm audit` e OSV das 168 dependências Maven sem avisos em 17/10/2026, com Tomcat e Jackson sobrescritos (D-082); cabeçalhos de segurança enviados pelo backend (`PackagedUiIT`, D-085); `.env` fora do Git. A consulta de dependências não roda no `verify`: repetir antes de cada release.

@@ -1,6 +1,6 @@
 # Plano — Etapa 8: Qualidade e hardening
 
-**Status:** plano aprovado em 17/10/2026 com as recomendações do plano (branch `etapa-8`). As rodadas com o provedor real (P2, F3) ficam para depois de todas as etapas do roteiro, quando houver saldo. As propostas P1 a P9 viram D-079 em diante, registradas em `10-DECISIONS.md` na fatia indicada em cada uma.
+**Status:** concluída em 17/10/2026, com o aceite parcial (plano aprovado no mesmo dia; branch `etapa-8`). As rodadas com o provedor real (P2, F3) ficam para depois de todas as etapas do roteiro, quando houver saldo. As propostas P1 a P9 viram D-079 em diante, registradas em `10-DECISIONS.md` na fatia indicada em cada uma.
 **Referências:** `09-IMPLEMENTATION-ROADMAP.md` (Etapa 8), `docs/plans/etapa-2.md` a `etapa-7.md` (pendências), `01-PRD.md` §9, `03-UX-ONBOARDING.md` §9, `04-RAG-PIPELINE.md` §5 e §6, `07-SECURITY-PRIVACY-COSTS.md` (todo), `08-EVALUATION.md` (todo), D-017, D-035, D-036, D-043, D-049, D-052, D-058, D-059, D-061, D-062, D-066, D-069, D-072, D-076, O-004, O-005, O-010.
 
 ## Escopo
@@ -341,3 +341,36 @@ O Spring Boot 4.1.1 é o último 4.1.x publicado no Maven Central, então não h
 - **Limitações conhecidas e recuperação de falhas:** novo `docs/11-OPERATIONS.md` (como rodar empacotado, backup e restauração do volume do PostgreSQL, o que fazer em cada falha — banco fora, provedor sem saldo ou fora, queda no meio de um job, disco cheio, ZIP recusado, snapshot podado — e a lista consolidada das limitações, hoje espalhadas pelo `07` e pelos planos).
 - Checklists do `07` §11 e do `08` §10 marcados, com o teste ou o resultado de cada item.
 - Resultados da avaliação no `08` (corpus, números e metas do §9), roteiro, README, `docs/README.md`, P9 registrada, "Resultado e desvios" neste plano.
+
+**Resultado (17/10/2026)**
+- `docs/11-OPERATIONS.md`: como rodar, onde ficam os dados, backup e restauração do PostgreSQL (conferidos num banco temporário: 12 migrações e pgvector 0.8.7), o que fazer em cada falha (banco, provedor, queda no meio de um trabalho, disco cheio, ZIP recusado, projeto grande, origem, snapshot podado, acesso recusado, snapshots anteriores à F6) e as limitações conhecidas consolidadas.
+- Checklists do `07` §11 e do `08` §10 marcados, cada item com o teste ou o resultado; resultados e metas no `08` §9 (lexical, desempenho e o piso de não regressão; metas de qualidade com vetores e respostas para a F3).
+- P9 registrada na D-086, com as pendências da F3 e o aceite parcial. Roteiro, README, `docs/README.md` atualizados.
+
+## Resultado e desvios
+
+**Aceite:** *resultados do conjunto de avaliação e riscos conhecidos são documentados.*
+- **Parcial, como nas Etapas 5 a 7.** Os resultados da recuperação lexical (80 perguntas, 66 com intervalo esperado: Recall@10 0,492, MRR@10 0,291) e do desempenho (metas da D-080 atendidas) estão no `08` §9; riscos, limitações e a recuperação de falhas, no `11-OPERATIONS.md`.
+- **Sem o provedor real.** O vetorial, o híbrido, a avaliação de respostas e os testes de fumaça esperam saldo (decisão de 17/10/2026); a F3 fica pendente, com a lista na D-086.
+- **Passada manual por teclado (P10 da Etapa 7): pendente com você.** Os testes automatizados cobrem a pergunta, a citação, o "Pular para o conteúdo" e o axe em todas as telas.
+
+**O que a etapa entregou:** corpus `hono` e fixture ampliada (80 perguntas); harness de desempenho e busca híbrida em paralelo; harness de variações de fusão e chunking; suíte de segurança (injeção estrutural, ZIP, pasta local, codificação, ArchUnit, E2E com conteúdo hostil); detecção de segredos por conteúdo; cancelamento de indexação, exclusão de conversa, último job e uso agregado; UI empacotada no jar com cabeçalhos de segurança e build por tela; `11-OPERATIONS.md`. Decisões D-079 a D-086. `./mvnw verify` com 1176 testes de unidade e 489 de integração; `npm run check` com 116; `npm run e2e` (2) e `npm run e2e:jar` (4).
+
+**Desvios em relação ao plano** (detalhes no "Resultado" de cada fatia):
+- F1: Tomcat e Jackson sobrescritos antes do corpus, adiantados da F5.
+- F2: tag `performance` em vez de `perf`; gerador sintético ajustado depois da primeira rodada; metas de busca revistas com você (p95 ≤ 1 s com 50 mil chunks).
+- F3: adiada para o fim do roteiro.
+- F4: variantes de chunking uma variável por vez, em vez da grade.
+- F5: o teste de BOM de UTF-8 já existia; a pasta do import já saía com o projeto (faltava o teste).
+- F6: snapshots anteriores à detecção sem aviso em `outdatedReasons`.
+- F7: `cancelRequested` também no `indexing` do projeto; status próprio `CANCELLED` para o snapshot.
+- F8: a própria origem do backend aceita em qualquer porta, em vez de listar a 8080; Swagger UI fora da CSP estrita.
+
+**Pendências que saem da etapa:**
+
+| Pendência | Para onde |
+|---|---|
+| F3: fumaça das Etapas 4 e 6, vetorial e híbrido, avaliação e auditoria das respostas, candidatas da D-081, revisão da D-017, O-004, O-005 e O-010, custo medido, metas de qualidade | quando houver saldo, depois de todas as etapas (D-086) |
+| Passada manual por teclado (P10 da Etapa 7) | você, antes do PR da etapa |
+| Realce de sintaxe, perguntas de acompanhamento, nova recuperação, LLM como juiz | quando o uso ou a avaliação pedirem (D-086) |
+| Reranking e chunking por AST, comparação entre snapshots, provedor local, worker separado | Etapa 9 |

@@ -122,11 +122,39 @@ O harness `AnswerEvaluationIT` (tag `eval`, fora do `verify`) indexa os corpora 
 
 As metas numéricas devem ser definidas depois da primeira medição, considerando o tamanho e a dificuldade do corpus. Evitar criar percentuais arbitrários sem baseline.
 
+### Resultados e metas (fechamento da Etapa 8, 17/10/2026)
+
+**Recuperação, só lexical** (`eval/results/2026-10-17-lexical.*`, 66 perguntas com intervalo esperado, D-079):
+
+| Corpus | Perguntas | Recall@10 | MRR@10 |
+|---|---|---|---|
+| fixture | 20 | 0,750 | 0,640 |
+| codebase-copilot | 13 | 0,397 | 0,256 |
+| click | 11 | 0,258 | 0,071 |
+| hono | 22 | 0,432 | 0,103 |
+| **Todos** (`LEXICAL`) | 66 | **0,492** | **0,291** |
+
+- Nenhuma variação de fusão nem de chunking medida sem vetores passou na regra de promoção da D-081; `lines-v1` e os parâmetros da fusão ficam como estão. A detecção de segredos por conteúdo não mudou nenhuma métrica (`2026-10-17-lexical-sensitive-content.*`, D-083).
+- **Piso de não regressão:** nenhuma mudança é promovida se o `LEXICAL` do corpus inteiro cair abaixo de Recall@10 0,492 ou MRR@10 0,291 (regra da D-081).
+- **Metas de qualidade do vetorial, do híbrido e das respostas:** a definir com a primeira medição real (F3), como esta seção pede; o vetorial, o híbrido e a avaliação de respostas ainda não rodaram por falta de saldo.
+- **Respostas, já garantido por construção e por teste:** nenhuma citação inválida aceita em silêncio (`invalidCitationCount`, `PARTIAL`) e nenhum conteúdo excluído enviado ao provedor (`ExcludedContentIT`).
+
+**Desempenho** (`eval/results/2026-10-17-perf.*`, provedores fake, D-080). Metas confirmadas na F2 e atendidas:
+
+| Meta | Medido |
+|---|---|
+| Busca `HYBRID` p95 ≤ 1 s com 50 mil chunks | 676 ms com ~46 mil chunks |
+| Busca `HYBRID` p95 ≤ 200 ms até 5 mil chunks | até 90 ms nos corpora reais (até 2.050 chunks) |
+| Pergunta sem o tempo do provedor ≤ 1 s com 50 mil chunks | 620 ms |
+| Reindexação sem mudanças < 10% da completa | 3,1 s contra 41–45 s (7–8%) |
+
+Fora da meta, registrado: uma pergunta com um termo presente em quase todo chunk leva 1,06 s de p95 com 46 mil chunks.
+
 ## 10. Critério mínimo de release
 
 Antes de considerar o MVP utilizável:
-- não aceitar citações inválidas silenciosamente;
-- testar a abstenção em perguntas sem resposta;
-- confirmar que exclusões são respeitadas;
-- demonstrar reindexação incremental correta;
-- registrar limitações conhecidas e resultados do corpus de avaliação.
+- [x] **não aceitar citações inválidas silenciosamente:** rótulos inventados ou fora do contexto são removidos e contados em `invalidCitationCount`, e a resposta vira `PARTIAL` (`CitationValidatorTest`, `AnswerApiIT`; D-066);
+- [x] **testar a abstenção em perguntas sem resposta** — com o fake: sem evidência a resposta é `ABSTAINED` sem chamar o modelo, e o `ABSTAIN` do modelo é respeitado (`AnswerApiIT`, `CitationValidatorTest`). A taxa de abstenção com o modelo real, nas 14 perguntas `mustAbstain`, está pendente (F3);
+- [x] **confirmar que exclusões são respeitadas:** `ExcludedContentIT`, `SensitiveContentIT`, `DefaultExclusionRulesTest` e as perguntas `EXCLUDED_SECRET` na recuperação lexical (arquivos com segredo fora do top 10, D-083);
+- [x] **demonstrar reindexação incremental correta:** `IndexingAcceptanceIT` e `IndexingRecoveryIT` (só o conteúdo novo é processado, um job interrompido termina igual a um limpo), e a medição da reindexação sem mudanças (7–8% da completa, D-080);
+- [x] **registrar limitações conhecidas e resultados do corpus de avaliação:** `11-OPERATIONS.md` §5 e §9 deste documento.
