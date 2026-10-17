@@ -3,6 +3,9 @@ import { useState } from 'react';
 import { Loading } from '../../components/Loading';
 import { Pagination } from '../../components/Pagination';
 import { ProblemAlert } from '../../components/ProblemAlert';
+import { Card } from '../../components/ui/Card';
+import { TableScroll } from '../../components/ui/TableScroll';
+import { StatusBadge } from '../../components/ui/StatusBadge';
 import { formatDateTime, formatNumber } from '../../format';
 import { messages } from '../../messages';
 import { listSnapshots, projectKeys, type Snapshot } from './api';
@@ -17,7 +20,7 @@ export function SnapshotList({ projectId }: { projectId: string }) {
   });
 
   return (
-    <section className="stack panel" aria-labelledby="snapshots-title">
+    <Card as="section" className="stack" aria-labelledby="snapshots-title">
       <h2 id="snapshots-title">{text.title}</h2>
       {snapshots.isPending && <Loading />}
       {snapshots.isError && (
@@ -28,7 +31,7 @@ export function SnapshotList({ projectId }: { projectId: string }) {
       )}
       {snapshots.isSuccess && snapshots.data.totalItems > 0 && (
         <>
-          <div className="table-scroll">
+          <TableScroll labelledBy="snapshots-title">
             <table className="data-table">
               <thead>
                 <tr>
@@ -45,11 +48,11 @@ export function SnapshotList({ projectId }: { projectId: string }) {
                 ))}
               </tbody>
             </table>
-          </div>
+          </TableScroll>
           <Pagination page={page} totalPages={snapshots.data.totalPages} onChange={setPage} />
         </>
       )}
-    </section>
+    </Card>
   );
 }
 
@@ -64,7 +67,7 @@ function SnapshotRow({ snapshot }: { snapshot: Snapshot }) {
         {snapshot.active && (
           <>
             {' '}
-            <span className="status status--ready">{text.active}</span>
+            <StatusBadge tone="success">{text.active}</StatusBadge>
           </>
         )}
         {snapshot.prunedAt && <span className="muted"> ({text.pruned})</span>}

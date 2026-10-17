@@ -1,0 +1,9 @@
+/* Layer order is fixed here; main.tsx imports this file before any component stylesheet. */
+@layer reset, tokens, base, components, screens, utilities;
+
+@import './fonts.css';
+@import './reset.css';
+@import './tokens.css';
+@import './base.css';
+@import './screens.css';
+@import './utilities.css';

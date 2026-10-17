@@ -20,6 +20,15 @@ const ProjectPage = screen(() => import('../features/project/ProjectPage'), 'Pro
 const ChatPage = screen(() => import('../features/ask/ChatPage'), 'ChatPage');
 const HistoryPage = screen(() => import('../features/history/HistoryPage'), 'HistoryPage');
 
+// Development only: import.meta.env.DEV is false in the build, which drops the catalog chunk.
+function catalogRoutes(): RouteObject[] {
+  if (!import.meta.env.DEV) {
+    return [];
+  }
+  const CatalogPage = screen(() => import('../features/catalog/CatalogPage'), 'CatalogPage');
+  return [{ path: '_ui', element: page(<CatalogPage />) }];
+}
+
 function page(element: ReactNode) {
   return <Suspense fallback={<Loading />}>{element}</Suspense>;
 }
@@ -41,6 +50,7 @@ export const routes: RouteObject[] = [
             element: page(<ChatPage />),
           },
           { path: 'projects/:projectId/history', element: page(<HistoryPage />) },
+          ...catalogRoutes(),
           { path: '*', element: <NotFoundPage /> },
         ],
       },

@@ -440,6 +440,8 @@ describe('NewProjectPage: pre-analysis', () => {
 
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent(messages.recovery.waitForJob);
-    expect(within(alert).queryByRole('button')).not.toBeInTheDocument();
+    expect(
+      within(alert).queryByRole('button', { name: messages.errors.retry }),
+    ).not.toBeInTheDocument();
   });
 });

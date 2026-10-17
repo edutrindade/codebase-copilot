@@ -1,11 +1,15 @@
+import { Trash, type LucideIcon } from 'lucide-react';
 import { AlertDialog } from 'radix-ui';
 import { useState, type MouseEvent, type ReactNode } from 'react';
 import { messages } from '../messages';
 import { ProblemAlert } from './ProblemAlert';
+import { Button } from './ui/Button';
+import './ui/Dialog.css';
 
 interface ConfirmDialogProps {
   trigger: string;
   triggerLabel: string;
+  triggerIcon?: LucideIcon;
   title: string;
   description: ReactNode;
   confirmLabel: string;
@@ -17,6 +21,7 @@ interface ConfirmDialogProps {
 export function ConfirmDialog({
   trigger,
   triggerLabel,
+  triggerIcon = Trash,
   title,
   description,
   confirmLabel,
@@ -56,9 +61,9 @@ export function ConfirmDialog({
   return (
     <AlertDialog.Root open={open} onOpenChange={changeOpen}>
       <AlertDialog.Trigger asChild>
-        <button type="button" className="button button--danger-quiet" aria-label={triggerLabel}>
+        <Button variant="danger-ghost" size="sm" icon={triggerIcon} aria-label={triggerLabel}>
           {trigger}
-        </button>
+        </Button>
       </AlertDialog.Trigger>
       <AlertDialog.Portal>
         <AlertDialog.Overlay className="dialog-overlay" />
@@ -70,19 +75,12 @@ export function ConfirmDialog({
           {error !== null && <ProblemAlert error={error} />}
           <div className="dialog__actions">
             <AlertDialog.Cancel asChild>
-              <button type="button" className="button" disabled={pending}>
-                {dismissLabel}
-              </button>
+              <Button disabled={pending}>{dismissLabel}</Button>
             </AlertDialog.Cancel>
             <AlertDialog.Action asChild>
-              <button
-                type="button"
-                className="button button--danger"
-                disabled={pending}
-                onClick={confirm}
-              >
+              <Button variant="danger" pending={pending} onClick={confirm}>
                 {pending ? workingLabel : confirmLabel}
-              </button>
+              </Button>
             </AlertDialog.Action>
           </div>
         </AlertDialog.Content>

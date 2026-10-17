@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useId, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router';
 import { ProblemAlert } from '../../components/ProblemAlert';
+import { Button } from '../../components/ui/Button';
 import { messages } from '../../messages';
 import { createWorkspace, workspaceKeys } from './api';
 
@@ -38,9 +39,9 @@ export function CreateWorkspaceForm() {
       </div>
       {mutation.isError && <ProblemAlert error={mutation.error} />}
       <div>
-        <button type="submit" className="button button--primary" disabled={mutation.isPending}>
+        <Button type="submit" variant="primary" pending={mutation.isPending}>
           {mutation.isPending ? messages.workspaces.creating : messages.workspaces.create}
-        </button>
+        </Button>
       </div>
     </form>
   );

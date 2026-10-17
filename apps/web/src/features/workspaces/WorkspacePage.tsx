@@ -1,13 +1,18 @@
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams, useSearchParams } from 'react-router';
 import { ApiError } from '../../api/errors';
+import { FolderOpen, Plus } from 'lucide-react';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { Loading } from '../../components/Loading';
 import { Pagination, pageFromSearch } from '../../components/Pagination';
 import { ProblemAlert } from '../../components/ProblemAlert';
+import { ButtonLink } from '../../components/ui/Button';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { StatusBadge } from '../../components/ui/StatusBadge';
 import { messages } from '../../messages';
 import { deleteProject, getWorkspace, listProjects, workspaceKeys, type Project } from './api';
-import { projectSource, projectStatus } from './projectStatus';
+import { PROJECT_STATUS_TONE, projectSource, projectStatus } from './projectStatus';
 
 const ACTIVE_JOB_POLL_MS = 1000;
 
@@ -63,23 +68,31 @@ export function WorkspacePage() {
 
   return (
     <section className="stack">
-      {back}
-      <div className="page-header">
-        <h1>{workspace.data.name}</h1>
-        <Link to={newProject} className="button button--primary">
-          {messages.projects.newProject}
-        </Link>
-      </div>
+      <PageHeader
+        back={back}
+        title={workspace.data.name}
+        actions={
+          <ButtonLink to={newProject} variant="primary" icon={Plus}>
+            {messages.projects.newProject}
+          </ButtonLink>
+        }
+      />
       {projects.isPending && <Loading />}
       {projects.isError && (
         <ProblemAlert error={projects.error} onRetry={() => void projects.refetch()} />
       )}
       {projects.isSuccess && projects.data.totalItems === 0 && (
-        <div className="empty-state">
-          <h2>{messages.projects.emptyTitle}</h2>
+        <EmptyState
+          icon={FolderOpen}
+          title={messages.projects.emptyTitle}
+          action={
+            <ButtonLink to={newProject} variant="primary" icon={Plus}>
+              {messages.projects.newProject}
+            </ButtonLink>
+          }
+        >
           <p>{messages.projects.emptyDetail}</p>
-          <Link to={newProject}>{messages.projects.newProject}</Link>
-        </div>
+        </EmptyState>
       )}
       {projects.isSuccess && projects.data.totalItems > 0 && (
         <>
@@ -117,9 +130,9 @@ function ProjectItem({ project }: { project: Project }) {
         </Link>
         <p className="muted">{projectSource(project)}</p>
         <p>
-          <span className={`status status--${status.toLowerCase()}`}>
+          <StatusBadge tone={PROJECT_STATUS_TONE[status]}>
             {messages.projects.status[status]}
-          </span>
+          </StatusBadge>
           {progress && progress.total > 0 && (
             <span className="muted">
               {' '}

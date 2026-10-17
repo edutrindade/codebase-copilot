@@ -1,0 +1,14 @@
+@layer components {
+  .spinner {
+    flex: none;
+    width: var(--icon);
+    height: var(--icon);
+    animation: spin 0.8s linear infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .spinner {
+      animation: none;
+    }
+  }
+}

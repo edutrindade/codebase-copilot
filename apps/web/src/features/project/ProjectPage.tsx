@@ -1,15 +1,20 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 import { Link, useParams } from 'react-router';
+import { MessageSquareText, MessagesSquare } from 'lucide-react';
 import { ApiError } from '../../api/errors';
 import { Loading } from '../../components/Loading';
 import { ProblemAlert } from '../../components/ProblemAlert';
+import { ButtonLink } from '../../components/ui/Button';
+import { Callout } from '../../components/ui/Callout';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { StatusBadge } from '../../components/ui/StatusBadge';
 import { formatDateTime } from '../../format';
 import { messages } from '../../messages';
 import { getProject, getProviders, importKeys } from '../import/api';
 import { IndexPanel } from '../import/IndexPanel';
 import { workspaceKeys, type Project } from '../workspaces/api';
-import { projectSource, projectStatus } from '../workspaces/projectStatus';
+import { PROJECT_STATUS_TONE, projectSource, projectStatus } from '../workspaces/projectStatus';
 import { ActiveSnapshot } from './ActiveSnapshot';
 import { cancelIndexJob, getLatestIndexJob, projectKeys, type IndexJob } from './api';
 import { IndexingProgress } from './IndexingProgress';
@@ -95,35 +100,45 @@ function ProjectSummary({ project }: { project: Project }) {
 
   return (
     <section className="stack">
-      <Link to={`/workspaces/${project.workspaceId}`} className="back-link">
-        {text.backToWorkspace}
-      </Link>
-      <div className="page-header">
-        <h1>{project.name}</h1>
-        <div className="actions">
-          <Link to={`/projects/${project.id}/history`} className="button">
-            {text.history}
+      <PageHeader
+        back={
+          <Link to={`/workspaces/${project.workspaceId}`} className="back-link">
+            {text.backToWorkspace}
           </Link>
-          {activeSnapshot && (
-            <Link to={`/projects/${project.id}/ask`} className="button button--primary">
-              {text.ask}
-            </Link>
-          )}
-        </div>
-      </div>
-      <p>
-        <span className="muted">{projectSource(project)}</span>{' '}
-        <span className={`status status--${status.toLowerCase()}`}>
-          {messages.projects.status[status]}
-        </span>
-      </p>
+        }
+        title={project.name}
+        description={
+          <>
+            <span>{projectSource(project)}</span>
+            <StatusBadge tone={PROJECT_STATUS_TONE[status]}>
+              {messages.projects.status[status]}
+            </StatusBadge>
+          </>
+        }
+        actions={
+          <>
+            <ButtonLink to={`/projects/${project.id}/history`} icon={MessagesSquare}>
+              {text.history}
+            </ButtonLink>
+            {activeSnapshot && (
+              <ButtonLink
+                to={`/projects/${project.id}/ask`}
+                variant="primary"
+                icon={MessageSquareText}
+              >
+                {text.ask}
+              </ButtonLink>
+            )}
+          </>
+        }
+      />
       {awaitingUpload && (
-        <div className="notice stack">
+        <Callout tone="info">
           <p>{text.awaitingUpload}</p>
           <p>
             <Link to={review}>{text.sendZip}</Link>
           </p>
-        </div>
+        </Callout>
       )}
       {indexing && (
         <IndexingProgress
@@ -139,26 +154,23 @@ function ProjectSummary({ project }: { project: Project }) {
         <JobFailure job={failedJob} hasActiveSnapshot={activeSnapshot !== null} review={review} />
       )}
       {cancelledJob && (
-        <div className="notice stack">
-          <p>
-            <strong>{text.cancelled.title}</strong>
-          </p>
+        <Callout tone="neutral" title={text.cancelled.title}>
           {cancelledJob.completedAt && (
             <p className="muted">{text.cancelled.at(formatDateTime(cancelledJob.completedAt))}</p>
           )}
           {activeSnapshot && <p>{text.cancelled.previousInUse}</p>}
-        </div>
+        </Callout>
       )}
       {!activeSnapshot && !indexing && !awaitingUpload && (
-        <div className="notice stack">
+        <Callout tone="info">
           <p>{text.notIndexed}</p>
           <p>
             <Link to={review}>{text.reviewPreAnalysis}</Link>
           </p>
-        </div>
+        </Callout>
       )}
       {activeSnapshot && project.outdatedReasons.length > 0 && (
-        <section className="notice notice--warning stack" aria-labelledby="outdated-title">
+        <Callout as="section" tone="warning" aria-labelledby="outdated-title">
           <h2 id="outdated-title">{text.outdated.title}</h2>
           <ul>
             {project.outdatedReasons.map((reason) => (
@@ -166,7 +178,7 @@ function ProjectSummary({ project }: { project: Project }) {
             ))}
           </ul>
           <p>{text.outdated.action}</p>
-        </section>
+        </Callout>
       )}
       {!indexing && !awaitingUpload && (
         <IndexPanel
@@ -206,8 +218,7 @@ function JobFailure({ job, hasActiveSnapshot, review }: JobFailureProps) {
   const text = messages.project.failure;
   const recovery = job.error ? jobRecovery(job.error.code) : 'retry';
   return (
-    <div role="alert" className="problem-alert">
-      <p className="problem-alert__title">{text.title}</p>
+    <Callout role="alert" tone="danger" title={text.title}>
       {job.error && <p>{job.error.message}</p>}
       {job.completedAt && <p className="muted">{text.at(formatDateTime(job.completedAt))}</p>}
       {hasActiveSnapshot && <p>{text.previousInUse}</p>}
@@ -217,6 +228,6 @@ function JobFailure({ job, hasActiveSnapshot, review }: JobFailureProps) {
           <Link to={review}>{messages.project.reviewPreAnalysis}</Link>
         </p>
       )}
-    </div>
+    </Callout>
   );
 }

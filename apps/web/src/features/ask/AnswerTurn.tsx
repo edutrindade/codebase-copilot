@@ -1,9 +1,19 @@
+import { Callout } from '../../components/ui/Callout';
+import { StatusBadge, type Tone } from '../../components/ui/StatusBadge';
 import { formatCost, formatDuration, formatNumber } from '../../format';
 import { messages } from '../../messages';
 import type { Answer, Evidence } from './api';
 import { answerRecovery } from './answerRecovery';
 import { answerSegments } from './answerText';
 import { highlightedRange } from './evidence';
+
+const STATUS_TONE: Record<Answer['status'], Tone> = {
+  PENDING: 'progress',
+  ANSWERED: 'success',
+  PARTIAL: 'warning',
+  ABSTAINED: 'warning',
+  FAILED: 'danger',
+};
 
 interface AnswerTurnProps {
   answer: Answer;
@@ -26,19 +36,17 @@ export function AnswerTurn({
       <Question question={answer.question} />
       <div className="turn__answer stack">
         <p className="turn__meta">
-          <span className={`status status--answer-${answer.status.toLowerCase()}`}>
-            {text.status[answer.status]}
-          </span>
+          <StatusBadge tone={STATUS_TONE[answer.status]}>{text.status[answer.status]}</StatusBadge>
           {olderSnapshot && <span className="muted"> {text.olderSnapshot}</span>}
         </p>
         <AnswerBody answer={answer} onCite={onCite} />
         {answer.warnings.length > 0 && (
           <ul className="notice-list">
             {answer.warnings.map((warning) => (
-              <li key={warning.code} className="notice notice--warning">
+              <Callout as="li" key={warning.code} tone="warning">
                 <p>{warning.message}</p>
                 {text.warningHints[warning.code] && <p>{text.warningHints[warning.code]}</p>}
-              </li>
+              </Callout>
             ))}
           </ul>
         )}
@@ -82,11 +90,10 @@ function AnswerBody({
   }
   if (answer.status === 'FAILED') {
     return (
-      <div className="problem-alert">
-        <p className="problem-alert__title">{text.failed}</p>
+      <Callout tone="danger" title={text.failed}>
         {answer.error && <p>{answer.error.message}</p>}
         <p>{messages.recovery[answer.error ? answerRecovery(answer.error.code) : 'askAgain']}</p>
-      </div>
+      </Callout>
     );
   }
   if (answer.answer === null) {

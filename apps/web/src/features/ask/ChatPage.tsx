@@ -1,10 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Tabs } from 'radix-ui';
-import { useEffect, useState, type ReactNode } from 'react';
+import { MessagesSquare, SquarePen } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router';
 import { ApiError } from '../../api/errors';
 import { Loading } from '../../components/Loading';
 import { ProblemAlert } from '../../components/ProblemAlert';
+import { ButtonLink } from '../../components/ui/Button';
+import { Callout } from '../../components/ui/Callout';
+import { Card } from '../../components/ui/Card';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/Tabs';
 import { useMediaQuery } from '../../components/useMediaQuery';
 import { formatDateTime } from '../../format';
 import { messages } from '../../messages';
@@ -188,7 +193,9 @@ function Chat({ title, project, providers, conversation }: ChatProps) {
       )}
       {mutation.isError && <ProblemAlert error={mutation.error} />}
       {!generationAvailable ? (
-        <p className="notice notice--warning">{text.noGeneration}</p>
+        <Callout tone="warning">
+          <p>{text.noGeneration}</p>
+        </Callout>
       ) : activeSnapshot ? (
         <AskForm
           projectId={project.id}
@@ -201,27 +208,27 @@ function Chat({ title, project, providers, conversation }: ChatProps) {
           onAsk={(question) => mutation.mutateAsync(question)}
         />
       ) : (
-        <div className="notice stack">
+        <Callout tone="info">
           <p>{text.noSnapshot}</p>
           <p>
             <Link to={`/projects/${project.id}`}>{text.openProject}</Link>
           </p>
-        </div>
+        </Callout>
       )}
     </section>
   );
   const evidencePane = (
-    <section className="stack panel" aria-labelledby="evidence-title">
+    <Card as="section" className="stack" aria-labelledby="evidence-title">
       <h2 id="evidence-title">{text.evidence.title}</h2>
       <EvidencePanel
         answer={selectedAnswer}
         selectedEvidenceId={selectedEvidence?.id ?? null}
         onOpen={(evidence) => selectedAnswer && openEvidence(selectedAnswer, evidence)}
       />
-    </section>
+    </Card>
   );
   const codePane = (
-    <section className="stack panel" aria-labelledby="viewer-title">
+    <Card as="section" className="stack" aria-labelledby="viewer-title">
       <h2 id="viewer-title">{text.viewer.title}</h2>
       {selectedEvidence ? (
         <CodeViewer
@@ -233,7 +240,7 @@ function Chat({ title, project, providers, conversation }: ChatProps) {
       ) : (
         <p className="muted">{text.viewer.empty}</p>
       )}
-    </section>
+    </Card>
   );
 
   return (
@@ -248,32 +255,18 @@ function Chat({ title, project, providers, conversation }: ChatProps) {
           </div>
         </div>
       ) : (
-        <Tabs.Root value={pane} onValueChange={(value) => setPane(value as Pane)}>
-          <Tabs.List className="tabs" aria-label={text.tabs.label}>
-            <Tabs.Trigger className="tabs__trigger" value="conversation">
-              {text.tabs.conversation}
-            </Tabs.Trigger>
-            <Tabs.Trigger className="tabs__trigger" value="evidence">
-              {text.tabs.evidence}
-            </Tabs.Trigger>
-            <Tabs.Trigger className="tabs__trigger" value="code">
-              {text.tabs.code}
-            </Tabs.Trigger>
-          </Tabs.List>
-          <TabPane value="conversation">{conversationPane}</TabPane>
-          <TabPane value="evidence">{evidencePane}</TabPane>
-          <TabPane value="code">{codePane}</TabPane>
-        </Tabs.Root>
+        <Tabs value={pane} onValueChange={(value) => setPane(value as Pane)}>
+          <TabsList aria-label={text.tabs.label}>
+            <TabsTrigger value="conversation">{text.tabs.conversation}</TabsTrigger>
+            <TabsTrigger value="evidence">{text.tabs.evidence}</TabsTrigger>
+            <TabsTrigger value="code">{text.tabs.code}</TabsTrigger>
+          </TabsList>
+          <TabsContent value="conversation">{conversationPane}</TabsContent>
+          <TabsContent value="evidence">{evidencePane}</TabsContent>
+          <TabsContent value="code">{codePane}</TabsContent>
+        </Tabs>
       )}
     </section>
-  );
-}
-
-function TabPane({ value, children }: { value: Pane; children: ReactNode }) {
-  return (
-    <Tabs.Content value={value} className="tabs__content">
-      {children}
-    </Tabs.Content>
   );
 }
 
@@ -288,36 +281,44 @@ function ChatHeader({ title, project, inConversation }: ChatHeaderProps) {
   const { activeSnapshot } = project;
   return (
     <div className="stack chat__header">
-      <Link to={`/projects/${project.id}`} className="back-link">
-        {text.backToProject}
-      </Link>
-      <div className="page-header">
-        <h1>{title}</h1>
-        <div className="actions">
-          <Link to={`/projects/${project.id}/history`} className="button">
-            {text.history}
+      <PageHeader
+        back={
+          <Link to={`/projects/${project.id}`} className="back-link">
+            {text.backToProject}
           </Link>
-          {inConversation && activeSnapshot && (
-            <Link to={`/projects/${project.id}/ask`} className="button">
-              {text.newConversation}
-            </Link>
-          )}
-        </div>
-      </div>
-      <p>
-        <span className="muted">{project.name}</span>
-        {activeSnapshot?.completedAt && (
-          <span className="muted">
-            {' '}
-            · {text.snapshot(formatDateTime(activeSnapshot.completedAt))}
+        }
+        title={title}
+        description={
+          <span>
+            {project.name}
+            {activeSnapshot?.completedAt &&
+              ` · ${text.snapshot(formatDateTime(activeSnapshot.completedAt))}`}
           </span>
-        )}
-      </p>
-      {project.indexing && <p className="notice">{text.indexing}</p>}
+        }
+        actions={
+          <>
+            <ButtonLink to={`/projects/${project.id}/history`} icon={MessagesSquare}>
+              {text.history}
+            </ButtonLink>
+            {inConversation && activeSnapshot && (
+              <ButtonLink to={`/projects/${project.id}/ask`} icon={SquarePen}>
+                {text.newConversation}
+              </ButtonLink>
+            )}
+          </>
+        }
+      />
+      {project.indexing && (
+        <Callout tone="info">
+          <p>{text.indexing}</p>
+        </Callout>
+      )}
       {activeSnapshot && project.outdatedReasons.length > 0 && (
-        <p className="notice notice--warning">
-          {text.outdated} <Link to={`/projects/${project.id}`}>{text.outdatedLink}</Link>
-        </p>
+        <Callout tone="warning">
+          <p>
+            {text.outdated} <Link to={`/projects/${project.id}`}>{text.outdatedLink}</Link>
+          </p>
+        </Callout>
       )}
     </div>
   );

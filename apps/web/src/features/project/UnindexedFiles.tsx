@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { Loading } from '../../components/Loading';
 import { Pagination } from '../../components/Pagination';
 import { ProblemAlert } from '../../components/ProblemAlert';
+import { Card } from '../../components/ui/Card';
+import { TableScroll } from '../../components/ui/TableScroll';
 import { formatBytes } from '../../format';
 import { messages } from '../../messages';
 import { listUnindexedFiles, projectKeys, type UnindexedStatus } from './api';
@@ -33,7 +35,7 @@ export function UnindexedFiles({ snapshotId, failedFiles, unsupportedFiles }: Un
   }
 
   return (
-    <section className="stack panel" aria-labelledby="unindexed-title">
+    <Card as="section" className="stack" aria-labelledby="unindexed-title">
       <h2 id="unindexed-title">{text.title}</h2>
       <p className="muted">{text.detail}</p>
       <fieldset className="segmented">
@@ -55,7 +57,7 @@ export function UnindexedFiles({ snapshotId, failedFiles, unsupportedFiles }: Un
       {files.isSuccess && files.data.totalItems === 0 && <p className="muted">{text.empty}</p>}
       {files.isSuccess && files.data.totalItems > 0 && (
         <>
-          <div className="table-scroll">
+          <TableScroll labelledBy="unindexed-title">
             <table className="data-table">
               <thead>
                 <tr>
@@ -76,10 +78,10 @@ export function UnindexedFiles({ snapshotId, failedFiles, unsupportedFiles }: Un
                 ))}
               </tbody>
             </table>
-          </div>
+          </TableScroll>
           <Pagination page={page} totalPages={files.data.totalPages} onChange={setPage} />
         </>
       )}
-    </section>
+    </Card>
   );
 }

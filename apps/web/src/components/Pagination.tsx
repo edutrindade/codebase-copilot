@@ -1,4 +1,6 @@
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { messages } from '../messages';
+import { Button } from './ui/Button';
 
 interface PaginationProps {
   page: number;
@@ -12,23 +14,14 @@ export function Pagination({ page, totalPages, onChange }: PaginationProps) {
   }
   return (
     <nav className="pagination" aria-label={messages.pagination.label}>
-      <button
-        type="button"
-        className="button"
-        disabled={page <= 0}
-        onClick={() => onChange(page - 1)}
-      >
+      <Button size="sm" icon={ChevronLeft} disabled={page <= 0} onClick={() => onChange(page - 1)}>
         {messages.pagination.previous}
-      </button>
-      <span>{messages.pagination.status(page + 1, totalPages)}</span>
-      <button
-        type="button"
-        className="button"
-        disabled={page >= totalPages - 1}
-        onClick={() => onChange(page + 1)}
-      >
+      </Button>
+      <span className="tabular">{messages.pagination.status(page + 1, totalPages)}</span>
+      <Button size="sm" disabled={page >= totalPages - 1} onClick={() => onChange(page + 1)}>
         {messages.pagination.next}
-      </button>
+        <ChevronRight aria-hidden="true" className="button__icon" />
+      </Button>
     </nav>
   );
 }

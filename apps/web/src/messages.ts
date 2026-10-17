@@ -13,6 +13,23 @@ export const messages = {
     history: 'Histórico',
   },
   loading: 'Carregando…',
+  theme: {
+    label: (current: string) => `Tema: ${current}`,
+    options: { system: 'Sistema', light: 'Claro', dark: 'Escuro' },
+  },
+  copy: {
+    copied: 'Copiado',
+    failed: 'Não foi possível copiar',
+  },
+  dialog: {
+    close: 'Fechar',
+  },
+  breadcrumbs: {
+    label: 'Trilha de navegação',
+  },
+  time: {
+    justNow: 'agora mesmo',
+  },
   notFound: {
     title: 'Página não encontrada',
     detail: 'O endereço não corresponde a nenhuma tela.',
@@ -26,6 +43,7 @@ export const messages = {
     renderTitle: 'Algo deu errado nesta tela',
     renderDetail: 'Recarregue a página. Se o erro continuar, volte para os workspaces.',
     requestId: 'Identificador do pedido',
+    copyRequestId: 'Copiar o identificador do pedido',
     retry: 'Tentar de novo',
   },
   recovery: {

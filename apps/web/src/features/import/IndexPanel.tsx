@@ -1,8 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useId, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
+import { Play } from 'lucide-react';
 import { Loading } from '../../components/Loading';
 import { ProblemAlert } from '../../components/ProblemAlert';
+import { Button } from '../../components/ui/Button';
+import { Callout } from '../../components/ui/Callout';
+import { Card } from '../../components/ui/Card';
 import { messages } from '../../messages';
 import { workspaceKeys } from '../workspaces/api';
 import { getProviders, importKeys, startIndexing, type Providers } from './api';
@@ -56,7 +60,7 @@ export function IndexPanel({
     mutation.isPending;
 
   return (
-    <section className="stack panel" aria-labelledby="index-panel-title">
+    <Card as="section" className="stack" aria-labelledby="index-panel-title">
       <h2 id="index-panel-title">{title}</h2>
       {providers.isPending && <Loading />}
       {providers.isError && (
@@ -72,22 +76,23 @@ export function IndexPanel({
       )}
       {mutation.isError && <ProblemAlert error={mutation.error} />}
       {reason && (
-        <p id={reasonId} className="notice notice--warning">
-          {reason}
-        </p>
+        <Callout tone="warning">
+          <p id={reasonId}>{reason}</p>
+        </Callout>
       )}
       <div>
-        <button
-          type="button"
-          className="button button--primary"
+        <Button
+          variant="primary"
+          icon={Play}
           disabled={disabled}
+          pending={mutation.isPending}
           aria-describedby={reason ? reasonId : undefined}
           onClick={() => mutation.mutate()}
         >
           {mutation.isPending ? messages.indexing.starting : startLabel}
-        </button>
+        </Button>
       </div>
-    </section>
+    </Card>
   );
 }
 
@@ -112,7 +117,7 @@ function ProviderNotice({
     return <p>{messages.privacy.localOnly}</p>;
   }
   return (
-    <div className="notice notice--warning stack">
+    <Callout tone="warning">
       <p>{messages.privacy.remote(providerName(embeddings.provider), embeddings.model)}</p>
       <p>
         {reviewHref.startsWith('#') ? (
@@ -129,6 +134,6 @@ function ProviderNotice({
         />
         {messages.privacy.acknowledge}
       </label>
-    </div>
+    </Callout>
   );
 }

@@ -1,4 +1,7 @@
 import { Link } from 'react-router';
+import { Callout } from '../../components/ui/Callout';
+import { TableScroll } from '../../components/ui/TableScroll';
+import { Stat, StatGrid } from '../../components/ui/Stat';
 import { formatBytes, formatDateTime, formatNumber } from '../../format';
 import { messages } from '../../messages';
 import type { ExclusionGroup, Inventory } from './api';
@@ -22,47 +25,50 @@ export function InventorySummary({ inventory }: { inventory: Inventory }) {
       <p className="muted">
         {text.scannedAt(formatDateTime(inventory.scannedAt), inventory.settingsVersion)}
       </p>
-      {inventory.truncated && <p className="notice notice--warning">{text.truncated}</p>}
+      {inventory.truncated && (
+        <Callout tone="warning">
+          <p>{text.truncated}</p>
+        </Callout>
+      )}
       {inventory.warnings.length > 0 && (
         <section className="stack" aria-labelledby="inventory-warnings">
           <h3 id="inventory-warnings">{text.warningsTitle}</h3>
           <ul className="notice-list">
             {inventory.warnings.map((warning) => (
-              <li key={warning.code} className="notice notice--warning">
+              <Callout as="li" key={warning.code} tone="warning">
                 <p>{warning.message}</p>
                 {warning.relatedProjectIds.map((projectId) => (
                   <Link key={projectId} to={`/projects/${projectId}`}>
                     {text.relatedProject}
                   </Link>
                 ))}
-              </li>
+              </Callout>
             ))}
           </ul>
         </section>
       )}
-      <section aria-labelledby="inventory-totals">
+      <section className="stack" aria-labelledby="inventory-totals">
         <h3 id="inventory-totals">{text.totalsTitle}</h3>
-        <dl className="totals">
+        <StatGrid>
           {TOTALS.map((key) => (
-            <div key={key} className="totals__item">
-              <dt>{text.totals[key]}</dt>
-              <dd>
-                {key === 'includedBytes' ? formatBytes(totals[key]) : formatNumber(totals[key])}
-              </dd>
-            </div>
+            <Stat
+              key={key}
+              label={text.totals[key]}
+              value={key === 'includedBytes' ? formatBytes(totals[key]) : formatNumber(totals[key])}
+            />
           ))}
-        </dl>
+        </StatGrid>
       </section>
       <section aria-labelledby="inventory-languages">
         <h3 id="inventory-languages">{text.languagesTitle}</h3>
-        <LanguagesTable languages={inventory.byLanguage} />
+        <LanguagesTable languages={inventory.byLanguage} labelledBy="inventory-languages" />
       </section>
       <section aria-labelledby="inventory-directories">
         <h3 id="inventory-directories">{text.directoriesTitle}</h3>
         {inventory.byDirectory.length === 0 ? (
           <p className="muted">{text.none}</p>
         ) : (
-          <div className="table-scroll">
+          <TableScroll labelledBy="inventory-directories">
             <table className="data-table">
               <thead>
                 <tr>
@@ -87,7 +93,7 @@ export function InventorySummary({ inventory }: { inventory: Inventory }) {
                 ))}
               </tbody>
             </table>
-          </div>
+          </TableScroll>
         )}
       </section>
       <section aria-labelledby="inventory-exclusions">
@@ -108,13 +114,18 @@ export function InventorySummary({ inventory }: { inventory: Inventory }) {
   );
 }
 
-export function LanguagesTable({ languages }: { languages: Inventory['byLanguage'] }) {
+interface LanguagesTableProps {
+  languages: Inventory['byLanguage'];
+  labelledBy: string;
+}
+
+export function LanguagesTable({ languages, labelledBy }: LanguagesTableProps) {
   const text = messages.preAnalysis;
   if (languages.length === 0) {
     return <p className="muted">{text.none}</p>;
   }
   return (
-    <div className="table-scroll">
+    <TableScroll labelledBy={labelledBy}>
       <table className="data-table">
         <thead>
           <tr>
@@ -133,7 +144,7 @@ export function LanguagesTable({ languages }: { languages: Inventory['byLanguage
           ))}
         </tbody>
       </table>
-    </div>
+    </TableScroll>
   );
 }
 

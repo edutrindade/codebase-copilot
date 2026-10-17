@@ -1,4 +1,8 @@
+import { CircleStop } from 'lucide-react';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { Callout } from '../../components/ui/Callout';
+import { Card } from '../../components/ui/Card';
+import { Progress } from '../../components/ui/Progress';
 import { messages } from '../../messages';
 import type { Indexing } from './api';
 
@@ -19,13 +23,14 @@ export function IndexingProgress({ indexing, embeddingsEnabled, onCancel }: Inde
   const current = indexing.stage === null ? -1 : stages.indexOf(indexing.stage);
 
   return (
-    <section className="stack panel" aria-labelledby="indexing-title">
+    <Card as="section" className="stack" aria-labelledby="indexing-title">
       <div className="page-header">
         <h2 id="indexing-title">{text.title}</h2>
         {!indexing.cancelRequested && (
           <ConfirmDialog
             trigger={text.cancel}
             triggerLabel={text.cancelLabel}
+            triggerIcon={CircleStop}
             title={text.cancelTitle}
             description={<p>{text.cancelDetail}</p>}
             confirmLabel={text.cancelConfirm}
@@ -35,7 +40,11 @@ export function IndexingProgress({ indexing, embeddingsEnabled, onCancel }: Inde
           />
         )}
       </div>
-      {indexing.cancelRequested && <p className="notice">{text.cancelRequested}</p>}
+      {indexing.cancelRequested && (
+        <Callout tone="neutral">
+          <p>{text.cancelRequested}</p>
+        </Callout>
+      )}
       {indexing.stage === null && <p>{text.queued}</p>}
       <ol className="stage-list" aria-label={text.stagesLabel}>
         {stages.map((stage, index) => {
@@ -53,7 +62,7 @@ export function IndexingProgress({ indexing, embeddingsEnabled, onCancel }: Inde
           );
         })}
       </ol>
-    </section>
+    </Card>
   );
 }
 
@@ -68,8 +77,8 @@ function StageProgress({ indexing }: { indexing: Indexing }) {
       : messages.project.progress.files(progress.completed, progress.total);
   return (
     <div className="stage-list__progress">
-      <progress value={progress.completed} max={progress.total} aria-label={counter} />
-      <span>{counter}</span>
+      <Progress value={progress.completed} max={progress.total} label={counter} />
+      <span className="tabular">{counter}</span>
     </div>
   );
 }

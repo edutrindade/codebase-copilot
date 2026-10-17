@@ -1,10 +1,14 @@
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams, useSearchParams } from 'react-router';
+import { MessageSquareText, MessagesSquare } from 'lucide-react';
 import { ApiError } from '../../api/errors';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { Loading } from '../../components/Loading';
 import { Pagination, pageFromSearch } from '../../components/Pagination';
 import { ProblemAlert } from '../../components/ProblemAlert';
+import { ButtonLink } from '../../components/ui/Button';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { PageHeader } from '../../components/ui/PageHeader';
 import { formatDateTime } from '../../format';
 import { messages } from '../../messages';
 import {
@@ -57,28 +61,26 @@ export function HistoryPage() {
 
   const canAsk = project.data.activeSnapshot !== null;
   const askLink = (
-    <Link to={`/projects/${projectId}/ask`} className="button button--primary">
+    <ButtonLink to={`/projects/${projectId}/ask`} variant="primary" icon={MessageSquareText}>
       {text.ask}
-    </Link>
+    </ButtonLink>
   );
   return (
     <section className="stack">
-      <Link to={`/projects/${projectId}`} className="back-link">
-        {messages.ask.backToProject}
-      </Link>
-      <div className="page-header">
-        <h1>{messages.pages.history}</h1>
-        {canAsk && conversations.data.totalItems > 0 && askLink}
-      </div>
-      <p>
-        <span className="muted">{project.data.name}</span>
-      </p>
+      <PageHeader
+        back={
+          <Link to={`/projects/${projectId}`} className="back-link">
+            {messages.ask.backToProject}
+          </Link>
+        }
+        title={messages.pages.history}
+        description={project.data.name}
+        actions={canAsk && conversations.data.totalItems > 0 && askLink}
+      />
       {conversations.data.totalItems === 0 ? (
-        <div className="empty-state stack">
-          <h2>{text.emptyTitle}</h2>
+        <EmptyState icon={MessagesSquare} title={text.emptyTitle} action={canAsk && askLink}>
           <p>{text.emptyDetail}</p>
-          {canAsk && <div>{askLink}</div>}
-        </div>
+        </EmptyState>
       ) : (
         <>
           <p className="muted">{text.detail}</p>

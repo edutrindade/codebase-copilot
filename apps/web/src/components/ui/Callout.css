@@ -1,0 +1,88 @@
+@layer components {
+  .callout {
+    display: flex;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    color: var(--color-text);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+  }
+
+  .callout__icon {
+    flex: none;
+    width: var(--icon);
+    height: var(--icon);
+    margin-top: 0.125rem;
+    color: var(--color-text-muted);
+  }
+
+  .callout__body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: var(--space-1-5);
+    min-width: 0;
+  }
+
+  .callout__title,
+  .callout__body h2,
+  .callout__body h3 {
+    font-size: var(--text-base);
+    font-weight: var(--weight-semibold);
+  }
+
+  .callout__body ul {
+    padding-left: var(--space-5);
+  }
+
+  .callout__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-top: var(--space-1);
+  }
+
+  .callout--info {
+    background: var(--color-info-bg);
+    border-color: var(--color-info-border);
+  }
+
+  .callout--info .callout__icon {
+    color: var(--color-info);
+  }
+
+  .callout--success {
+    background: var(--color-success-bg);
+    border-color: var(--color-success-border);
+  }
+
+  .callout--success .callout__icon {
+    color: var(--color-success);
+  }
+
+  .callout--warning {
+    background: var(--color-warning-bg);
+    border-color: var(--color-warning-border);
+  }
+
+  .callout--warning .callout__icon {
+    color: var(--color-warning);
+  }
+
+  .callout--danger {
+    background: var(--color-danger-bg);
+    border-color: var(--color-danger-border);
+  }
+
+  .callout--danger .callout__icon,
+  .callout--danger .callout__title {
+    color: var(--color-danger);
+  }
+
+  @media (forced-colors: active) {
+    .callout {
+      border-color: CanvasText;
+    }
+  }
+}

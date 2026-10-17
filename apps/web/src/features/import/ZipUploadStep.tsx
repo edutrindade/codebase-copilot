@@ -1,7 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useState, type FormEvent } from 'react';
 import { Loading } from '../../components/Loading';
+import { Upload } from 'lucide-react';
 import { ProblemAlert } from '../../components/ProblemAlert';
+import { Button } from '../../components/ui/Button';
+import { Callout } from '../../components/ui/Callout';
 import { messages } from '../../messages';
 import { getLatestImport, importKeys, uploadZip, type ImportJob } from './api';
 import { StepIndicator } from './StepIndicator';
@@ -75,11 +78,17 @@ export function ZipUploadStep({ projectId }: { projectId: string }) {
         </div>
         {upload.isError && <ProblemAlert error={upload.error} />}
         <div>
-          <button type="submit" className="button button--primary" disabled={busy}>
+          <Button
+            type="submit"
+            variant="primary"
+            icon={Upload}
+            disabled={busy}
+            pending={upload.isPending}
+          >
             {upload.isPending
               ? messages.newProject.upload.uploading
               : messages.newProject.upload.submit}
-          </button>
+          </Button>
         </div>
       </form>
     </div>
@@ -98,15 +107,18 @@ function ImportStatus({ job }: { job: ImportJob }) {
   }
   if (job.status === 'REJECTED' || job.status === 'FAILED') {
     return (
-      <div role="alert" className="problem-alert">
-        <p className="problem-alert__title">
-          {job.status === 'REJECTED'
+      <Callout
+        role="alert"
+        tone="danger"
+        title={
+          job.status === 'REJECTED'
             ? messages.newProject.upload.rejectedTitle
-            : messages.newProject.upload.failedTitle}
-        </p>
+            : messages.newProject.upload.failedTitle
+        }
+      >
         {job.error && <p>{job.error.message}</p>}
         <p>{messages.newProject.upload.tryAnother}</p>
-      </div>
+      </Callout>
     );
   }
   return null;

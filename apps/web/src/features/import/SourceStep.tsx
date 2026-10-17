@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useId, useState, type FormEvent } from 'react';
 import { Loading } from '../../components/Loading';
 import { ProblemAlert } from '../../components/ProblemAlert';
+import { Button } from '../../components/ui/Button';
+import { Callout } from '../../components/ui/Callout';
 import { messages } from '../../messages';
 import { workspaceKeys } from '../workspaces/api';
 import { createProject, importKeys, listLocalRoots, type LocalRoot, type NewProject } from './api';
@@ -107,7 +109,11 @@ function SourceForm({ roots, workspaceId, onCreated }: SourceFormProps) {
           </span>
         </label>
       </fieldset>
-      {!hasRoots && <p className="notice">{messages.newProject.noRoots}</p>}
+      {!hasRoots && (
+        <Callout tone="info">
+          <p>{messages.newProject.noRoots}</p>
+        </Callout>
+      )}
       {local && <DirectoryBrowser roots={roots} value={folder} onChange={setFolder} />}
       <div className="field">
         <label htmlFor={nameId}>{messages.newProject.nameLabel}</label>
@@ -121,9 +127,9 @@ function SourceForm({ roots, workspaceId, onCreated }: SourceFormProps) {
       </div>
       {mutation.isError && <ProblemAlert error={mutation.error} />}
       <div>
-        <button type="submit" className="button button--primary" disabled={mutation.isPending}>
+        <Button type="submit" variant="primary" pending={mutation.isPending}>
           {mutation.isPending ? messages.newProject.creating : messages.newProject.create}
-        </button>
+        </Button>
       </div>
     </form>
   );

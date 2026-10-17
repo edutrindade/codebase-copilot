@@ -1,0 +1,25 @@
+import type { ReactNode } from 'react';
+import './PageHeader.css';
+
+interface PageHeaderProps {
+  title: ReactNode;
+  description?: ReactNode;
+  actions?: ReactNode;
+  // A link above the title, until the breadcrumbs of F2 replace it.
+  back?: ReactNode;
+}
+
+export function PageHeader({ title, description, actions, back }: PageHeaderProps) {
+  return (
+    <header className="page-heading">
+      {back}
+      <div className="page-heading__row">
+        <div className="page-heading__text">
+          <h1>{title}</h1>
+          {description && <div className="page-heading__description">{description}</div>}
+        </div>
+        {actions && <div className="page-heading__actions">{actions}</div>}
+      </div>
+    </header>
+  );
+}

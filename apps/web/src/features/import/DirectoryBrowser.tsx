@@ -2,6 +2,8 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useId } from 'react';
 import { Loading } from '../../components/Loading';
 import { ProblemAlert } from '../../components/ProblemAlert';
+import { Button } from '../../components/ui/Button';
+import { Callout } from '../../components/ui/Callout';
 import { messages } from '../../messages';
 import { importKeys, listDirectories, type LocalRoot } from './api';
 
@@ -86,9 +88,9 @@ export function DirectoryBrowser({ roots, value, onChange }: DirectoryBrowserPro
           <ProblemAlert error={listing.error} onRetry={() => void listing.refetch()} />
           {path !== '' && (
             <div>
-              <button type="button" className="button" onClick={() => goTo('')}>
+              <Button size="sm" onClick={() => goTo('')}>
                 {messages.newProject.browser.backToRoot}
-              </button>
+              </Button>
             </div>
           )}
         </div>
@@ -127,7 +129,9 @@ export function DirectoryBrowser({ roots, value, onChange }: DirectoryBrowserPro
             </ul>
           )}
           {listing.data.truncated && (
-            <p className="notice notice--warning">{messages.newProject.browser.truncated}</p>
+            <Callout tone="warning">
+              <p>{messages.newProject.browser.truncated}</p>
+            </Callout>
           )}
         </>
       )}

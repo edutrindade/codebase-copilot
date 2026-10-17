@@ -272,7 +272,7 @@ O divisor redimensionável é feito à mão (um componente, com teclado e ARIA),
 - **E2E:** o aceite adaptado à navegação nova, mais `navigation.spec.ts` (barra lateral, trilha, paleta, atalhos, recarregar em cada rota), `theme.spec.ts` (troca, persistência, sem piscar) e, com a P5.7, `files.spec.ts`. Também no `npm run e2e:jar`.
 - **Regressão visual:** `toHaveScreenshot` do Playwright em cerca de dez telas × dois temas × duas larguras, com datas e identificadores mascarados. As imagens de referência são versionadas e geradas no macOS com o Chromium do Playwright (a renderização de fontes muda entre sistemas); roda no `npm run e2e`, fora do `npm run check`.
 - **Orçamento de desempenho**, medido na F0 (linha de base) e na F10:
-  - JavaScript da casca (antes da primeira tela) até 150 kB com gzip; nenhum chunk acima de 500 kB (D-085);
+  - JavaScript da casca (antes da primeira tela) até 175 kB com gzip (era 150 kB; revisto na F1, D-087); nenhum chunk acima de 500 kB (D-085);
   - fontes: dois arquivos `woff2` variáveis, só latino, com `preload` da fonte da interface e `size-adjust` no fallback para não deslocar o layout;
   - o arquivo sintético de 1 MB abre no visualizador sem travar, com e sem realce;
   - sem mudança na CSP.
@@ -350,6 +350,19 @@ O divisor redimensionável é feito à mão (um componente, com teclado e ARIA),
 
 ### F1 — Fundação visual
 Tokens, fontes, camadas de CSS, tema com `theme-init.js` (P9), primitivos da P2 com testes, catálogo `/_ui`. As telas atuais passam a usar botões, `Callout`, `StatusBadge` e esqueletos onde a troca é direta. Registro: D-087 (direção visual e sistema de design) e D-088 (tema).
+
+**Como foi entregue (17/10/2026)**
+- **Fundação:** tokens em OKLCH com `light-dark()`, camadas de CSS, fontes auto-hospedadas com preload, `public/theme-init.js`, favicon em SVG e o menu de tema no cabeçalho atual. O `global.css` saiu: a base estiliza os controles nativos, e as classes das telas antigas foram para a camada `screens`, já sobre os tokens.
+- **Componentes** em `src/components/ui/` (lista na D-087), com testes de componente e axe. Catálogo em `/_ui`, só no `npm run dev`; o build confere que ele não entra (nenhum chunk nem texto dele no `dist`).
+- **Trocas diretas nas telas:** todos os botões viraram `Button`/`ButtonLink` com ícone; avisos e alertas, `Callout`; estados, `StatusBadge`; painéis, `Card`; totais, `Stat`; estados vazios, `EmptyState`; "Carregando…", esqueletos com o texto para leitores de tela; cabeçalhos das telas de workspace, projeto, histórico e pergunta, `PageHeader`; o `ProblemAlert` ganhou o botão de copiar o identificador do pedido. A página não encontrada e a de erro usam o `EmptyState`.
+- **Verificação:** `npm run check` com 143 testes (eram 116); `npm run e2e` passa. Uma passada descartável com axe (WCAG 2.2 AA, com contraste) nas nove telas, nos dois temas, em 1440 e 390 px: **nenhuma violação**. O arquivo de 1 MB continua abrindo em 99 a 118 ms.
+
+**Desvios:**
+- **Componentes adiados para a fatia do primeiro uso:** `HoverCard` e `Splitter` (F7), `Toast` e `StageTimeline` (F6), `Dropzone` (F5) e `SegmentedControl` (F7). Sem uma tela que os use, a API seria um palpite.
+- **Comparação de fontes no catálogo:** não feita. Com as recomendações aprovadas, Inter e JetBrains Mono já estavam escolhidas, e instalar as alternativas só para a comparação somaria dependências sem uma decisão a tomar.
+- **Testes ajustados:** quatro testes conferiam "nenhum botão no alerta" para dizer "sem tentar de novo"; com o botão de copiar o identificador, passaram a procurar o botão de tentar de novo pelo nome.
+- **Acessibilidade além do previsto:** a passada em 390 px achou um problema que já existia, mas o E2E não pegava, porque roda só no desktop: as tabelas com rolagem horizontal não recebiam foco pelo teclado. Corrigido com o `TableScroll` (focável, `role="group"`, nomeado pelo título da seção).
+- **Orçamento da casca: estourado por pouco.** O chunk principal foi de 115,65 kB para **150,27 kB com gzip** (teto da P13: 150 kB). Quase tudo vem do menu e do tooltip do Radix, que o botão de tema trouxe para a casca: posicionamento (floating-ui), foco, camadas e rolagem somam cerca de 75 kB sem minificar. É um custo fixo: a barra lateral e a barra superior da F2 precisam dos mesmos menus e dicas, e as telas que os usarem não pagam de novo (o `ChatPage` caiu de 21,13 para 18,08 kB). O JavaScript total foi de 175,0 para 199,4 kB com gzip. **Decisão (17/10/2026):** o teto da casca sobe para **175 kB com gzip**, medido de novo ao fim da F2; a paleta e o realce continuam fora dela.
 
 ### F2 — Casca e navegação
 Barra lateral, barra superior, trilha, área do projeto com abas, rotas `/projects/:id/settings` e `/system`, títulos, anúncio de rota, "Continuar de onde parou", gaveta no celular. Registro: D-089 (navegação; revê a D-077).

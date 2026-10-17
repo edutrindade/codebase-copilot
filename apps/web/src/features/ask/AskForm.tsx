@@ -1,5 +1,8 @@
 import { useId, useState, type FormEvent, type KeyboardEvent } from 'react';
+import { SendHorizontal, Sparkles } from 'lucide-react';
 import { Link } from 'react-router';
+import { Button } from '../../components/ui/Button';
+import { Callout } from '../../components/ui/Callout';
 import { messages } from '../../messages';
 import type { Providers } from '../import/api';
 import { acknowledgePrivacy, hasAcknowledgedPrivacy, providerName } from '../import/privacy';
@@ -90,9 +93,9 @@ export function AskForm({
           <ul className="actions suggestions">
             {messages.ask.suggestions.map((suggestion) => (
               <li key={suggestion}>
-                <button
-                  type="button"
-                  className="button"
+                <Button
+                  size="sm"
+                  icon={Sparkles}
                   onClick={() => {
                     setDraft(suggestion);
                     setEmptyError(false);
@@ -100,7 +103,7 @@ export function AskForm({
                   }}
                 >
                   {suggestion}
-                </button>
+                </Button>
               </li>
             ))}
           </ul>
@@ -174,9 +177,15 @@ export function AskForm({
         </div>
       </details>
       <div>
-        <button type="submit" className="button button--primary" disabled={blocked}>
+        <Button
+          type="submit"
+          variant="primary"
+          icon={SendHorizontal}
+          disabled={blocked}
+          pending={pending}
+        >
           {pending ? text.submitting : text.submit}
-        </button>
+        </Button>
       </div>
     </form>
   );
@@ -218,7 +227,7 @@ function PrivacyNotice({
     );
   }
   return (
-    <div className="notice notice--warning stack">
+    <Callout tone="warning">
       <p>{text.remote(name, generation.model)}</p>
       {embeddingsNotice && <p>{embeddingsNotice}</p>}
       <p>
@@ -232,6 +241,6 @@ function PrivacyNotice({
         />
         {text.acknowledge}
       </label>
-    </div>
+    </Callout>
   );
 }

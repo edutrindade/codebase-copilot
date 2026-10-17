@@ -2,6 +2,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useId, type FormEvent } from 'react';
 import { ApiError } from '../../api/errors';
 import { ProblemAlert } from '../../components/ProblemAlert';
+import { Button } from '../../components/ui/Button';
+import { Card } from '../../components/ui/Card';
 import { formatBytes } from '../../format';
 import { messages } from '../../messages';
 import { importKeys, updateSettings, type Settings } from './api';
@@ -68,7 +70,7 @@ export function SettingsForm({
   }
 
   return (
-    <form className="stack panel" onSubmit={submit} aria-labelledby={SETTINGS_SECTION_ID}>
+    <Card as="form" className="stack" onSubmit={submit} aria-labelledby={SETTINGS_SECTION_ID}>
       <h2 id={SETTINGS_SECTION_ID} tabIndex={-1}>
         {messages.settings.title}
       </h2>
@@ -155,23 +157,14 @@ export function SettingsForm({
       </div>
       {mutation.isError && <ProblemAlert error={mutation.error} showFieldErrors={false} />}
       <div className="actions">
-        <button
-          type="submit"
-          className="button button--primary"
-          disabled={!dirty || mutation.isPending}
-        >
+        <Button type="submit" variant="primary" disabled={!dirty} pending={mutation.isPending}>
           {mutation.isPending ? messages.settings.saving : messages.settings.save}
-        </button>
-        <button
-          type="button"
-          className="button"
-          disabled={!dirty || mutation.isPending}
-          onClick={discard}
-        >
+        </Button>
+        <Button disabled={!dirty || mutation.isPending} onClick={discard}>
           {messages.settings.discard}
-        </button>
+        </Button>
       </div>
-    </form>
+    </Card>
   );
 }
 

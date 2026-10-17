@@ -26,8 +26,37 @@ function cspMetaTag(): Plugin {
   };
 }
 
+// The UI font is needed for the first paint; the hashed name is only known after bundling.
+function preloadUiFont(): Plugin {
+  return {
+    name: 'preload-ui-font',
+    apply: 'build',
+    transformIndexHtml(_html, context) {
+      const font = Object.keys(context.bundle ?? {}).find((file) =>
+        /inter-latin-wght-normal-[\w-]+\.woff2$/.test(file),
+      );
+      if (!font) {
+        throw new Error('UI font missing from the bundle');
+      }
+      return [
+        {
+          tag: 'link',
+          attrs: {
+            rel: 'preload',
+            href: `/${font}`,
+            as: 'font',
+            type: 'font/woff2',
+            crossorigin: '',
+          },
+          injectTo: 'head',
+        },
+      ];
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), cspMetaTag()],
+  plugins: [react(), cspMetaTag(), preloadUiFont()],
   server: { port: 5173, strictPort: true, proxy },
   preview: { port: 4173, strictPort: true, proxy },
   test: {

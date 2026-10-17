@@ -1370,6 +1370,30 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Consequências:** a Etapa 9 começa com a F3 da Etapa 8 como pré-requisito para qualquer mudança de ranking (reranking, AST), pela regra da D-081.  
 **O que levaria à revisão:** pedidos de uso (acompanhamento, realce), ou a avaliação real mostrando abstenção indevida ou um teto do `lines-v1`.
 
+
+### D-087 — Direção visual, sistema de design e dependências da interface (P1, P2 e P12 da Etapa 9)
+**Status:** Aceita (17/10/2026; F1 da Etapa 9)  
+**Contexto:** a Etapa 7 entregou uma interface funcional e acessível, mas mínima; o `03` §8 deixou a identidade visual para depois. A Etapa 9 faz essa parte sem relaxar a CSP (D-085) nem a acessibilidade (D-078).  
+**Opções consideradas:** para o estilo, CSS próprio sobre o Radix (como na D-070), CSS Modules, ou uma biblioteca com estilo (Tailwind, MUI); para as fontes, Inter + JetBrains Mono, Geist + Geist Mono ou IBM Plex.  
+**Decisão:**
+- **Tokens em três camadas:** primitivos (escalas de cinza, índigo, verde, âmbar, vermelho e azul em OKLCH), semânticos (`--color-surface`, `--color-text-muted`, `--color-accent`, `--color-highlight`…) e de componente só quando preciso. As telas usam só os semânticos. Os dois temas ficam no mesmo token, com `light-dark()`; os contrastes foram calculados antes (texto e texto secundário acima de 6:1, bordas de controle acima de 3:1) e conferidos pelo axe nos dois temas.
+- **CSS em camadas:** `@layer reset, tokens, base, components, screens, utilities`, declaradas no `styles/index.css`, que o `main.tsx` importa primeiro. Cada componente traz o seu CSS ao lado; os controles nativos de formulário são estilizados na `base`, e as classes das telas da Etapa 7 ficam na camada `screens` até cada tela ser refeita (F4 a F8). Nomes em BEM, globais, porque o E2E usa `.code-view` e afins.
+- **Componentes** em `src/components/ui/`, sobre o Radix quando há primitivo: `Button`/`ButtonLink`, `IconButton`, `Tooltip`, `StatusBadge` (ícone + texto), `Callout`, `Card`, `PageHeader`, `Breadcrumbs`, `Tabs`, `Dialog`, `Menu`, `Skeleton`, `EmptyState`, `Stat`, `Progress`, `Kbd`, `CopyButton`, `RelativeTime`, `Field`/`TextField`/`TextAreaField`/`SelectField` e `TableScroll`. Catálogo em `/_ui`, só no `npm run dev`.
+- **Fontes** Inter e JetBrains Mono, variáveis, auto-hospedadas e só no subconjunto latino, com preload da Inter (plugin do Vite) e fallback Arial com as métricas da Inter.
+- **Dependências novas:** `lucide-react` 1.51.0, `@fontsource-variable/inter` 5.3.0 e `@fontsource-variable/jetbrains-mono` 5.3.0. Critério: a versão mais recente com pelo menos 14 dias de publicação (F0 da Etapa 9).
+
+**Motivo:** mantém a D-070 (sem biblioteca com estilo) e a CSP; `light-dark()` evita repetir cada token por tema; as camadas deixam o CSS novo e o antigo conviverem sem disputa de especificidade enquanto as telas são refeitas.  
+**Consequências:** a casca passa a carregar o menu e o tooltip do Radix (posicionamento com floating-ui): 150,27 kB com gzip, contra 115,65 kB antes, e o JavaScript total foi de 175,0 kB para 199,4 kB. O teto da casca na P13 passa de 150 kB para 175 kB com gzip (aprovado em 17/10/2026), medido de novo ao fim da F2.  
+**O que levaria à revisão:** um navegador suportado sem `light-dark()` ou OKLCH, ou o orçamento da casca estourar de novo com a F2.
+
+### D-088 — Tema claro, escuro e do sistema (P9 da Etapa 9)
+**Status:** Aceita (17/10/2026; F1 da Etapa 9)  
+**Contexto:** a UI só seguia o tema do sistema, e o tema escuro era uma inversão de cores.  
+**Decisão:** três opções (Sistema, Claro e Escuro) num menu no cabeçalho. A escolha fica em `localStorage` (chave `theme`), vira `data-theme` no `<html>` e define o `color-scheme`; "Sistema" remove os dois. O `public/theme-init.js`, síncrono no `<head>`, aplica o tema salvo antes da primeira pintura: é um arquivo da própria origem, então a CSP continua sem script inline. Uma mudança em outra aba é aplicada pelo evento `storage`. `prefers-contrast: more` reforça bordas e texto secundário; `forced-colors` usa as cores do sistema no foco e nos controles.  
+**Motivo:** escolha explícita sem piscar no carregamento e sem relaxar a CSP.  
+**Consequências:** a chave existe em dois lugares (`theme.ts` e `theme-init.js`); um teste confere que são iguais. Sem `localStorage`, a escolha dura até recarregar a página.  
+**O que levaria à revisão:** preferências guardadas no servidor (não há usuários no MVP).
+
 ---
 
 ## Decisões em aberto

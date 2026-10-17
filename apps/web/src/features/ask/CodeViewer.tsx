@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { ApiError } from '../../api/errors';
 import { Loading } from '../../components/Loading';
 import { ProblemAlert } from '../../components/ProblemAlert';
+import { Button } from '../../components/ui/Button';
+import { Callout } from '../../components/ui/Callout';
 import { formatBytes } from '../../format';
 import { messages } from '../../messages';
 import { askKeys, getEvidence, getFileContent, type Evidence, type EvidenceDetail } from './api';
@@ -66,25 +68,22 @@ function EvidenceFile({
   return (
     <>
       {versionNotice && (
-        <div className="notice notice--warning stack">
+        <Callout tone="warning">
           <p>{versionNotice}</p>
           {canShowCurrent && (
             <div>
-              <button
-                type="button"
-                className="button"
-                aria-pressed={current}
-                onClick={() => setShowCurrent(!current)}
-              >
+              <Button size="sm" aria-pressed={current} onClick={() => setShowCurrent(!current)}>
                 {current ? text.showAnswered : text.showCurrent}
-              </button>
+              </Button>
             </div>
           )}
-        </div>
+        </Callout>
       )}
       {detail.snapshotStatus === 'PRUNED' ? (
         <>
-          <p className="notice">{text.pruned}</p>
+          <Callout tone="neutral">
+            <p>{text.pruned}</p>
+          </Callout>
           <Snippet evidence={detail} />
         </>
       ) : current && activeSnapshotId ? (
@@ -131,11 +130,15 @@ function FileView({ snapshotId, detail, highlight, caption }: FileViewProps) {
     return (
       <>
         {pruned ? (
-          <p className="notice">{text.pruned}</p>
+          <Callout tone="neutral">
+            <p>{text.pruned}</p>
+          </Callout>
         ) : (
           <>
             <ProblemAlert error={content.error} onRetry={() => void content.refetch()} />
-            <p className="notice">{text.fileUnavailable}</p>
+            <Callout tone="neutral">
+              <p>{text.fileUnavailable}</p>
+            </Callout>
           </>
         )}
         <Snippet evidence={detail} />

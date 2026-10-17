@@ -64,7 +64,7 @@ test('suggests the recovery for the code and offers no retry for it', () => {
   render(<ProblemAlert error={new ApiError(404, projectNotFound)} onRetry={onRetry} />);
 
   expect(screen.getByRole('alert')).toHaveTextContent(messages.recovery.goBack);
-  expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: messages.errors.retry })).not.toBeInTheDocument();
 });
 
 test('offers a retry for a retryable error when the screen supports it', async () => {

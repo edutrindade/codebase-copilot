@@ -1,7 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { RefreshCw } from 'lucide-react';
 import { Loading } from '../../components/Loading';
 import { ProblemAlert } from '../../components/ProblemAlert';
+import { Button } from '../../components/ui/Button';
+import { Card } from '../../components/ui/Card';
 import { messages } from '../../messages';
 import type { Project } from '../workspaces/api';
 import { getInventory, getSettings, importKeys, type Inventory, type Settings } from './api';
@@ -47,17 +50,17 @@ function InventoryPanel({ projectId }: { projectId: string }) {
   });
 
   return (
-    <section className="stack panel" aria-labelledby="pre-analysis-title">
+    <Card as="section" className="stack" aria-labelledby="pre-analysis-title">
       <div className="page-header">
         <h2 id="pre-analysis-title">{messages.preAnalysis.title}</h2>
-        <button
-          type="button"
-          className="button"
+        <Button
+          size="sm"
+          icon={RefreshCw}
           disabled={inventory.isFetching}
           onClick={() => void inventory.refetch()}
         >
           {messages.preAnalysis.refresh}
-        </button>
+        </Button>
       </div>
       <p>{messages.preAnalysis.detail}</p>
       {inventory.isPending && <Loading />}
@@ -65,7 +68,7 @@ function InventoryPanel({ projectId }: { projectId: string }) {
         <ProblemAlert error={inventory.error} onRetry={() => void inventory.refetch()} />
       )}
       {inventory.isSuccess && <InventorySummary inventory={inventory.data} />}
-    </section>
+    </Card>
   );
 }
 

@@ -1,3 +1,5 @@
+import { FileCode } from 'lucide-react';
+import { Button } from '../../components/ui/Button';
 import { messages } from '../../messages';
 import type { Answer, Evidence } from './api';
 import { highlightedRange, sortEvidence } from './evidence';
@@ -84,9 +86,9 @@ function EvidenceItem({ evidence, selected, onOpen }: EvidenceItemProps) {
         </p>
       )}
       <div>
-        <button type="button" className="button" onClick={() => onOpen(evidence)}>
+        <Button size="sm" icon={FileCode} onClick={() => onOpen(evidence)}>
           {text.open(evidence.citationLabel)}
-        </button>
+        </Button>
       </div>
     </li>
   );
