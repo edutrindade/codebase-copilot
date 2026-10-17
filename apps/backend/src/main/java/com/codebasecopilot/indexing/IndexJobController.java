@@ -108,6 +108,7 @@ class IndexJobController {
                             allowableValues = {
                                 "SCANNING",
                                 "PROCESSING_FILES",
+                                "LEXICAL",
                                 "EMBEDDING",
                                 "FINALIZING"
                             })

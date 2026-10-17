@@ -237,7 +237,7 @@ Retorna metadados, origem, snapshot ativo e estado de indexação (D-044). A lis
 
 - `activeSnapshot`: snapshot usado nas consultas (`READY` ou `PARTIAL`), `null` antes da primeira indexação concluída (D-044).
 - `indexing`: job de indexação ativo `{ id, status, stage, progress: { total, completed } }`, ou `null`.
-- `outdatedReasons`: por que o snapshot ativo pode não refletir a origem: `SETTINGS_CHANGED` (configurações alteradas depois dele), `SOURCE_REIMPORTED` (projeto ZIP com outro import atual), `CHUNKING_CHANGED` (estratégia de chunking nova), `EMBEDDING_MODEL_CHANGED` (provedor, modelo ou dimensão configurados diferentes dos do snapshot) e `EMBEDDINGS_MISSING` (snapshot indexado sem embeddings, com provedor agora configurado). Os dois últimos só aparecem com provedor configurado (D-050). Lista vazia quando está em dia ou sem snapshot. Mudanças no disco de uma pasta local não são detectadas; o usuário reindexa.
+- `outdatedReasons`: por que o snapshot ativo pode não refletir a origem: `SETTINGS_CHANGED` (configurações alteradas depois dele), `SOURCE_REIMPORTED` (projeto ZIP com outro import atual), `CHUNKING_CHANGED` (estratégia de chunking nova), `EMBEDDING_MODEL_CHANGED` (provedor, modelo ou dimensão configurados diferentes dos do snapshot) e `EMBEDDINGS_MISSING` (snapshot indexado sem embeddings, com provedor agora configurado), `LEXICAL_INDEX_MISSING` (snapshot sem índice lexical) e `LEXICAL_INDEX_CHANGED` (índice lexical de outra versão do tokenizador). `EMBEDDING_MODEL_CHANGED` e `EMBEDDINGS_MISSING` só aparecem com provedor configurado (D-050); os dois lexicais, sempre (D-056). Lista vazia quando está em dia ou sem snapshot. Mudanças no disco de uma pasta local não são detectadas; o usuário reindexa.
 
 Erros: `404 PROJECT_NOT_FOUND`.
 
@@ -407,7 +407,7 @@ Erros, nesta ordem:
 ```
 
 - `status`: `PENDING`, `RUNNING`, `COMPLETED` ou `FAILED`.
-- `stage`: `SCANNING`, `PROCESSING_FILES`, `EMBEDDING` ou `FINALIZING` (`null` antes de começar). `progress` conta arquivos; na etapa `EMBEDDING`, conta os chunks a enviar ao provedor (D-050). Com `provider=none`, a etapa `EMBEDDING` é pulada.
+- `stage`: `SCANNING`, `PROCESSING_FILES`, `LEXICAL`, `EMBEDDING` ou `FINALIZING` (`null` antes de começar). `progress` conta arquivos; nas etapas `LEXICAL` e `EMBEDDING`, conta os chunks sem índice lexical da versão atual e os chunks a enviar ao provedor (D-050, D-056). Com `provider=none`, a etapa `EMBEDDING` é pulada.
 - `attempts`: quantas vezes o job foi retirado da fila. Um job interrompido (queda da aplicação, por exemplo) volta à fila quando o heartbeat vence e é retomado automaticamente, até `app.indexing.max-attempts` (padrão 3).
 - `error.code` (D-044): `SOURCE_ROOT_NOT_CONFIGURED`, `SOURCE_DIRECTORY_NOT_FOUND`, `SOURCE_IS_SYMLINK`, `SOURCE_NOT_READABLE`, `SOURCE_NOT_IMPORTED`, `SCAN_LIMIT_REACHED`, `PROJECT_SIZE_LIMIT_EXCEEDED`, `NO_INCLUDED_FILES`, `INDEX_IO_ERROR` ou `INDEX_ATTEMPTS_EXHAUSTED`; `error.message` em pt-BR, sem caminhos.
 - Códigos da etapa de embeddings (D-051, D-054): `EMBEDDING_PROVIDER_UNAUTHORIZED`, `EMBEDDING_PROVIDER_UNAVAILABLE`, `EMBEDDING_RATE_LIMITED`, `EMBEDDING_QUOTA_EXCEEDED`, `EMBEDDING_REQUEST_REJECTED` e `EMBEDDING_CHUNK_LIMIT_EXCEEDED`. Nenhuma mensagem traz detalhes do provedor.
@@ -441,6 +441,7 @@ Erros: `404 PROJECT_NOT_FOUND`.
   "changes": { "added": 3, "modified": 12, "removed": 1, "unchanged": 959 },
   "inventory": { "…": "formato de GET /projects/{projectId}/inventory" },
   "embedding": { "provider": "openai", "model": "text-embedding-3-small", "dimensions": 1536, "tokens": 412380 },
+  "lexical": { "version": "ident-v1" },
   "createdAt": "2026-10-16T12:00:00Z",
   "completedAt": "2026-10-16T12:00:05Z",
   "prunedAt": null
@@ -452,25 +453,32 @@ Erros: `404 PROJECT_NOT_FOUND`.
 - `inventory`: agregado da varredura que originou o snapshot, sem os avisos que dependem do momento da consulta.
 - `prunedAt`: preenchido quando a poda removeu os arquivos do snapshot (D-044); a lista de arquivos fica vazia.
 - `embedding`: modelo dos vetores do snapshot, ou `null` quando foi indexado com `provider=none` (D-053). `tokens` soma o uso reportado pelo provedor no job; `null` se algum lote não reportou, `0` se todos os chunks já estavam no cache (D-054). Também aparece na listagem.
+- `lexical`: versão do índice lexical do snapshot, ou `null` quando foi indexado antes da busca lexical (D-056). Também aparece na listagem.
 
 Erros: `404 SNAPSHOT_NOT_FOUND`.
 
 ### `POST /projects/{projectId}/search`
-Busca vetorial exata nos chunks de um snapshot (D-049, D-053). A pergunta é enviada ao provedor de embeddings configurado (D-054).
+Busca trechos de um snapshot pela pergunta, nos modos lexical, vetorial ou híbrido (D-060). Nos modos `VECTOR` e `HYBRID`, a pergunta é enviada ao provedor de embeddings configurado (D-054); o `LEXICAL` não usa o provedor.
 
 ```json
-{ "query": "como o reembolso é calculado?", "snapshotId": null, "limit": 10 }
+{ "query": "como o reembolso é calculado?", "snapshotId": null, "limit": 10, "mode": "HYBRID" }
 ```
 
 - `query`: obrigatório, de 1 a 2.000 caracteres, não em branco.
 - `snapshotId`: opcional; ausente = snapshot ativo. Informado, precisa ser do projeto, `READY` ou `PARTIAL` e não podado.
 - `limit`: opcional, de 1 a 50 (padrão 10).
+- `mode`: opcional, `LEXICAL`, `VECTOR` ou `HYBRID` (nome exato); ausente ou `null` = `HYBRID`.
+  - `LEXICAL`: full-text sobre os termos da pergunta, com identificadores separados como na indexação (D-055 a D-057).
+  - `VECTOR`: similaridade de cosseno exata (D-049).
+  - `HYBRID`: fusão RRF (k=60) das buscas lexical, vetorial e por caminhos de arquivo citados na pergunta, com 50 candidatos por busca (D-058, D-059).
 
 Response `200`:
 ```json
 {
   "snapshotId": "…",
+  "mode": "HYBRID",
   "model": { "provider": "openai", "name": "text-embedding-3-small", "dimensions": 1536 },
+  "lexicalVersion": "ident-v1",
   "results": [
     {
       "chunkId": "…",
@@ -479,24 +487,30 @@ Response `200`:
       "startLine": 12,
       "endLine": 58,
       "content": "…",
-      "score": 0.4821
+      "score": 0.0325,
+      "ranks": { "lexical": 2, "vector": 1, "path": null }
     }
   ]
 }
 ```
 
-- `score` = 1 − distância de cosseno, em ordem decrescente; empates são resolvidos pelo caminho, pela linha inicial e pelo id do chunk.
+- `model`: `null` no modo `LEXICAL`. `lexicalVersion`: `null` no modo `VECTOR`.
+- `score` depende do modo: 1 − distância de cosseno (`VECTOR`), `ts_rank_cd` (`LEXICAL`) ou RRF (`HYBRID`). Maior é melhor; só serve para ordenar dentro de uma resposta. Empates são resolvidos pelo caminho, pela linha inicial e pelo id do chunk; no `HYBRID`, antes deles, pelo melhor rank individual.
+- `ranks`: posição do trecho (a partir de 1) em cada busca feita, ou `null` quando ela não o trouxe. Nos modos de um canal só, só esse canal tem rank; a busca por caminhos só roda no `HYBRID` e só quando a pergunta cita um arquivo do snapshot.
 - Cada chunk aparece uma vez. Se o mesmo conteúdo está em vários arquivos do snapshot, `path` é o primeiro caminho em ordem lexicográfica e `otherPaths` traz os demais (D-039).
-- A Etapa 5 acrescenta `mode` (`VECTOR`, `LEXICAL`, `HYBRID`) neste endpoint.
+- Pergunta só com stopwords não tem termos: o canal lexical não traz nada (sem erro).
 
 Erros, nesta ordem:
-1. `400 VALIDATION_FAILED` (`query` e `limit`, antes de qualquer consulta);
+1. `400 VALIDATION_FAILED` (`query`, `limit` e `mode`, antes de qualquer consulta);
 2. `404 PROJECT_NOT_FOUND`;
 3. `404 SNAPSHOT_NOT_FOUND`, inclusive snapshot de outro projeto;
 4. `409 SNAPSHOT_NOT_SEARCHABLE`: projeto sem snapshot ativo, ou snapshot `BUILDING`, `FAILED` ou podado;
-5. `409 EMBEDDINGS_NOT_AVAILABLE`: `app.embeddings.provider=none`;
-6. `409 SNAPSHOT_EMBEDDING_MISMATCH`: snapshot sem embeddings ou de outro provedor, modelo ou dimensão; reindexe o projeto;
-7. erros do provedor (D-051), sem detalhes do provedor na mensagem: `502 EMBEDDING_PROVIDER_UNAVAILABLE`, `502 EMBEDDING_PROVIDER_UNAUTHORIZED`, `502 EMBEDDING_QUOTA_EXCEEDED`, `502 EMBEDDING_REQUEST_REJECTED` e `429 EMBEDDING_RATE_LIMITED`. A busca não repete chamadas ao provedor.
+5. `409 SNAPSHOT_LEXICAL_MISMATCH` (`LEXICAL` e `HYBRID`): snapshot sem índice lexical ou de outra versão do tokenizador; reindexe o projeto;
+6. `409 EMBEDDINGS_NOT_AVAILABLE` (`VECTOR` e `HYBRID`): `app.embeddings.provider=none`; o modo `LEXICAL` continua disponível;
+7. `409 SNAPSHOT_EMBEDDING_MISMATCH` (`VECTOR` e `HYBRID`): snapshot sem embeddings ou de outro provedor, modelo ou dimensão; reindexe o projeto;
+8. erros do provedor (D-051), sem detalhes do provedor na mensagem: `502 EMBEDDING_PROVIDER_UNAVAILABLE`, `502 EMBEDDING_PROVIDER_UNAUTHORIZED`, `502 EMBEDDING_QUOTA_EXCEEDED`, `502 EMBEDDING_REQUEST_REJECTED` e `429 EMBEDDING_RATE_LIMITED`. A busca não repete chamadas ao provedor.
+
+O log registra modo, snapshot, quantidade de resultados e duração por canal, nunca a pergunta (D-054, D-060).
 
 ## 8. Perguntas e respostas
 

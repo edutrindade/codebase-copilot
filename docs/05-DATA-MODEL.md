@@ -95,6 +95,7 @@ Um por job de indexação (D-044). As tabelas `snapshots`, `index_jobs`, `file_c
 
 - `embedding_provider`, `embedding_model`, `embedding_dimensions` nullable: modelo dos vetores do snapshot, todos nulos (indexado com `provider=none`) ou todos preenchidos (`snapshots_embedding_consistency`); V8, Etapa 4 (D-048, D-050)
 - `embedding_tokens` nullable: soma dos tokens reportados pelo provedor no job; `null` se algum lote não reportou, `0` se nada foi enviado (D-054)
+- `lexical_version` nullable: versão do tokenizador do índice lexical do snapshot (`ident-v1`), gravada na ativação; `null` em snapshots anteriores à V9. Versão ausente ou diferente da atual: o projeto informa `LEXICAL_INDEX_MISSING`/`LEXICAL_INDEX_CHANGED` e a busca lexical e a híbrida recusam o snapshot (V9, Etapa 5; D-056, D-060)
 
 `READY` e `PARTIAL` (com arquivos `FAILED`) são ativáveis; `FAILED` não. Com provedor configurado, um snapshot só é ativado com todos os chunks com vetor do modelo (D-050).
 
@@ -103,7 +104,7 @@ Um por job de indexação (D-044). As tabelas `snapshots`, `index_jobs`, `file_c
 - `project_id` FK
 - `snapshot_id` FK, único (um snapshot por job)
 - `status` (`PENDING`, `RUNNING`, `COMPLETED`, `FAILED`)
-- `stage` nullable (`SCANNING`, `PROCESSING_FILES`, `EMBEDDING`, `FINALIZING`; `EMBEDDING` desde a V8)
+- `stage` nullable (`SCANNING`, `PROCESSING_FILES`, `LEXICAL`, `EMBEDDING`, `FINALIZING`; `EMBEDDING` desde a V8, `LEXICAL` desde a V9)
 - `progress_total`, `progress_completed` nullable
 - `attempt_count`: incrementado a cada retirada da fila (D-040)
 - `heartbeat_at` nullable: lease do worker
@@ -134,7 +135,7 @@ Estado de cada arquivo incluído pela varredura de um snapshot. Substitui a tabe
 - `language`
 - `size_bytes`
 
-PK `(snapshot_id, relative_path)`. Arquivos excluídos pelas regras não têm linha; aparecem apenas no agregado `snapshots.inventory`. Índice `(project_id, content_hash)` para a busca e a limpeza. Busca de caminhos por `pg_trgm` (D-017) sobre `relative_path` entra na Etapa 5.
+PK `(snapshot_id, relative_path)`. Arquivos excluídos pelas regras não têm linha; aparecem apenas no agregado `snapshots.inventory`. Índice `(project_id, content_hash)` para a busca e a limpeza. Índice GIN `gin_trgm_ops` em `relative_path` para o canal de caminhos (V9, D-058).
 
 ### `chunks`
 Imutáveis, ligados à versão do conteúdo (D-039).
@@ -152,10 +153,18 @@ Imutáveis, ligados à versão do conteúdo (D-039).
 Chave natural única `(project_id, content_hash, chunking_version, ordinal)`: inserts idempotentes com `ON CONFLICT DO NOTHING`. Caminho e linguagem vêm de `snapshot_files`; a busca de um snapshot faz `JOIN` por `(project_id, content_hash)` e pela `chunking_version` do snapshot.
 
 Colunas que entram em etapas posteriores:
-- Etapa 5 (D-017): `identifier_terms` (identificadores pré-tokenizados pela aplicação, preservando o original, ex.: `getUserById get user by id`) e `lexical_tsv` (`setweight(to_tsvector('simple', identifier_terms), 'A') || setweight(to_tsvector('simple', content), 'B')`), com índice GIN;
 - Etapa 9 (D-027): `chunk_type` e `symbol_name`, preenchidos por AST, com índice `pg_trgm` em `symbol_name`.
 
-A tokenização de identificadores (camelCase, snake_case, siglas como `HTTPClient`) é feita na aplicação, porque fazê-la em SQL é frágil.
+Os termos lexicais não ficam em `chunks`, e sim em `chunk_lexical` (D-056): a tokenização é da aplicação e tem versão própria, e assim mudá-la não reescreve chunks imutáveis.
+
+### `chunk_lexical`
+Índice lexical de cada chunk, por versão do tokenizador. Criada na migração V9 (Etapa 5, D-056).
+- `chunk_id` FK para `chunks (id)` (`ON DELETE CASCADE`)
+- `lexical_version`: versão do tokenizador (`ident-v1`, D-055)
+- `identifier_terms`: termos de identificador produzidos pela aplicação, na grafia original (ex.: `getUserById get user by id`)
+- `tsv` `tsvector`: `setweight(to_tsvector('simple', identifier_terms), 'A') || setweight(to_tsvector('simple', chunks.content), 'B')`, calculado no `INSERT`
+
+PK `(chunk_id, lexical_version)`; índice GIN em `tsv`. Preenchida pela etapa `LEXICAL` do job só para os chunks do snapshot sem linha da versão atual. Versões convivem; a limpeza vem pela cascata com os chunks. Com 50 mil chunks de ~1,9 kB, ocupou 211 MB de tabela e 51 MB de índices, contra 78 MB de `chunks` (D-059).
 
 ### `chunk_embeddings`
 - `chunk_hash` (parte da PK)
@@ -242,10 +251,10 @@ Answer    1---N AnswerEvidence (cópia; referências soltas a Snapshot e Chunk)
 
 ## 4. Busca lexical
 
-Baseline definido na D-017 (comparação final em O-005):
-- full-text do PostgreSQL com configuração `simple` (sem stemming), sobre `chunks.lexical_tsv`;
-- identificadores pré-tokenizados em `chunks.identifier_terms`, com peso maior que o conteúdo;
-- `pg_trgm` para caminhos (`snapshot_files.relative_path`) e símbolos (`chunks.symbol_name`).
+Baseline definido na D-017 e implementado na Etapa 5 (comparação final em O-005):
+- full-text do PostgreSQL com configuração `simple` (sem stemming), sobre `chunk_lexical.tsv` da versão atual do tokenizador (D-056, D-057);
+- identificadores pré-tokenizados em `chunk_lexical.identifier_terms`, com peso A, acima do conteúdo (peso B);
+- `pg_trgm` para caminhos (`snapshot_files.relative_path`, D-058) e, na Etapa 9, para símbolos (`chunks.symbol_name`).
 
 A implementação deve preservar termos como `getUserById`, `HTTPClient` e nomes de arquivos. A recuperação devolve cada chunk uma vez, mesmo quando o conteúdo aparece em mais de um caminho do snapshot (D-039).
 

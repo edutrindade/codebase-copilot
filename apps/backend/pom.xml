@@ -36,8 +36,8 @@
 		<spring-ai.version>2.0.1</spring-ai.version>
 		<!-- Same version spring-ai-openai ${spring-ai.version} depends on. -->
 		<openai-java.version>4.49.0</openai-java.version>
-		<!-- Manual tests (D-049, D-054); run with -Dtest.excluded-groups= -Dgroups=<tag> -->
-		<test.excluded-groups>performance,smoke</test.excluded-groups>
+		<!-- Manual tests (D-049, D-054, D-062); run with -Dtest.excluded-groups= -Dgroups=<tag> -->
+		<test.excluded-groups>performance,smoke,eval</test.excluded-groups>
 	</properties>
 	<dependencyManagement>
 		<dependencies>
@@ -93,6 +93,12 @@
 			<version>${openai-java.version}</version>
 		</dependency>
 
+		<!-- Already brought by spring-boot-starter (application.yml); declared because the
+		     evaluation annotations (eval/questions) are read with it in tests. -->
+		<dependency>
+			<groupId>org.yaml</groupId>
+			<artifactId>snakeyaml</artifactId>
+		</dependency>
 		<dependency>
 			<groupId>org.postgresql</groupId>
 			<artifactId>postgresql</artifactId>

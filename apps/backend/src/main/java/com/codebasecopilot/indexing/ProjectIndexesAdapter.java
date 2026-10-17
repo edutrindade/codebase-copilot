@@ -1,5 +1,6 @@
 package com.codebasecopilot.indexing;
 
+import com.codebasecopilot.codeanalysis.IdentifierTokenizer;
 import com.codebasecopilot.importjob.scan.ProjectSettingsVersions;
 import com.codebasecopilot.indexing.content.LineChunker;
 import com.codebasecopilot.project.Project;
@@ -98,6 +99,11 @@ class ProjectIndexesAdapter implements ProjectIndexes {
         }
         if (!snapshot.chunkingVersion().equals(LineChunker.VERSION)) {
             reasons.add("CHUNKING_CHANGED");
+        }
+        if (snapshot.lexicalVersion() == null) {
+            reasons.add("LEXICAL_INDEX_MISSING");
+        } else if (!snapshot.lexicalVersion().equals(IdentifierTokenizer.VERSION)) {
+            reasons.add("LEXICAL_INDEX_CHANGED");
         }
         SnapshotRepository.Embedding embedding = snapshot.embedding();
         if (model != null) {

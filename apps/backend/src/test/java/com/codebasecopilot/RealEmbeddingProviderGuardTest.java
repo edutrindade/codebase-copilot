@@ -36,10 +36,11 @@ class RealEmbeddingProviderGuardTest {
     }
 
     @Test
-    void exemptsOnlyTestsTaggedSmoke() {
+    void exemptsOnlyTestsTaggedSmokeOrEval() {
         RealEmbeddingProviderGuard guard = new RealEmbeddingProviderGuard();
 
         assertThat(guard.createContextCustomizer(SmokeContext.class, List.of())).isNull();
+        assertThat(guard.createContextCustomizer(EvalContext.class, List.of())).isNull();
         assertThat(guard.createContextCustomizer(PerformanceContext.class, List.of())).isNotNull();
         assertThat(guard.createContextCustomizer(OpenAiContext.class, List.of())).isNotNull();
     }
@@ -87,6 +88,9 @@ class RealEmbeddingProviderGuardTest {
 
     @Tag("smoke")
     static class SmokeContext {}
+
+    @Tag("eval")
+    static class EvalContext {}
 
     @Tag("performance")
     static class PerformanceContext {}

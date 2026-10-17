@@ -1,0 +1,146 @@
+corpus:
+  name: click
+  directoryEnv: EVAL_CORPUS_CLICK
+  repository: https://github.com/pallets/click
+  commit: "8b19813f2bfca99f1018a587a8cf54fc959f2e5d"
+  license: BSD-3-Clause
+  manifest: eval/corpus/click.sha256
+
+questions:
+  - id: ck-01
+    question: How does auto_envvar_prefix build the environment variable name of an option?
+    language: en
+    category: EXACT_IDENTIFIER
+    difficulty: EASY
+    expected:
+      - path: src/click/core.py
+        startLine: 3517
+        endLine: 3539
+      - path: docs/options.md
+        startLine: 646
+        endLine: 717
+
+  - id: ck-02
+    question: O que acontece quando o usuário aperta Ctrl+C durante um comando?
+    language: pt-BR
+    category: CONCEPTUAL
+    difficulty: MEDIUM
+    expected:
+      - path: src/click/core.py
+        startLine: 1549
+        endLine: 1595
+    notes: O código trata KeyboardInterrupt como Abort e imprime "Aborted!" com saída 1; a pergunta não usa nenhum desses termos.
+
+  - id: ck-03
+    question: Which exit code does click use for usage errors?
+    language: en
+    category: CONCEPTUAL
+    difficulty: EASY
+    expected:
+      - path: src/click/exceptions.py
+        startLine: 68
+        endLine: 86
+
+  - id: ck-04
+    question: How does an @click.option decorator become a value passed to the command function?
+    language: en
+    category: CROSS_FILE_FLOW
+    difficulty: HARD
+    expected:
+      - path: src/click/decorators.py
+        startLine: 314
+        endLine: 377
+      - path: src/click/core.py
+        startLine: 1365
+        endLine: 1399
+      - path: src/click/core.py
+        startLine: 2730
+        endLine: 2816
+
+  - id: ck-05
+    question: Qual é a versão mínima do Python exigida pelo click?
+    language: pt-BR
+    category: DEPENDENCIES_CONFIGURATION
+    difficulty: EASY
+    expected:
+      - path: pyproject.toml
+        startLine: 16
+        endLine: 16
+
+  - id: ck-06
+    question: Para que serve a classe CliRunner?
+    language: pt-BR
+    category: EXACT_IDENTIFIER
+    difficulty: EASY
+    expected:
+      - path: src/click/testing.py
+        startLine: 317
+        endLine: 352
+
+  - id: ck-07
+    question: Como pedir uma senha sem mostrar o que é digitado?
+    language: pt-BR
+    category: CONCEPTUAL
+    difficulty: MEDIUM
+    expected:
+      - path: src/click/decorators.py
+        startLine: 404
+        endLine: 418
+      - path: docs/option-decorators.md
+        startLine: 15
+        endLine: 46
+
+  - id: ck-08
+    question: How does a group dispatch to its subcommands, including chained ones?
+    language: en
+    category: ARCHITECTURE
+    difficulty: HARD
+    expected:
+      - path: src/click/core.py
+        startLine: 1998
+        endLine: 2090
+
+  - id: ck-09
+    question: Como funciona o autocompletar no shell?
+    language: pt-BR
+    category: CONCEPTUAL
+    difficulty: HARD
+    expected:
+      - path: src/click/shell_completion.py
+        startLine: 19
+        endLine: 66
+      - path: src/click/core.py
+        startLine: 1597
+        endLine: 1633
+    notes: Português sem termo em comum com o código (shell_complete, completion).
+
+  - id: ck-10
+    question: How are files opened?
+    language: en
+    category: AMBIGUOUS
+    difficulty: MEDIUM
+    expected:
+      - path: src/click/types.py
+        startLine: 904
+        endLine: 932
+      - path: src/click/utils.py
+        startLine: 393
+        endLine: 439
+    notes: Ambígua entre o tipo de parâmetro File e a função utilitária open_file.
+
+  - id: ck-11
+    question: Como o click se conecta a um banco de dados?
+    language: pt-BR
+    category: UNANSWERABLE
+    difficulty: EASY
+    mustAbstain: true
+
+  - id: ck-12
+    question: Which build backend packages click?
+    language: en
+    category: DEPENDENCIES_CONFIGURATION
+    difficulty: EASY
+    expected:
+      - path: pyproject.toml
+        startLine: 62
+        endLine: 64

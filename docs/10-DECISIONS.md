@@ -161,6 +161,7 @@ Este documento registra decisões aceitas e itens que ainda precisam de validaç
 
 **Motivo:** não exige serviço externo na primeira versão; é simples de observar e comparar.  
 **Limitação conhecida:** o full-text do PostgreSQL não implementa BM25.  
+**Estado (16/10/2026, fim da Etapa 5):** implementada como descrito: tokenizador (D-055), índice `chunk_lexical` (D-056), consulta com OR (D-057), caminhos por `pg_trgm` (D-058) e RRF k=60 (D-059). Baseline lexical medido no corpus (D-061, D-062): Recall@10 0,472 e MRR@10 0,341 em 36 perguntas, com queda forte em pt-BR (0,296 contra 0,648 em en). **Continua provisória:** a comparação com o vetorial e o híbrido depende de vetores reais, e a etapa fechou sem saldo no provedor.  
 **O que levaria à revisão:** o baseline lexical ou a fusão perderem para alternativas no corpus de avaliação (ver O-005 abaixo, que permanece aberto para a comparação).
 
 ### D-018 — Seleção de pasta local (resolve O-006)
@@ -689,7 +690,7 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **O que levaria à revisão:** volume de evidências copiadas relevante frente ao conteúdo indexado.
 
 ### D-047 — Provedor inicial de embeddings (O-004, provisória)
-**Status:** Aceita (provisória, 16/10/2026; bake-off na Etapa 5)  
+**Status:** Aceita (provisória, 16/10/2026; bake-off adiado na Etapa 5, P8; manter o `spring-ai-openai` é decidido na Etapa 6, P9)  
 **Contexto:** a O-004 pede um provedor de embeddings antes de concluir a Etapa 4, mas a comparação de qualidade depende do corpus da Etapa 5 (O-011).  
 **Opções consideradas:**
 1. OpenAI `text-embedding-3-small`, pelo módulo OpenAI do Spring AI.
@@ -721,7 +722,13 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 
 **Motivo:** integração mais madura no Spring AI 2.0 (D-014) e API "compatível com OpenAI" oferecida por outros provedores e servidores locais, o que facilita a Etapa 9 (D-019).  
 **Consequências:** o texto dos chunks indexados e as perguntas de busca saem da máquina quando `provider=openai` (D-054). Preço e política devem ser reconferidos antes de alterar esta decisão.  
-**O que levaria à revisão:** resultado do bake-off da Etapa 5, mudança de preço ou de política de dados, ou integração da Voyage no Spring AI.
+**Atualização (Etapa 5, 16/10/2026):**
+- **Bake-off adiado** (P8 do plano da Etapa 5): o corpus inicial é pequeno para separar dois bons modelos, e o harness (D-062) roda o bake-off depois sem mudança de código, com um adaptador novo. A Voyage não foi verificada.
+- **`spring-ai-openai` mantido** (P9): a escolha entre ele e o SDK sozinho passa para a Etapa 6, junto com a porta de geração, onde o `ChatClient` do Spring AI pode (ou não) se pagar.
+- A guarda dos testes passou a liberar também a tag `eval`, do harness de avaliação (D-062).
+- O teste de fumaça com a chave real continua pendente por falta de saldo.
+
+**O que levaria à revisão:** resultado do bake-off, mudança de preço ou de política de dados, ou integração da Voyage no Spring AI.
 
 ### D-048 — Armazenamento dos vetores (revisa a restrição da O-004)
 **Status:** Aceita (16/10/2026; F2 entregue)  
@@ -825,7 +832,7 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **O que levaria à revisão:** limpeza lenta em bancos grandes (medição na Etapa 8) ou bake-off com vários modelos ao mesmo tempo.
 
 ### D-053 — Contrato da busca
-**Status:** Aceita (16/10/2026; F4 e F5 entregues)  
+**Status:** Aceita (16/10/2026; F4 e F5 entregues); revista pela D-060 (`mode`, `ranks`, F4 da Etapa 5)  
 **Decisão:**
 - **`POST /api/v1/projects/{projectId}/search`** com `{ "query": "…", "snapshotId": null, "limit": 10 }`. `snapshotId` ausente = snapshot ativo; informado, precisa ser do projeto, `READY`/`PARTIAL` e não podado. `query` de 1 a 2.000 caracteres e não em branco; `limit` de 1 a 50 (padrão 10).
 - Resposta: `{ snapshotId, model: { provider, name, dimensions }, results: [ { chunkId, path, otherPaths, startLine, endLine, content, score } ] }`, em ordem decrescente de `score` (D-049). O plano previa só `model`; virou objeto porque o provedor também identifica os vetores (D-048).
@@ -856,6 +863,125 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Consequências:** modelos novos ou servidores compatíveis exigem acrescentar o limite oficial ao adaptador. `07-SECURITY-PRIVACY-COSTS.md` §7 e §9 e o README documentam o que é enviado, o custo e como desligar (`provider=none`).  
 **O que levaria à revisão:** chunks recusados por tamanho no teste de fumaça ou no uso real (pediria tokenizador exato), ou provedores locais na Etapa 9 (pediria limite configurável).
 
+### D-055 — Tokenização de identificadores (`ident-v1`)
+**Status:** Aceita (16/10/2026; F1 da Etapa 5 entregue)  
+**Contexto:** a D-017 manda separar identificadores na aplicação, porque o parser `simple` do PostgreSQL não quebra `getUserById`. A F0 da Etapa 5 mediu o parser (`ts_debug`, PostgreSQL 17.11): ele quebra em `_`, `$`, `::`, `->` e aspas; guarda como um lexema só caminhos (`src/foo/bar.java`), `a.b.c`, hosts (`my-file.ts`), URLs, e-mails e versões (`1.2.3`); e descarta como tag, sem lexema, tudo entre `<` e `>` que pareça tag (`<String>` em `List<String>`, `<T extends Number>`, `<b && c>` em `if (a<b && c>d)`, atributos HTML, `<!-- comentários -->`).  
+**Decisão:** `IdentifierTokenizer`, em `codeanalysis`, puro e determinístico, com versão `ident-v1` (tokenizador e stopwords juntos; mudar qualquer um cria uma versão nova).
+- **Palavra:** sequência de letras, dígitos e marcas combinantes (Unicode, `Character`). Todo o resto separa, inclusive `_` e `$`.
+- **Partes:** fronteira de caixa (`getUser` → `get User`), de sigla (`HTTPClient` → `HTTP Client`) e entre letra e dígito (`parseJSON2Xml` → `parse JSON 2 Xml`).
+- **`identifierTerms(texto)`** (o que o chunk acrescenta ao conteúdo, peso A): a palavra composta e suas partes; a palavra de uma parte encostada em outra sem espaço, com qualquer símbolo entre elas (`src/foo/Bar.java` → `src foo Bar java`, `user_id` → `user id`, `/api/v1?id=2` → `api v1 v 1 id 2`); e toda palavra entre `<` e o `>` seguinte. Palavras soltas de uma parte já estão no conteúdo e não entram.
+- **`queryTerms(texto)`** (a pergunta): todas as palavras, compostas e partes, menos as stopwords (lista curta pt-BR e en, no código).
+- Termos únicos sem diferenciar caixa, na ordem da primeira ocorrência, **com a grafia original**: quem põe em minúsculas é o PostgreSQL (`to_tsvector`/`to_tsquery`), porque as minúsculas do Java diferem das do banco (`İ`). O Java só compara em minúsculas (`Locale.ROOT`) para tirar repetidos e stopwords.
+- Um teste de integração confere, em textos com código, URLs, HTML e Unicode, que cada termo vira exatamente um lexema e que todo termo de pergunta tirado do chunk aparece como lexema de `to_tsvector(content) || to_tsvector(identifier_terms)`.
+
+**Motivo:** a pergunta que repete um termo do código casa com o chunk, qualquer que seja a forma como o parser leu esse trecho, e o peso A distingue identificadores da prosa.  
+**Consequências:** a regra de "encostada" e a de `<…>` emitem a mais (por exemplo, numa comparação `a < b` sem `>` depois, o resto do chunk entra em `identifier_terms`); é inofensivo para o casamento e só desloca peso. Nomes de entidades HTML (`&amp;`) não entram no índice.  
+**O que levaria à revisão:** resultados da avaliação (O-005), um caso em que o teste de alinhamento falhe, ou mudança do parser numa versão nova do PostgreSQL.
+
+### D-056 — Armazenamento do índice lexical (revisa `05` §4)
+**Status:** Aceita (16/10/2026; F2 da Etapa 5 entregue)  
+**Contexto:** `05` §4 previa `identifier_terms` e `lexical_tsv` como colunas de `chunks`. Mas a tokenização é da aplicação (D-055), os chunks existentes não têm termos, uma migração SQL não consegue preenchê-los, e regravar chunks a cada versão do tokenizador mexeria em linhas "imutáveis" (D-039), inclusive de snapshots antigos.  
+**Decisão:**
+- **Tabela `chunk_lexical`** `(chunk_id, lexical_version)` (V9), FK para `chunks` com `ON DELETE CASCADE`, com `identifier_terms` (termos do `IdentifierTokenizer` separados por espaço) e `tsv = setweight(to_tsvector('simple', identifier_terms), 'A') || setweight(to_tsvector('simple', content), 'B')`, calculado no `INSERT` a partir do chunk, na mesma instrução. Índice GIN em `tsv`. Sempre `to_tsvector`: `array_to_tsvector` gera lexemas sem posição, e aí o `setweight` e o `ts_rank_cd` não funcionam (F0).
+- **Etapa `LEXICAL` no job**, entre `PROCESSING_FILES` e `EMBEDDING`: lista os chunks do snapshot sem linha da versão atual, lê o texto por lote (`app.indexing.lexical-batch-chunks`, padrão 500) e grava com `ON CONFLICT DO NOTHING`; cada lote grava progresso e renova o heartbeat na mesma transação da inserção. O progresso conta chunks. Sem chamada externa, então sem política de falha nova: um erro segue a repetição do job (D-044), e a tentativa seguinte só grava o que falta.
+- **`snapshots.lexical_version`**, gravada na ativação. Snapshots anteriores à V9 ficam com `null`.
+- **`outdatedReasons`**: `LEXICAL_INDEX_MISSING` (snapshot sem versão lexical) e `LEXICAL_INDEX_CHANGED` (versão diferente da atual), independentes do provedor. Uma reindexação sem arquivo alterado resolve os dois. A recusa da busca lexical e híbrida nesses casos (`409 SNAPSHOT_LEXICAL_MISMATCH`) entrou com o `mode` na F4 (D-060).
+- `GET /api/v1/snapshots/{id}` e a listagem trazem `lexical: { version }`, ou `null`.
+- Versões convivem (útil para a avaliação comparar tokenizações, O-005); a limpeza vem pela cascata quando os chunks somem (D-039).
+- Índice GIN `gin_trgm_ops` em `snapshot_files.relative_path` (V9), para a busca de caminhos da F3.
+
+**Motivo:** o mesmo desenho dos embeddings (D-048, D-050): o índice é derivado e versionado à parte, chunks continuam imutáveis, e mudar o tokenizador não exige migração.  
+**Consequências:** o texto do chunk fica três vezes no banco (conteúdo, chunk, `tsv`); o tamanho de `chunk_lexical` é medido no teste de desempenho da F4. Com `provider=none` a etapa roda normalmente.  
+**Medição (F4):** com 50 mil chunks sintéticos de ~1,9 kB, `chunk_lexical` ocupa 211 MB de tabela e 51 MB de índices (`chunks`: 78 MB).  
+**O que levaria à revisão:** tamanho ou tempo da etapa inaceitáveis na medição da F4, ou um índice lexical externo (O-005).
+
+### D-057 — Consulta lexical
+**Status:** Aceita (16/10/2026; F3 da Etapa 5 entregue)  
+**Contexto:** as perguntas são em linguagem natural; `plainto_tsquery` exige todos os termos (AND) e quase nunca casa, a configuração `simple` não tem stopwords, e o `ts_rank` não tem IDF (D-017).  
+**Decisão:**
+- `LexicalSearch`, em `retrieval`. A pergunta passa por `IdentifierTokenizer.queryTerms` (D-055); cada termo vai entre aspas simples (aspas internas dobradas), unido aos demais por ` | `, e o texto inteiro é **um parâmetro** de `to_tsquery('simple', :query)`. Nada da pergunta é concatenado ao SQL, e operadores da `tsquery` (`&`, `|`, `!`, `:`, `(`, `<->`, `*`) nunca chegam a ela, porque os termos só têm letras e dígitos. Pergunta sem termos (só stopwords ou pontuação) devolve lista vazia sem consultar o banco.
+- Só as linhas de `chunk_lexical` da versão atual contam. Ordem: `ts_rank_cd(tsv, query, 1)` decrescente (pesos padrão A=1,0 e B=0,4; normalização pelo log do comprimento), depois primeiro caminho, linha inicial e id.
+- Mesmo formato de resultado da vetorial (`SearchHit`: um resultado por chunk, todos os caminhos do snapshot com o mesmo conteúdo, em ordem de bytes). Os candidatos do snapshot e o `SELECT` final com os caminhos ficaram num trecho compartilhado (`SnapshotChunks`), usado pelos três canais.
+- **Plano medido** (100 projetos × 2.000 chunks, `LexicalSearchPlanIT`): o PostgreSQL parte do snapshot (PK de `snapshot_files`), chega aos chunks pela chave natural e a `chunk_lexical` pela PK, e aplica o `@@` linha a linha; o GIN em `tsv` não é escolhido nesse volume. É o mesmo desenho exato por snapshot da vetorial (D-049): o custo cresce com o snapshot, não com o banco. O teste garante a ausência de varredura sequencial em `chunk_lexical`, `chunks` e `snapshot_files`.
+
+**Motivo:** OR com ranking por densidade devolve resultados mesmo quando só parte da pergunta aparece no código, e a montagem na aplicação mantém o tokenizador da consulta igual ao da indexação.  
+**Consequências:** sem IDF, termos comuns pesam tanto quanto raros; o peso A favorece identificadores (coberto por teste). A recusa por versão lexical (`409 SNAPSHOT_LEXICAL_MISMATCH`) entrou na F4 (D-060).  
+**O que levaria à revisão:** resultados da avaliação (O-005), em especial perguntas em pt-BR sobre código em inglês, ou latência alta em snapshots grandes (o GIN em `tsv` continua disponível para o planejador).
+
+### D-058 — Canal de caminhos
+**Status:** Aceita (16/10/2026; F3 da Etapa 5 entregue; o canal pode sair na avaliação)  
+**Contexto:** perguntas que citam um arquivo (`VectorSearch.java`, `docs/plans/etapa-4.md`, `IndexJob`) devem trazer esse arquivo, o que o full-text não garante (o parser guarda caminhos como um lexema só).  
+**Decisão:**
+- `PathTerms`, em `codeanalysis`, separa da pergunta (por espaço em branco, sem aspas e pontuação nas pontas, sem `./` ou `/` no início): **caminhos** (contêm `/` e alguma letra ou dígito, ou terminam em `.<extensão>` com extensão começando por letra, o que deixa `1.2.3` de fora) e **nomes** (letras, dígitos, `_` e `-`, ao menos 3 caracteres, sem stopwords). Um nome só vira termo se algum arquivo do snapshot tiver esse nome sem diretório e sem a última extensão, sem diferenciar caixa (`IndexJob` → `IndexJob.java`; `search` não casa com `SearchApiIT.java`).
+- `PathSearch`, em `retrieval`: arquivos do snapshot com `term <<% relative_path` (pré-filtro do `pg_trgm`, limiar padrão 0,5) e `strict_word_similarity(term, relative_path) >= :threshold`, com o limiar como parâmetro (padrão **0,8**; abaixo de 0,5 é recusado, porque o pré-filtro cortaria antes). Score do arquivo = maior similaridade entre os termos; resultados = chunks desses arquivos, por score, caminho casado e linha inicial. Um chunk de conteúdo repetido em dois arquivos casados aparece uma vez, com todos os caminhos.
+- Os termos vão ao banco como um parâmetro só, um por linha (`string_to_array`), porque nunca contêm espaço em branco.
+- Pergunta sem caminho nem nome de arquivo do snapshot → lista vazia; na fusão (F4), o canal só entra quando tem resultados.
+- **Plano medido:** com 200 arquivos por snapshot, o planejador lê os arquivos do snapshot pela PK e calcula a similaridade em cada um, sem usar o índice trigram (que cobre os caminhos de todos os snapshots). O trigram fica para snapshots grandes; o teste garante só a ausência de varredura sequencial.
+
+**Motivo:** `strict_word_similarity` separa o arquivo citado de vizinhos com nome parecido (F0: `IndexJobApiIT.java` 0,533 para `IndexJob`).  
+**Consequências:** caminhos longos que diferem num só trecho passam do limiar: `docs/plans/etapa-3.md` casa com `docs/plans/etapa-4.md`, abaixo do arquivo exato (1,0). Fica para a avaliação decidir o limiar ou se o canal permanece.  
+**O que levaria à revisão:** ganho nulo do canal na avaliação (sai antes do fechamento da etapa), ou limiar diferente medido no corpus.
+
+### D-059 — Fusão híbrida por RRF
+**Status:** Aceita (16/10/2026; F4 da Etapa 5 entregue)  
+**Contexto:** a D-017 escolheu RRF com k=60 para combinar a busca lexical e a vetorial; a F3 acrescentou o canal de caminhos (D-058).  
+**Decisão:**
+- `RrfFusion`, em `retrieval`, pura: recebe a lista de cada canal (`LEXICAL`, `VECTOR`, `PATH`) e devolve `limit` resultados com `score = Σ peso / (k + rank)`, rank a partir de 1, somado nos canais que trouxeram o chunk. Padrão: k=60 e peso 1 em todos os canais.
+- Um chunk é identificado pelo id; os caminhos e o conteúdo vêm de qualquer canal (são iguais em todos).
+- Desempate determinístico: maior score, melhor rank individual, primeiro caminho, linha inicial e id do chunk (como texto, a ordem do banco).
+- Canal com lista vazia não soma nada; o de caminhos só participa quando a pergunta cita um arquivo do snapshot (D-058).
+- No modo `HYBRID`, cada canal busca `max(app.retrieval.candidates, limit)` resultados (padrão **50**) antes de fundir. Os canais são consultados em sequência (vetorial, lexical, caminhos), sem paralelismo.
+- `k`, pesos e profundidade são parâmetros da função, para a avaliação (F6) variá-los sobre as mesmas listas, sem consultar o banco de novo.
+
+**Motivo:** RRF dispensa normalizar scores de naturezas diferentes (cosseno, `ts_rank_cd`, similaridade de trigramas) e premia o que aparece bem em mais de um canal.  
+**Consequências:** o `score` híbrido só serve para ordenar uma resposta (vai no máximo a 3/61 com pesos 1). A latência híbrida é a soma dos três canais mais a chamada ao provedor: com 50 mil chunks, 854 ms de média e 1,2 s de p95 sem o provedor, dominados pelo lexical quando a pergunta tem um termo presente em quase todo chunk (471 ms, contra 52 ms só com termos raros; detalhes em `docs/plans/etapa-5.md`, F4).  
+**O que levaria à revisão:** resultados da avaliação (k, pesos, profundidade, saída do canal de caminhos), ou latência que peça consultas em paralelo.
+
+### D-060 — Contrato da busca com `mode` (revisa a D-053)
+**Status:** Aceita (16/10/2026; F4 da Etapa 5 entregue)  
+**Decisão:**
+- **Pedido:** `{ "query", "snapshotId", "limit", "mode" }`, com `mode` `LEXICAL`, `VECTOR` ou `HYBRID` (nome exato); ausente ou `null` = **`HYBRID`**. Valor desconhecido → `400 VALIDATION_FAILED` no campo `mode` (o campo é texto no pedido, para não virar `MALFORMED_REQUEST`).
+- **Resposta:** `{ snapshotId, mode, model | null, lexicalVersion | null, results: [ { chunkId, path, otherPaths, startLine, endLine, content, score, ranks: { lexical, vector, path } } ] }`. `model` é `null` no `LEXICAL`; `lexicalVersion` é `null` no `VECTOR`. `score` depende do modo (cosseno no `VECTOR`, `ts_rank_cd` no `LEXICAL`, RRF no `HYBRID`). `ranks` traz a posição (a partir de 1) em cada canal consultado, ou `null`; nos modos de um canal só, só esse canal tem rank. O canal de caminhos só roda no `HYBRID`.
+- **`LEXICAL`** funciona com `provider=none` e nunca chama o provedor.
+- **`HYBRID` sem provedor ou sem vetores do modelo:** `409`, sem cair para lexical em silêncio (um resultado pior sem aviso é difícil de perceber). A mensagem de `EMBEDDINGS_NOT_AVAILABLE` sugere o modo `LEXICAL`.
+- **Erros, nesta ordem:** `400 VALIDATION_FAILED` (`query`, `limit`, `mode`); `404 PROJECT_NOT_FOUND`; `404 SNAPSHOT_NOT_FOUND`; `409 SNAPSHOT_NOT_SEARCHABLE`; `409 SNAPSHOT_LEXICAL_MISMATCH` (`LEXICAL` e `HYBRID`: snapshot sem `lexical_version` ou com outra versão, D-056); `409 EMBEDDINGS_NOT_AVAILABLE` e `409 SNAPSHOT_EMBEDDING_MISMATCH` (`VECTOR` e `HYBRID`); erros do provedor (D-051).
+- **Log:** modo, snapshot, quantidade total e por canal, e duração por canal; nunca a pergunta (D-054).
+- O estado do snapshot usado nessas verificações saiu da `VectorSearch` para `SearchSnapshots`.
+
+**Motivo:** a Etapa 6 usa o híbrido e precisa dos ranks por canal (`rank_lexical`/`rank_vector` de `answer_evidence`); a busca lexical continua disponível sem provedor.  
+**Consequências:** o padrão mudou de vetorial para híbrido; quem quiser só a vetorial passa `mode: VECTOR`. `06-API-CONTRACTS.md` é atualizado no fechamento da etapa (F7).  
+**O que levaria à revisão:** a Etapa 6 (evidências da resposta) ou a avaliação (por exemplo, tirar o canal de caminhos).
+
+### D-061 — Corpus de avaliação (P7 da Etapa 5)
+**Status:** Aceita (16/10/2026; F5 da Etapa 5 entregue; anotações aprovadas)  
+**Contexto:** a O-011 pedia repositórios, quem anota e como versionar o corpus. A avaliação da Etapa 5 precisa dele para comparar lexical, vetorial e híbrido.  
+**Decisão:**
+- **Três corpora:** fixture sintética versionada (`eval/corpus/fixture/`); o próprio Codebase Copilot no commit `9d986db` (merge da Etapa 4); `pallets/click` 8.5.0 (`8b19813`, BSD-3-Clause). Os dois externos ficam fora do repositório: você os extrai e informa a pasta em `EVAL_CORPUS_CODEBASE_COPILOT` e `EVAL_CORPUS_CLICK`. Nada do corpus é executado.
+- **Manifesto** por corpus (`eval/corpus/<corpus>.sha256`): uma linha por arquivo, com SHA-256, quantidade de linhas (`-` quando não é texto) e caminho. Pasta diferente do manifesto (arquivo alterado, faltando ou a mais) faz o harness parar. As linhas são contadas com as regras do `TextClassifier`, o que permite validar as anotações dos corpora externos sem a pasta.
+- **Anotações** em `eval/questions/<corpus>.yaml`: `id`, `question`, `language` (`pt-BR`, `en`), `category` (`08` §2), `difficulty`, `expected` (`path`, `startLine`, `endLine`, `otherPaths`), `mustAbstain`, `notes`. Chave desconhecida é erro. Relevância por intervalo de linhas: um chunk é relevante se sobrepõe um intervalo, em `path` ou em um dos `otherPaths` (mesmo conteúdo em outro caminho).
+- **40 perguntas** (14 na fixture, 14 no Copilot, 12 no click), metade em pt-BR e metade em en, com 4 que exigem abstenção (fora das métricas de recuperação).
+- Rascunho das anotações feito pelo assistente lendo o código; revisão e aprovação por você (`08` §4), em 16/10/2026.
+- O `verify` valida as anotações dos três corpora contra os manifestos e confere a fixture contra o seu manifesto. O código fica nas fontes de teste (`com.codebasecopilot.eval`), sem nada na aplicação.
+
+**Motivo:** a relevância por linha mantém o corpus válido quando o chunking muda (O-010), e o manifesto garante que todos medem o mesmo conteúdo.  
+**Consequências:** alterar um arquivo da fixture exige gerar de novo o manifesto (`eval/README.md`) e revisar as anotações que apontam para ele.  
+**O que levaria à revisão:** corpus pequeno demais para separar as variantes na avaliação, ou anotações que se mostrem ambíguas na revisão.
+
+### D-062 — Harness de avaliação de recuperação (P8 da Etapa 5)
+**Status:** Aceita (16/10/2026; F6 da Etapa 5 entregue; baseline vetorial e híbrido pendente de saldo no provedor)  
+**Contexto:** o aceite da Etapa 5 pede resultados reprodutíveis e o híbrido comparado com os canais individuais, no corpus da D-061.  
+**Decisão:**
+- **`RetrievalEvaluationIT`**, tag `eval`, fora do `verify` (como `performance` e `smoke`). Indexa cada corpus pelo pipeline real (Testcontainers, pasta local copiada para uma raiz de teste), consulta cada canal uma vez por pergunta (`candidates` = 50) e calcula as variantes em memória com a `RrfFusion` (D-059): `LEXICAL`, `VECTOR`, `LEXICAL_PATH`, `LEXICAL_VECTOR` e `HYBRID` (os três canais, como o modo `HYBRID` da D-060). Sem provedor, só as variantes sem vetor.
+- **Provedor:** `EVAL_PROVIDER` (`none` por padrão, que não envia nada; `fake` para testar o harness; `openai` para o baseline real, com a chave de `EMBEDDING_API_KEY`). A guarda dos testes (D-047) libera o provedor real só para as tags `smoke` e `eval`.
+- **Cache de vetores:** todo vetor devolvido pelo provedor fica em `DATA_DIR/eval-cache/<provedor>-<modelo>-<dimensões>/<sha256 do texto>.f32` (ou em `EVAL_CACHE_DIR`), para chunks e perguntas. Guarda só hash e vetor, nunca o texto. Uma segunda rodada não chama o provedor nem sofre a variação dele.
+- **Métricas** (`RetrievalMetrics`, pura, com testes no `verify`): Recall@5/10/20 por intervalo esperado, MRR@10, Precision@10 (dividido por 10 mesmo com menos resultados) e cobertura de arquivos@10 nas perguntas `CROSS_FILE_FLOW` (qualquer chunk do arquivo conta; `otherPaths` é o mesmo arquivo). Perguntas com `mustAbstain` ficam de fora. Resumo por variante, corpus, categoria e idioma; latência média e p95 por canal (inclusive a chamada de embedding da pergunta).
+- **Resultados** em `eval/results/<data>-<config>.json` (`lexical` sem provedor, `<provedor>-<modelo>` com) e um resumo `.md` em pt-BR, versionados. O JSON registra corpus (commit, SHA-256 do manifesto, arquivos e chunks), versões de chunking e lexical, modelo, parâmetros da fusão, as métricas de cada pergunta e os 10 primeiros chunks de cada variante (caminho e linhas, sem conteúdo).
+- **Reprodutibilidade:** ordem determinística em todos os canais (D-057 a D-059) e vetores em cache. `EVAL_COMPARE_WITH=<json>` faz a rodada falhar se o resultado, fora data e latências, diferir de um anterior.
+
+**Motivo:** buscar as listas uma vez e fundir em memória permite variar k, pesos e canais sem consultar o banco de novo; o cache torna o baseline pago reprodutível e barato de repetir.  
+**Consequências:** o baseline lexical (sem custo) está em `eval/results/2026-10-16-lexical.*`; o vetorial e o híbrido saem do mesmo harness com `EVAL_PROVIDER=openai`, quando houver saldo, junto com o teste de fumaça da Etapa 4. A Etapa 5 fechou sem saldo: a comparação e as decisões que dependem dela (D-017, O-005, saída do canal de caminhos da D-058) esperam essa rodada.  
+**O que levaria à revisão:** corpus maior, bake-off de embeddings (O-004) ou variantes novas da fusão.
+
 ---
 
 ## Decisões em aberto
@@ -868,22 +994,26 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 - Provedor de embeddings e de chat podem ser diferentes (a Anthropic, por exemplo, não oferece modelo de embeddings próprio), o que justifica as duas portas separadas.
 
 **Critérios de comparação:** recall@k e MRR no corpus, qualidade em código, custo por 1M de tokens, latência, limites de taxa e política de retenção de dados do provedor.  
-**Estado (16/10/2026):** embeddings decididos provisoriamente na Etapa 4: OpenAI `text-embedding-3-small`, 1.536 dimensões (D-047), com armazenamento que não exige migração para trocar de modelo (D-048). A escolha definitiva de embeddings, com a Voyage `voyage-code-3` como candidata, sai do bake-off da Etapa 5, com o corpus de avaliação. O provedor de chat é decidido na Etapa 6.
+**Estado (16/10/2026, fim da Etapa 5):** embeddings decididos provisoriamente na Etapa 4: OpenAI `text-embedding-3-small`, 1.536 dimensões (D-047), com armazenamento que não exige migração para trocar de modelo (D-048). O bake-off com a Voyage `voyage-code-3` foi adiado (D-047, atualização da Etapa 5): o corpus de avaliação (D-061) e o harness (D-062) estão prontos para ele, mas nem o baseline com a OpenAI rodou ainda, por falta de saldo. O provedor de chat é decidido na Etapa 6.
 
 ### O-005 — Comparação final de estratégia lexical e fusão
 **Status:** A validar  
 **Contexto:** D-017 define o ponto de partida. Falta compará-lo com alternativas.  
 **A comparar:** lexical puro, vetorial puro, híbrido com RRF e variações (valor de k, pesos), tratamento de identificadores, e, apenas se o lexical se mostrar fraco, índice auxiliar com BM25.  
-**Evidência para decidir:** resultados no corpus da Etapa 5 (recall@k, MRR, latência).
+**Evidência para decidir:** resultados no corpus da Etapa 5 (recall@k, MRR, latência).  
+**Estado (16/10/2026, fim da Etapa 5):**
+- **Medido:** lexical e lexical + caminhos, no corpus de 36 perguntas (`eval/results/2026-10-16-lexical.*`). O canal de caminhos sobe o MRR@10 de 0,341 para 0,362 e o Recall@5 de 0,380 para 0,407, sem mudar o Recall@10. O lexical é fraco em pt-BR (Recall@10 0,296) e em perguntas conceituais (MRR@10 0,160), como previsto; isso é o que o vetorial deve cobrir, e não basta para justificar BM25 antes da comparação.
+- **Falta:** vetorial e híbrido com vetores reais (o harness já calcula `VECTOR`, `LEXICAL_VECTOR` e `HYBRID` sobre as mesmas listas), variações de k e pesos, e um corpus maior (Etapa 8). Latência com 50 mil chunks: D-059.
 
 ### O-010 — Parâmetros iniciais de chunking
 **Status:** A validar  
 **Contexto:** tamanho, sobreposição e limites de linhas são hipóteses.  
 **Plano:** ajustar no corpus, alterando uma variável por vez (`08-EVALUATION.md`, seção 8).  
-**Etapa 3 (16/10/2026):** valores iniciais provisórios na D-043 (`lines-v1`: 60 linhas, 4.000 caracteres, sobreposição de 10 linhas, `LINE_TOO_LONG` acima de 4.000 caracteres por linha). A comparação fica para a Etapa 5.
+**Etapa 3 (16/10/2026):** valores iniciais provisórios na D-043 (`lines-v1`: 60 linhas, 4.000 caracteres, sobreposição de 10 linhas, `LINE_TOO_LONG` acima de 4.000 caracteres por linha). A comparação fica para a Etapa 5.  
+**Etapa 5 (16/10/2026):** o corpus anota relevância por intervalo de linhas (D-061), e o harness mede qualquer versão de chunking sem mudar as anotações (D-062). Só `lines-v1` foi medido; a comparação de variantes passa para a Etapa 8 ("melhorar ranking/chunking apenas com evidência").
 
 ### O-011 — Corpus de avaliação
-**Status:** A decidir antes da Etapa 5  
+**Status:** Resolvida pela D-061 (16/10/2026)  
 **Questões:** quais repositórios (licença permissiva, tamanhos e linguagens variados), quem anota arquivos/linhas esperados e perguntas sem resposta, e como versionar o corpus.  
 **Sugestão:** projetos próprios mais um ou dois repositórios open source conhecidos.
 

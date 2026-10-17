@@ -114,7 +114,9 @@ class ProjectController {
                                                 "SOURCE_REIMPORTED",
                                                 "CHUNKING_CHANGED",
                                                 "EMBEDDING_MODEL_CHANGED",
-                                                "EMBEDDINGS_MISSING"
+                                                "EMBEDDINGS_MISSING",
+                                                "LEXICAL_INDEX_MISSING",
+                                                "LEXICAL_INDEX_CHANGED"
                                             }))
                     List<String> outdatedReasons,
             Instant createdAt) {
@@ -195,6 +197,7 @@ class ProjectController {
                             allowableValues = {
                                 "SCANNING",
                                 "PROCESSING_FILES",
+                                "LEXICAL",
                                 "EMBEDDING",
                                 "FINALIZING"
                             })

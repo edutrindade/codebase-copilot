@@ -94,6 +94,7 @@ class EmbeddingStageTest {
                                 Duration.ofSeconds(60),
                                 3,
                                 100,
+                                500,
                                 3),
                         Clock.systemUTC());
         Claim claim = new Claim(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), 1);

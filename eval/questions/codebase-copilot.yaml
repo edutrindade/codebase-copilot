@@ -1,0 +1,174 @@
+corpus:
+  name: codebase-copilot
+  directoryEnv: EVAL_CORPUS_CODEBASE_COPILOT
+  commit: "9d986db5897aae9c71c7e37e3f98288ea30b884e"
+  manifest: eval/corpus/codebase-copilot.sha256
+
+questions:
+  - id: cc-01
+    question: What does lockNext do in IndexJobRepository?
+    language: en
+    category: EXACT_IDENTIFIER
+    difficulty: EASY
+    expected:
+      - path: apps/backend/src/main/java/com/codebasecopilot/indexing/IndexJobRepository.java
+        startLine: 93
+        endLine: 114
+
+  - id: cc-02
+    question: Como a importação impede que um ZIP grave arquivos fora da pasta de destino?
+    language: pt-BR
+    category: CONCEPTUAL
+    difficulty: MEDIUM
+    expected:
+      - path: apps/backend/src/main/java/com/codebasecopilot/importjob/ZipExtractor.java
+        startLine: 55
+        endLine: 62
+      - path: apps/backend/src/main/java/com/codebasecopilot/importjob/ZipExtractor.java
+        startLine: 81
+        endLine: 103
+
+  - id: cc-03
+    question: How does the import detect zip bombs?
+    language: en
+    category: CONCEPTUAL
+    difficulty: HARD
+    expected:
+      - path: apps/backend/src/main/java/com/codebasecopilot/importjob/ZipExtractor.java
+        startLine: 105
+        endLine: 134
+    notes: O código fala em compression ratio e limites de bytes, nunca em "bomb".
+
+  - id: cc-04
+    question: O que acontece desde o envio de um ZIP até o fim da extração?
+    language: pt-BR
+    category: CROSS_FILE_FLOW
+    difficulty: HARD
+    expected:
+      - path: apps/backend/src/main/java/com/codebasecopilot/importjob/ImportController.java
+        startLine: 43
+        endLine: 60
+      - path: apps/backend/src/main/java/com/codebasecopilot/importjob/ImportService.java
+        startLine: 56
+        endLine: 99
+      - path: apps/backend/src/main/java/com/codebasecopilot/importjob/ImportWorker.java
+        startLine: 55
+        endLine: 114
+      - path: apps/backend/src/main/java/com/codebasecopilot/importjob/ZipExtractor.java
+        startLine: 40
+        endLine: 79
+
+  - id: cc-05
+    question: Walk through a search request from the HTTP endpoint to the SQL query.
+    language: en
+    category: CROSS_FILE_FLOW
+    difficulty: HARD
+    expected:
+      - path: apps/backend/src/main/java/com/codebasecopilot/retrieval/SearchController.java
+        startLine: 28
+        endLine: 52
+      - path: apps/backend/src/main/java/com/codebasecopilot/retrieval/SearchService.java
+        startLine: 50
+        endLine: 73
+      - path: apps/backend/src/main/java/com/codebasecopilot/retrieval/VectorSearch.java
+        startLine: 61
+        endLine: 115
+
+  - id: cc-06
+    question: Which Spring AI version does the backend use?
+    language: en
+    category: DEPENDENCIES_CONFIGURATION
+    difficulty: EASY
+    expected:
+      - path: apps/backend/pom.xml
+        startLine: 36
+        endLine: 38
+
+  - id: cc-07
+    question: Como subir o banco de dados localmente e em qual porta ele fica?
+    language: pt-BR
+    category: DEPENDENCIES_CONFIGURATION
+    difficulty: MEDIUM
+    expected:
+      - path: infra/docker-compose.yml
+        startLine: 1
+        endLine: 19
+      - path: README.md
+        startLine: 112
+        endLine: 118
+      - path: README.md
+        startLine: 27
+        endLine: 34
+
+  - id: cc-08
+    question: Quais são os módulos do backend e qual a responsabilidade de cada um?
+    language: pt-BR
+    category: ARCHITECTURE
+    difficulty: MEDIUM
+    expected:
+      - path: docs/02-ARCHITECTURE.md
+        startLine: 61
+        endLine: 85
+
+  - id: cc-09
+    question: Qual é o tamanho máximo de um chunk e quanto dois chunks se sobrepõem?
+    language: pt-BR
+    category: CONCEPTUAL
+    difficulty: MEDIUM
+    expected:
+      - path: apps/backend/src/main/java/com/codebasecopilot/indexing/content/LineChunker.java
+        startLine: 6
+        endLine: 14
+      - path: docs/04-RAG-PIPELINE.md
+        startLine: 49
+        endLine: 54
+
+  - id: cc-10
+    question: Why are embedding calls retried by the application instead of by the OpenAI client?
+    language: en
+    category: CONCEPTUAL
+    difficulty: MEDIUM
+    expected:
+      - path: apps/backend/src/main/java/com/codebasecopilot/providers/EmbeddingRetry.java
+        startLine: 8
+        endLine: 56
+      - path: docs/10-DECISIONS.md
+        startLine: 801
+        endLine: 803
+
+  - id: cc-11
+    question: Onde é gerado o cabeçalho X-Request-Id?
+    language: pt-BR
+    category: EXACT_IDENTIFIER
+    difficulty: EASY
+    expected:
+      - path: apps/backend/src/main/java/com/codebasecopilot/shared/web/RequestIdFilter.java
+        startLine: 15
+        endLine: 43
+
+  - id: cc-12
+    question: Why is a plain http base URL rejected for the embeddings provider?
+    language: en
+    category: CONCEPTUAL
+    difficulty: MEDIUM
+    expected:
+      - path: apps/backend/src/main/java/com/codebasecopilot/providers/ProviderProperties.java
+        startLine: 90
+        endLine: 104
+
+  - id: cc-13
+    question: O mesmo trecho de código é enviado de novo ao provedor quando aparece em outro projeto?
+    language: pt-BR
+    category: CONCEPTUAL
+    difficulty: HARD
+    expected:
+      - path: docs/10-DECISIONS.md
+        startLine: 813
+        endLine: 821
+
+  - id: cc-14
+    question: Which Kubernetes manifests deploy the backend?
+    language: en
+    category: UNANSWERABLE
+    difficulty: EASY
+    mustAbstain: true

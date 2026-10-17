@@ -144,7 +144,7 @@ O formatador padrão do VS Code (Eclipse) não segue o estilo AOSP e faz o `spot
 
 ### Testes manuais
 
-Dois testes ficam fora do `verify` (tags `performance` e `smoke`) e só rodam com comando explícito, a partir de `apps/backend`, com o Docker no ar.
+Alguns testes ficam fora do `verify` (tags `performance`, `smoke` e `eval`) e só rodam com comando explícito, a partir de `apps/backend`, com o Docker no ar.
 
 **Medição da busca vetorial** (`VectorSearchPerformanceIT`, D-049): grava 50 mil chunks sintéticos de 1.536 dimensões e imprime média, p95 e máximo de 50 buscas. Não chama provedor nem precisa de chave.
 
@@ -162,7 +162,18 @@ Dois testes ficam fora do `verify` (tags `performance` e `smoke`) e só rodam co
 
 - **Chave:** `EMBEDDING_API_KEY` no `.env` (ou no ambiente). O teste usa `provider=openai` qualquer que seja o `EMBEDDING_PROVIDER` do `.env`, e o endereço padrão da OpenAI.
 - **Custo:** algumas centenas de tokens por execução, menos de US$ 0,0001 pelo preço da D-047.
-- Só testes com a tag `smoke` podem subir com `provider=openai`; em qualquer outro teste, a guarda dos testes (`RealEmbeddingProviderGuard`) impede o contexto de subir.
+- Só testes com as tags `smoke` e `eval` podem subir com `provider=openai`; em qualquer outro teste, a guarda dos testes (`RealEmbeddingProviderGuard`) impede o contexto de subir.
+
+**Avaliação de recuperação** (`RetrievalEvaluationIT`, D-062): indexa os corpora de `eval/` e mede Recall@k, MRR, Precision@10, cobertura de arquivos e latência das buscas lexical, vetorial e híbrida. Grava os resultados em `eval/results/`. Os corpora externos são baixados à parte (instruções em `eval/README.md`).
+
+```bash
+EVAL_CORPUS_CODEBASE_COPILOT=<pasta> EVAL_CORPUS_CLICK=<pasta> \
+  ./mvnw verify -Dtest.excluded-groups= -Dgroups=eval -Dtest=none \
+  -Dsurefire.failIfNoSpecifiedTests=false -Dit.test=RetrievalEvaluationIT
+```
+
+- **Sem provedor** (padrão, `EVAL_PROVIDER=none`): mede só o lexical e o canal de caminhos; nada sai da máquina.
+- **Com `EVAL_PROVIDER=openai`:** envia os corpora e as perguntas à OpenAI (chave de `EMBEDDING_API_KEY`). **Custo** estimado de US$ 0,02 a 0,07 na primeira rodada, pelo preço da D-047. Os vetores ficam em cache em `DATA_DIR/eval-cache`, e as rodadas seguintes não custam nada.
 
 ## Executar o backend
 

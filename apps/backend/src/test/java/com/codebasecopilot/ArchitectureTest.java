@@ -28,6 +28,8 @@ class ArchitectureTest {
 
     private static final String PROVIDERS = "com.codebasecopilot.providers..";
 
+    private static final String CODE_ANALYSIS = "com.codebasecopilot.codeanalysis..";
+
     @ArchTest
     static final ArchRule providerLibrariesOnlyInProviders =
             noClasses()
@@ -68,13 +70,16 @@ class ArchitectureTest {
                     .resideInAPackage("com.codebasecopilot.project..");
 
     @ArchTest
-    static final ArchRule codeAnalysisDoesNotDependOnImportJob =
+    static final ArchRule codeAnalysisDoesNotDependOnDomainModules =
             noClasses()
                     .that()
-                    .resideInAPackage("com.codebasecopilot.codeanalysis..")
+                    .resideInAPackage(CODE_ANALYSIS)
                     .should()
                     .dependOnClassesThat()
-                    .resideInAPackage("com.codebasecopilot.importjob..");
+                    .resideInAnyPackage(
+                            Arrays.stream(DOMAIN_MODULES)
+                                    .filter(module -> !module.equals(CODE_ANALYSIS))
+                                    .toArray(String[]::new));
 
     @ArchTest
     static final ArchRule projectDoesNotDependOnImportJob =
