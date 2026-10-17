@@ -91,6 +91,21 @@ class LocalAccessFilterIT {
     }
 
     @Test
+    void theBackendOwnOriginPassesOnAnyPort() {
+        for (String host : new String[] {"localhost:8080", "127.0.0.1:9090", "[::1]:8080"}) {
+            assertThat(createWorkspace("http://" + host, host))
+                    .as(host)
+                    .hasStatus(HttpStatus.CREATED);
+        }
+        assertThat(createWorkspace("http://localhost:8081", "localhost:8080"))
+                .hasStatus(HttpStatus.FORBIDDEN);
+        assertThat(createWorkspace("https://localhost:8080", "localhost:8080"))
+                .hasStatus(HttpStatus.FORBIDDEN);
+        assertThat(createWorkspace("http://evil.example:8080", "evil.example:8080"))
+                .hasStatus(HttpStatus.FORBIDDEN);
+    }
+
+    @Test
     void readsFromOtherOriginsAreLeftToTheBrowser() {
         assertThat(
                         mvc.get()
@@ -100,6 +115,10 @@ class LocalAccessFilterIT {
     }
 
     private MvcTestResult createWorkspace(String origin) {
+        return createWorkspace(origin, null);
+    }
+
+    private MvcTestResult createWorkspace(String origin, String host) {
         var request =
                 mvc.post()
                         .uri("/api/v1/workspaces")
@@ -107,6 +126,9 @@ class LocalAccessFilterIT {
                         .content("{}");
         if (origin != null) {
             request = request.header(HttpHeaders.ORIGIN, origin);
+        }
+        if (host != null) {
+            request = request.header(HttpHeaders.HOST, host);
         }
         return request.exchange();
     }

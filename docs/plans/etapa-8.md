@@ -329,6 +329,14 @@ O Spring Boot 4.1.1 é o último 4.1.x publicado no Maven Central, então não h
 ### F8 — Empacotamento
 - Perfil `with-ui`, fallback da SPA, cabeçalhos, divisão do build, E2E contra o jar (P8).
 
+**Resultado (17/10/2026)**
+- Perfil Maven `with-ui` (`exec-maven-plugin` com o npm da máquina, cópia do `dist` para `static/`); `java -jar` serve UI e API em `127.0.0.1:8080`.
+- `SpaResourceResolver` (arquivo existente ou `index.html` para rotas da UI, nunca para `/api`, `/actuator` ou arquivos), cache longo em `/assets/**` e `no-cache` no resto; `SecurityHeadersFilter` com CSP, `frame-ancestors 'none'`, `nosniff` e `Referrer-Policy`.
+- Build dividido por tela com `React.lazy`: maior chunk de 539 kB para 363 kB, sem aviso.
+- Testes: `PackagedUiIT` (raiz, rotas da UI, assets, 404 de API/actuator/arquivos como ProblemDetail, cabeçalhos inclusive nas respostas recusadas, Swagger UI), `LocalAccessFilterIT` (origem do backend em qualquer porta, origens parecidas recusadas); `npm run e2e:jar` com os três specs contra o jar (4 testes) e `npm run e2e` com o Vite (2 testes), verdes.
+- Registro na D-085; notas na D-072 e na D-076; README com a execução empacotada.
+- **Desvios:** em vez de pôr a origem do backend em `app.http.allowed-origins`, a mesma origem passa em qualquer porta (não depende de `SERVER_PORT`). A Swagger UI fica fora da CSP estrita (só `frame-ancestors`), porque usa scripts inline. Sem contrato novo: `openapi.json` não mudou.
+
 ### F9 — Fechamento
 - **Limitações conhecidas e recuperação de falhas:** novo `docs/11-OPERATIONS.md` (como rodar empacotado, backup e restauração do volume do PostgreSQL, o que fazer em cada falha — banco fora, provedor sem saldo ou fora, queda no meio de um job, disco cheio, ZIP recusado, snapshot podado — e a lista consolidada das limitações, hoje espalhadas pelo `07` e pelos planos).
 - Checklists do `07` §11 e do `08` §10 marcados, com o teste ou o resultado de cada item.

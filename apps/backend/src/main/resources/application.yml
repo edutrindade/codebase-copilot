@@ -17,6 +17,10 @@ spring:
   messages:
     # User-facing messages are pt-BR only (D-025); never fall back to the OS locale.
     fallback-to-system-locale: false
+  web:
+    resources:
+      # The packaged UI is mapped by WebConfiguration, with the client-route fallback (D-085).
+      add-mappings: false
 
 server:
   # Loopback only: the API has no authentication (D-072). SERVER_ADDRESS=0.0.0.0 exposes it

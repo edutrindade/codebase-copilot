@@ -17,7 +17,8 @@
     "test": "vitest run",
     "api:types": "openapi-typescript ../backend/openapi.json -o src/api/schema.d.ts",
     "check": "npm run typecheck && npm run lint && npm run format:check && npm run test && npm run build",
-    "e2e": "npm run build && playwright test"
+    "e2e": "npm run build && playwright test",
+    "e2e:jar": "cd ../backend && ./mvnw -q -Pwith-ui -DskipTests package && cd ../web && playwright test -c playwright.jar.config.ts"
   },
   "dependencies": {
     "@tanstack/react-query": "5.104.3",

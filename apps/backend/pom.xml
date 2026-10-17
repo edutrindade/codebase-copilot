@@ -203,4 +203,78 @@
 		</plugins>
 	</build>
 
+	<profiles>
+		<!-- ./mvnw -Pwith-ui package: builds apps/web with npm and packages it in the jar, so
+		     java -jar serves UI and API on one origin (D-085). The default build never runs npm
+		     (D-076). -->
+		<profile>
+			<id>with-ui</id>
+			<properties>
+				<web.dir>${project.basedir}/../web</web.dir>
+			</properties>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.codehaus.mojo</groupId>
+						<artifactId>exec-maven-plugin</artifactId>
+						<executions>
+							<execution>
+								<id>npm-ci</id>
+								<phase>generate-resources</phase>
+								<goals>
+									<goal>exec</goal>
+								</goals>
+								<configuration>
+									<executable>npm</executable>
+									<workingDirectory>${web.dir}</workingDirectory>
+									<arguments>
+										<argument>ci</argument>
+										<argument>--no-audit</argument>
+										<argument>--no-fund</argument>
+									</arguments>
+								</configuration>
+							</execution>
+							<execution>
+								<id>npm-build</id>
+								<phase>generate-resources</phase>
+								<goals>
+									<goal>exec</goal>
+								</goals>
+								<configuration>
+									<executable>npm</executable>
+									<workingDirectory>${web.dir}</workingDirectory>
+									<arguments>
+										<argument>run</argument>
+										<argument>build</argument>
+									</arguments>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-resources-plugin</artifactId>
+						<executions>
+							<execution>
+								<id>copy-ui</id>
+								<phase>process-resources</phase>
+								<goals>
+									<goal>copy-resources</goal>
+								</goals>
+								<configuration>
+									<outputDirectory>${project.build.outputDirectory}/static</outputDirectory>
+									<resources>
+										<resource>
+											<directory>${web.dir}/dist</directory>
+										</resource>
+									</resources>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
+
 </project>

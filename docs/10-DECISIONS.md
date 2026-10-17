@@ -1158,7 +1158,8 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 
 **Motivo:** pouco código e testável, e a exposição nasce com a UI. Reescrever a `Origin` no proxy deixaria passar um CSRF que chegasse pelo próprio Vite.  
 **Consequências:** quem expõe o backend à rede (`SERVER_ADDRESS=0.0.0.0`) precisa listar os nomes em `app.http.allowed-hosts`, e uma UI servida em outra porta, em `app.http.allowed-origins`. O log do filtro registra só o método e o código, nunca o `Host` ou a `Origin`.  
-**O que levaria à revisão:** autenticação, acesso por outra máquina, ou o backend servindo a UI (P2, Etapa 8).
+**O que levaria à revisão:** autenticação, acesso por outra máquina, ou o backend servindo a UI (P2, Etapa 8).  
+**Etapa 8 (17/10/2026):** com o backend servindo a UI, a própria origem dele passa em qualquer porta (D-085).
 
 ### D-073 — Provedores configurados para a UI (P4 da Etapa 7)
 **Status:** Aceita (16/10/2026; F1 da Etapa 7)  
@@ -1204,7 +1205,8 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Decisão:** opção 1 no MVP: dois processos (backend e `npm run dev` ou `npm run preview`), sem CORS e sem acoplar o build Maven ao npm. Em `apps/web`: `src/api` (cliente, tipos gerados e versionados, tabela de ações por `code`), `src/app` (rotas, `QueryClient`), `src/components` (primitivos), `src/features/<tela>` (`workspaces`, `import`, `project`, `ask`, `history`), `src/messages.ts` (todos os textos pt-BR), `src/styles` e `e2e`. No backend, o conteúdo do arquivo em `indexing`, a versão ativa da evidência pela fachada `Retrieval` (desvio da F1, D-071), `GET /system/providers` em `providers` e o filtro de acesso local em `shared`.  
 **Motivo:** a mesma origem para o browser simplifica a D-072; a estrutura por tela casa com a do backend por módulo.  
 **Consequências:** o README traz dois comandos para subir o produto; as portas 5173 e 4173 são fixas, porque são as origens aceitas.  
-**O que levaria à revisão:** empacotamento num único executável (opção 2, Etapa 8).
+**O que levaria à revisão:** empacotamento num único executável (opção 2, Etapa 8).  
+**Etapa 8 (17/10/2026):** a opção 2 virou o perfil Maven `with-ui`, opcional; o build padrão segue sem npm e o modo de desenvolvimento com o proxy continua (D-085).
 
 ### D-077 — Navegação, estados e erros da UI (P9 da Etapa 7)
 **Status:** Aceita (17/10/2026; F3 a F7 da Etapa 7)  
@@ -1335,6 +1337,22 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Motivo:** interromper a thread deixaria transações e chamadas ao provedor pela metade; o pedido gravado reaproveita o heartbeat e as transições condicionadas à tentativa (D-040). Os agregados sobre as tabelas existentes respondem às perguntas do `03` §9 sem guardar nada novo.  
 **Consequências:** contrato só aditivo (status `CANCELLED`, `cancelRequested`, `lastJob`, dois endpoints, um código de erro). Conversas excluídas somem também do uso. O cancelamento leva até um lote (ou uma chamada ao provedor, com as tentativas da D-051) para ter efeito.  
 **O que levaria à revisão:** pedido de retenção automática, necessidade de cancelar a importação, ou de medir uso da UI (evidências abertas), que exigiria eventos.
+
+### D-085 — Empacotamento: UI servida pelo backend (P8 da Etapa 8; completa a D-072 e a D-076)
+**Status:** Aceita (17/10/2026; F8 da Etapa 8)  
+**Contexto:** rodar o produto exigia dois processos (`spring-boot:run` e `vite preview`), e o build da UI tinha um chunk de 539 kB, acima do aviso de 500 kB do Vite.  
+**Opções consideradas:** para o build, um plugin que baixa Node (`frontend-maven-plugin`) ou o `npm` da máquina pelo `exec-maven-plugin`; para o fallback da SPA, um controller com padrões de rota ou um resolvedor de recursos; para a origem do backend, listar `localhost:8080` e `127.0.0.1:8080` em `allowed-origins` ou aceitar a mesma origem.  
+**Decisão:**
+- **Perfil Maven `with-ui`:** `exec-maven-plugin` (versão gerida pelo Spring Boot) roda `npm ci` e `npm run build` em `apps/web` na fase `generate-resources`, e o `maven-resources-plugin` copia o `dist` para `static/` do jar. Usa o Node da máquina, sem download no build. O `./mvnw verify` padrão continua sem npm (D-076).
+- **Recursos e fallback:** `spring.web.resources.add-mappings=false` e o mapeamento próprio em `WebConfiguration`: `/assets/**` com cache de um ano `immutable` (os nomes têm o hash do conteúdo) e `/**` com `no-cache` e o `SpaResourceResolver`, que serve o arquivo existente ou, para caminhos sem extensão fora de `/api` e `/actuator`, o `index.html`. Sem UI empacotada não há `index.html` e o `404 RESOURCE_NOT_FOUND` continua igual; `/api/...` desconhecido e arquivos inexistentes nunca recebem o HTML. A raiz chega ao `index.html` pela página de boas-vindas do Spring.
+- **Cabeçalhos (`SecurityHeadersFilter`, em toda resposta, inclusive as recusadas pelo `LocalAccessFilter`):** a CSP do `apps/web/csp.ts` mais `frame-ancestors 'none'` (que a meta tag não aceita), `X-Content-Type-Options: nosniff` e `Referrer-Policy: no-referrer`. A Swagger UI usa scripts e estilos inline, então recebe só `frame-ancestors 'none'`. A meta tag do build continua, para o `vite preview`; as duas listas são mantidas iguais à mão.
+- **Origem do backend:** uma `Origin` igual a `http://` + o `Host` da requisição passa em qualquer porta, em vez de listar `:8080` em `allowed-origins`. É seguro porque o `Host` já foi conferido contra `allowed-hosts` (um DNS rebinding traz outro `Host` e é recusado antes).
+- **Build:** cada tela é um chunk (`React.lazy`, com `Suspense` e o mesmo "Carregando…"); o maior passa a 363 kB (115 kB com gzip), sem aviso.
+- **E2E:** `npm run e2e:jar` gera o jar e roda os specs contra `java -jar`, mais `packaged.spec.ts` (recarregar numa rota, cabeçalhos, `404` da API como ProblemDetail, mudança de estado da própria origem). O `npm run e2e` com o Vite continua.
+
+**Motivo:** um processo só simplifica o uso local sem mudar o desenvolvimento; o resolvedor mantém os erros da API como estão; aceitar a mesma origem não depende da porta escolhida em `SERVER_PORT`.  
+**Consequências:** o perfil exige Node 22 e npm; ao alternar entre os builds é preciso `clean` (o `static/` copiado fica em `target/classes`). A CSP existe em dois lugares (`csp.ts` e `SecurityHeadersFilter`). Executar o jar de fora de `apps/backend` continua sem achar o `.env`.  
+**O que levaria à revisão:** distribuição para outras máquinas (instalador, imagem Docker), uma UI que precise de recursos de outra origem, ou a Swagger UI sob a CSP estrita.
 
 ---
 

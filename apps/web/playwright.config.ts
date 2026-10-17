@@ -9,6 +9,8 @@ const uiUrl = 'http://127.0.0.1:4173';
 
 export default defineConfig({
   testDir: 'e2e',
+  // Needs the backend to serve the UI (playwright.jar.config.ts).
+  testIgnore: ['packaged.spec.ts'],
   fullyParallel: false,
   workers: 1,
   retries: 0,
