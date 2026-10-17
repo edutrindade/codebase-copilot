@@ -360,6 +360,16 @@ O Vite recusa `Host: evil.example` com `403` no `dev` e no `preview`, e aceita `
 ### F8 — Aceite de ponta a ponta
 - Teste Playwright e axe da P10; passada manual por teclado.
 
+**Como foi entregue (17/10/2026)**
+- `npm run e2e` (build + `playwright test`), fora do `npm run check`. Entraram `@playwright/test` 1.64.1 e `@axe-core/playwright` 4.14.0 (versões da D-070) e o Chromium da revisão 1248, baixado à parte com `npx playwright install chromium`.
+- `playwright.config.ts` sobe o backend real (`./mvnw spring-boot:run`, banco do Compose pelo `.env`, porta 8089 para não disputar com o backend de desenvolvimento, provedores `fake`, `PROJECTS_ROOT` em `e2e/fixtures`, `DATA_DIR` temporário) e o `vite preview` na 4173 apontando para ele. Os dois param no fim.
+- `e2e/acceptance.spec.ts`, um teste em etapas: workspace, projeto pela pasta local `e2e/fixtures/sample-shop` (repositório Java pequeno e versionado), pré-análise, indexação até o snapshot `READY`, pergunta digitada e enviada com Ctrl/⌘+Enter, citação aberta pelo teclado com as linhas destacadas no visualizador, histórico e reabertura da conversa, e o link "Pular para o conteúdo". Os textos vêm do `messages.ts`, sem duplicação.
+- axe com WCAG 2.1 A e AA em oito telas (workspaces, workspace, origem, pré-análise, projeto, pergunta, conversa com o visualizador, histórico), agora com contraste, que o jsdom não mede: nenhuma violação. O teste também falha com qualquer erro de console.
+- O workspace e o projeto criados são removidos pela API no `afterAll`, inclusive quando o teste falha (conferido depois de uma falha na primeira rodada).
+- `tsconfig.e2e.json` no `typecheck`; o Vitest ignora `e2e/`; o Prettier ignora as fixtures e as saídas do Playwright, que também ficam fora do Git.
+- Três rodadas seguidas verdes, em cerca de 10 s cada, com o backend já compilado.
+- **Pendente:** a passada manual por teclado da P10 é sua e entra no fechamento (F9). O teste automatizado cobre só uma parte (pergunta, citação e skip link).
+
 ### F9 — Fechamento
 - Roteiro atualizado, "Resultado e desvios" neste plano, `02` (estrutura de `apps/web`), `03` se o fluxo mudou, README (estado atual), `docs/README.md`.
 

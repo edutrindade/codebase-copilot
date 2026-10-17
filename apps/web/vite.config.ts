@@ -1,6 +1,6 @@
-/// <reference types="vitest/config" />
 import react from '@vitejs/plugin-react';
 import { defineConfig, type Plugin, type ProxyOptions } from 'vite';
+import { configDefaults } from 'vitest/config';
 import { contentSecurityPolicy } from './csp.ts';
 
 // 127.0.0.1, not localhost: Node may resolve localhost to ::1 and the backend listens on IPv4 only (D-072).
@@ -34,5 +34,7 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     restoreMocks: true,
+    // Playwright runs these against the real backend (npm run e2e).
+    exclude: [...configDefaults.exclude, 'e2e/**'],
   },
 });

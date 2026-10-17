@@ -1,3 +1,6 @@
 dist/
 package-lock.json
 src/api/schema.d.ts
+e2e/fixtures/
+test-results/
+playwright-report/

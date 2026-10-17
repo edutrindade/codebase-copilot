@@ -264,3 +264,15 @@ npm run check
 É o equivalente ao `./mvnw verify`: tipos (`tsc`), lint (ESLint, que recusa `dangerouslySetInnerHTML` e `console`), formatação (Prettier; para corrigir, `npm run format`), testes (Vitest + Testing Library + MSW, com `axe-core` para acessibilidade) e build. O build injeta uma Content Security Policy sem scripts inline no `index.html`; o servidor de desenvolvimento não a usa, porque o React Refresh depende de um script inline.
 
 Os tipos da API (`src/api/schema.d.ts`) são gerados do `apps/backend/openapi.json` e versionados; um teste falha se estiverem defasados. Depois de regenerar o contrato no backend, rode `npm run api:types` e commite os dois arquivos juntos.
+
+### Teste de aceite (E2E)
+
+Com o banco do Compose no ar:
+
+```bash
+cd apps/web
+npx playwright install chromium   # uma vez, baixa o browser do Playwright
+npm run e2e
+```
+
+Fica fora do `npm run check`, como os harnesses do backend. O Playwright faz o build da UI, sobe o backend real na porta 8089 (provedores `fake`, raiz local em `apps/web/e2e/fixtures`, dados em um diretório temporário) e o `vite preview` na 4173, e percorre o fluxo do MVP: cria um workspace, importa o repositório de exemplo `sample-shop`, revisa a pré-análise, indexa, pergunta pelo teclado, abre a evidência no visualizador e reabre a conversa pelo histórico. Cada tela principal passa pelo axe (WCAG 2.1 A e AA, inclusive contraste) e o teste falha com qualquer erro de console. O workspace criado é removido no fim. A porta do backend muda com `E2E_BACKEND_PORT`; a 4173 precisa estar livre, porque é uma das origens aceitas pelo backend.
