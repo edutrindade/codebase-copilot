@@ -1,0 +1,42 @@
+import { screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, test } from 'vitest';
+import { messages } from '../messages';
+import { axeViolations } from '../test/axe';
+import { renderRoute } from '../test/render';
+
+describe('routes', () => {
+  test.each([
+    ['/', messages.pages.workspaces],
+    ['/workspaces/w1', messages.pages.workspace],
+    ['/workspaces/w1/new', messages.pages.newProject],
+    ['/projects/p1', messages.pages.project],
+    ['/projects/p1/ask', messages.pages.ask],
+    ['/projects/p1/conversations/c1', messages.pages.conversation],
+    ['/projects/p1/history', messages.pages.history],
+  ])('%s renders its screen', async (path, title) => {
+    renderRoute(path);
+
+    expect(await screen.findByRole('heading', { level: 1, name: title })).toBeInTheDocument();
+  });
+
+  test('an unknown path renders the not found screen with a way back', async () => {
+    const { router } = renderRoute('/nope');
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: messages.notFound.title }),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('link', { name: messages.notFound.back }));
+    expect(router.state.location.pathname).toBe('/');
+  });
+
+  test('the layout has a skip link to the main content and no axe violations', async () => {
+    renderRoute('/');
+    await screen.findByRole('heading', { level: 1 });
+
+    const skip = screen.getByRole('link', { name: messages.app.skipToContent });
+    expect(skip).toHaveAttribute('href', '#content');
+    expect(screen.getByRole('main')).toHaveAttribute('id', 'content');
+    expect(await axeViolations()).toEqual([]);
+  });
+});

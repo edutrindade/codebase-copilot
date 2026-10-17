@@ -254,6 +254,17 @@ O Vite recusa `Host: evil.example` com `403` no `dev` e no `preview`, e aceita `
 - Cliente da API, tratamento do ProblemDetail, layout base, rotas vazias, tokens de cor com tema claro/escuro, CSP.
 - README: Node, `npm ci`, `npm run dev`, `npm run check`.
 
+**Como foi entregue (17/10/2026)**
+- `apps/web` com as versões da D-070, instaladas com `--save-exact` e sem conflito de pares; `.npmrc` com `ignore-scripts`, `save-exact` e `engine-strict` (`engines.node >=22.22.2`). Entraram também `@testing-library/dom` 10.4.2 (par obrigatório da Testing Library) e `@types/node` 22.20.5 (configuração do Vite e testes que rodam em Node). Playwright e `@axe-core/playwright` ficam para a F8, onde são usados.
+- `npm run check`: `tsc` (projetos da app e da configuração), ESLint (`typescript-eslint` estrito, regras de hooks, `no-console` e proibição de `dangerouslySetInnerHTML`, P8), Prettier, Vitest e build.
+- Tipos gerados em `src/api/schema.d.ts` (`npm run api:types`); o teste de defasagem roda a CLI do `openapi-typescript` com `--check` e falha se o arquivo diferir do `openapi.json` (conferido com uma alteração proposital).
+- Cliente `openapi-fetch` (`src/api/client.ts`) e `unwrap` (`src/api/errors.ts`): sucesso devolve o corpo; erro vira `ApiError` com o ProblemDetail (`code`, `requestId`), ou sem ele quando o corpo não é ProblemDetail (`502` do proxy) ou a conexão falha (`status` 0); o cancelamento do TanStack Query passa como `AbortError`. O `QueryClient` não repete erros `4xx`. `ProblemAlert` mostra `title`, `detail` e `requestId`, com textos próprios para rede e erro inesperado.
+- Layout com link "Pular para o conteúdo", rotas da P9 com telas provisórias, página de não encontrado e erro de renderização dentro do layout. Textos em `src/messages.ts`.
+- Tokens de cor em CSS (`src/styles/tokens.css`), com tema claro e escuro pelo `prefers-color-scheme`.
+- **Desvio (CSP):** a política vai numa `<meta>` injetada só no build (`csp.ts` + plugin no `vite.config.ts`), não no `index.html` versionado: o servidor de desenvolvimento injeta o preâmbulo inline do React Refresh, que a política bloquearia. Sem `unsafe-inline` nem `unsafe-eval`.
+- **MSW 3:** a opção de requisição não tratada passou a se chamar `onUnhandledFrame`; os testes falham em qualquer requisição sem handler.
+- **Verificação do proxy (P5):** `vite preview` na frente do backend da F1 (provedores `fake`): `GET` e `POST` com a `Origin` da UI passam; `POST` com `Origin: http://evil.example` recebe `403 FORBIDDEN_ORIGIN`; `Host: evil.example` é recusado pelo próprio Vite. No browser (headless), as rotas abrem por link direto, sem erro de console nem violação de CSP.
+- Testes: 22 (cliente e erros, retry, `ProblemAlert`, rotas, skip link, axe nas telas, CSP e regras de lint).
 
 ### F3 — Workspaces e projetos
 - Primeiro uso, lista de workspaces, lista de projetos com estado, exclusões com confirmação.
