@@ -23,6 +23,7 @@ class IndexOutcomes {
     private final ProjectService projects;
     private final TransactionTemplate transactions;
     private final IndexingProperties properties;
+    private final LineChunker.Parameters chunking;
     private final Clock clock;
 
     IndexOutcomes(
@@ -33,6 +34,7 @@ class IndexOutcomes {
             ProjectService projects,
             TransactionTemplate transactions,
             IndexingProperties properties,
+            LineChunker.Parameters chunking,
             Clock clock) {
         this.jobs = jobs;
         this.snapshots = snapshots;
@@ -41,6 +43,7 @@ class IndexOutcomes {
         this.projects = projects;
         this.transactions = transactions;
         this.properties = properties;
+        this.chunking = chunking;
         this.clock = clock;
     }
 
@@ -77,7 +80,7 @@ class IndexOutcomes {
                                     snapshots.count(
                                             claim.snapshotId(),
                                             claim.projectId(),
-                                            LineChunker.VERSION);
+                                            chunking.version());
                             snapshots.recordLexical(
                                     claim.snapshotId(), IdentifierTokenizer.VERSION);
                             if (embedding != null) {

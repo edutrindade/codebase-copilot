@@ -57,8 +57,10 @@ O harness (`RetrievalEvaluationIT`, D-062) fica fora do `./mvnw verify`. Com as 
 | `EVAL_CACHE_DIR` | Pasta do cache de vetores; padrão `DATA_DIR/eval-cache`. Guarda só hashes e vetores. Com o cache, uma nova rodada não chama o provedor |
 | `EVAL_CORPORA` | Lista de corpora separados por vírgula (ex.: `fixture`); padrão: todos |
 | `EVAL_COMPARE_WITH` | JSON de uma rodada anterior: a rodada falha se o resultado, fora data e latências, for diferente |
+| `EVAL_CHUNKING` | `<linhas>:<sobreposição>` (ex.: `80:10`): indexa com outros valores de chunking, numa versão que só existe na avaliação; padrão `60:10` (`lines-v1`) |
+| `EVAL_SWEEP` | `fusion`: acrescenta a fusão de todos os canais (`LEXICAL_PATH` sem vetores, `HYBRID` com eles) com um parâmetro alterado por vez — k, peso de cada canal, candidatos por canal, limiar de caminhos — e o canal de caminhos com nomes casados só com o arquivo daquele nome (D-081) |
 
-O resultado vai para `results/<data>-<config>.json` (métricas por pergunta e os 10 primeiros chunks de cada variante) e `results/<data>-<config>.md` (resumo), com `config` igual a `lexical` sem provedor ou `<provedor>-<modelo>` com.
+O resultado vai para `results/<data>-<config>.json` (métricas por pergunta e os 10 primeiros chunks de cada variante) e `results/<data>-<config>.md` (resumo), com `config` igual a `lexical` sem provedor ou `<provedor>-<modelo>` com, mais `-lines-<linhas>-<sobreposição>` com `EVAL_CHUNKING` e `-fusion` com `EVAL_SWEEP`.
 
 ## Avaliar as respostas
 

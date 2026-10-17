@@ -275,9 +275,18 @@ O Spring Boot 4.1.1 é o último 4.1.x publicado no Maven Central, então não h
 ### F3 — Rodadas com o provedor real (depende de saldo)
 - As rodadas da P2, a sua auditoria das respostas, e as revisões da D-017, O-005, D-058 e O-004.
 - **Adiada (17/10/2026)** para depois de todas as etapas do roteiro; a F4 roda só o que não precisa do provedor.
+- Entra também o que a F4 deixou pendente (D-081): a varredura com vetores (`EVAL_PROVIDER=openai EVAL_SWEEP=fusion`), a variante de nomes de arquivo no `PathSearch` e o chunking de 80 linhas, pela mesma regra.
 
 ### F4 — Ranking e chunking
 - As variações da P3, cada uma com resultado versionado; promoção ou não pela regra; `lines-v2` se for o caso; O-010 e O-005 atualizadas.
+
+**Resultado (17/10/2026)** — só a parte sem o provedor (F3 adiada)
+- Harness com `EVAL_CHUNKING` e `EVAL_SWEEP=fusion`; `LineChunker` com parâmetros injetados na indexação, padrão `lines-v1`. Rodada de controle idêntica ao baseline da F1.
+- Fusão (`eval/results/2026-10-17-lexical-fusion.*`): k, pesos, candidatos e limiar mantidos, nenhum com o ganho mínimo.
+- Canal de caminhos: a piora no hono vem de nomes de arquivo (`middleware`) casados contra o caminho inteiro. Casar nomes só com o arquivo daquele nome passa na regra (Recall@10 0,447 → 0,500, MRR@10 0,301 → 0,335), mas só o `HYBRID` usa o canal: candidata para a F3, sem mudança no `PathSearch` agora.
+- Chunking (`eval/results/2026-10-17-lexical-lines-*.*`): 40 e 80 linhas, sobreposição de 0 e 20; nenhuma passa no `LEXICAL`, `lines-v1` mantido, sem `lines-v2`. O de 80 linhas fica como candidato para a F3.
+- Registro na D-081; O-005 e O-010 atualizadas e ainda a validar, pela parte com vetores.
+- **Desvio:** as variantes de chunking mudam uma variável por vez (40 e 80 linhas com sobreposição 10; 60 linhas com sobreposição 0 e 20), em vez da grade 40/80 × 0/20, para seguir a regra da P3.
 
 ### F5 — Suíte de segurança
 - As lacunas da matriz da F0 (P4), o comportamento de codificação decidido, o E2E com conteúdo hostil, o levantamento de dependências com as ações.

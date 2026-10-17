@@ -28,6 +28,7 @@ class IndexJobService {
     private final ProjectService projects;
     private final ProjectSources sources;
     private final IdGenerator idGenerator;
+    private final LineChunker.Parameters chunking;
     private final Clock clock;
 
     IndexJobService(
@@ -37,6 +38,7 @@ class IndexJobService {
             ProjectService projects,
             ProjectSources sources,
             IdGenerator idGenerator,
+            LineChunker.Parameters chunking,
             Clock clock) {
         this.jobs = jobs;
         this.snapshots = snapshots;
@@ -44,6 +46,7 @@ class IndexJobService {
         this.projects = projects;
         this.sources = sources;
         this.idGenerator = idGenerator;
+        this.chunking = chunking;
         this.clock = clock;
     }
 
@@ -62,7 +65,7 @@ class IndexJobService {
                 projectId,
                 project.currentImportJobId(),
                 sources.settingsVersion(projectId),
-                LineChunker.VERSION,
+                chunking.version(),
                 now);
         jobs.insertPending(jobId, projectId, snapshotId, now);
         TransactionSynchronizationManager.registerSynchronization(

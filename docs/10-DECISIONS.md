@@ -1264,6 +1264,29 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Consequências:** cada busca híbrida usa até três conexões do pool ao mesmo tempo (o padrão do Hikari é 10). No Mac com Docker, o disco da VM satura depois de alguns GB escritos e a indexação completa chega a 89–91 s, com o tempo extra na etapa que estiver gravando (esperas `DataFileExtend` e `WalWrite` no `pg_stat_activity`); por isso as durações são comparadas em faixas, e não por uma rodada.  
 **O que levaria à revisão:** busca acima da meta com o provedor real, projetos reais acima de 50 mil chunks, ou máquina com disco mais lento.
 
+### D-081 — Variações de ranking e chunking sem o provedor (P3 da Etapa 8)
+**Status:** Aceita (17/10/2026; F4 da Etapa 8, parte lexical; a parte com vetores fica para a F3)  
+**Contexto:** a P3 fixou a regra de promoção antes das medições: Recall@10 ou MRR@10 do corpus inteiro subindo o equivalente a pelo menos duas perguntas (0,030 com 66 perguntas), nenhuma categoria caindo mais que uma pergunta, `EXACT_IDENTIFIER` sem queda, validade de citação e vazamento sem piora (com o modelo real) e latência p95 da busca até 20% acima da D-080. Sem saldo (decisão de 17/10/2026), só os canais lexical e de caminhos podem ser medidos.  
+**Decisão:**
+- **Harness:** `EVAL_CHUNKING=<linhas>:<sobreposição>` indexa com outros valores de chunking, numa versão `eval-lines-<linhas>-<sobreposição>` que só existe na avaliação; `EVAL_SWEEP=fusion` acrescenta a fusão de todos os canais medidos (`LEXICAL_PATH` sem vetores, `HYBRID` com eles) com um parâmetro alterado por vez. O `LineChunker` passou a receber os parâmetros (`LineChunker.Parameters`, padrão `V1` = `lines-v1`), injetados na indexação; fora da avaliação nada muda (rodada de controle idêntica ao baseline da D-079 com `EVAL_COMPARE_WITH`).
+- **Fusão e canal de caminhos** (`eval/results/2026-10-17-lexical-fusion.*`, contra o `LEXICAL_PATH`: Recall@10 0,447, MRR@10 0,301): k de 10, 30 e 100, peso do canal de caminhos de 0,5 e 2, 20 e 100 candidatos por canal e limiar de 0,6, 0,7 e 0,9 ficam todos abaixo do ganho mínimo (o melhor, peso 0,5: +0,030 de Recall@10 e +0,004 de MRR@10, no limite e com `CONCEPTUAL` caindo). **Mantidos** k=60, pesos 1, 50 candidatos e limiar 0,8.
+- **Causa da piora do canal de caminhos no hono (D-079):** um nome que é também nome de arquivo (`middleware`, por `src/helper/ssg/middleware.ts`) vira termo e é casado por trigramas contra o caminho inteiro, então todo arquivo em `src/middleware/**` casa com similaridade 1,0 e enche o canal. A variante em que **nomes casam só com os arquivos daquele nome** (caminhos continuam por trigramas) passa na regra: Recall@10 0,447 → 0,500 e MRR@10 0,301 → 0,335; no hono, 0,295 → 0,455 e 0,100 → 0,202; só o hono muda, 4 perguntas entram no top 10, nenhuma sai, e duas descem uma posição. **Não promovida ainda:** o canal de caminhos só roda no `HYBRID`, que exige vetores; a mudança no `PathSearch` fica como primeira candidata da F3, confirmada no `HYBRID` e na avaliação de respostas.
+- **Chunking** (`eval/results/2026-10-17-lexical-lines-*.*`, uma variável por vez contra o `lines-v1`, no `LEXICAL`: Recall@10 0,492, MRR@10 0,291):
+
+  | Variante | Chunks (4 corpora) | Recall@10 | MRR@10 | Regra |
+  |---|---|---|---|---|
+  | 40 linhas, sobreposição 10 | 5.355 | 0,434 | 0,287 | não: cai em `EXACT_IDENTIFIER` e `CONCEPTUAL` |
+  | 80 linhas, sobreposição 10 | 2.935 | 0,510 | 0,323 | não: `CONCEPTUAL` cai 0,083 (duas perguntas); no `LEXICAL_PATH` passaria |
+  | 60 linhas, sem sobreposição | 3.538 | 0,485 | 0,302 | não: ganho abaixo do mínimo |
+  | 60 linhas, sobreposição 20 | 3.777 | 0,477 | 0,291 | não: cai |
+
+  **Mantido o `lines-v1`.** O de 80 linhas é o único com ganho e fica como candidato para a F3: chunks maiores mudam também os embeddings e o custo do contexto, o que só a rodada com vetores e com o modelo mede. Sem `lines-v2`.
+- **Latência:** nenhuma variante promovida, então a regra dos 20% não chegou a decidir; o p95 do lexical por corpus ficou em até 32 ms em todas as rodadas, com a variação normal entre execuções.
+
+**Motivo:** a regra foi fixada antes dos números, e a avaliação lexical não mede o modo que usa o canal de caminhos nem o efeito do chunking nos vetores.  
+**Consequências:** a O-005 e a O-010 continuam a validar, agora só pela parte com vetores; a F3 roda, além das rodadas da P2, a varredura com `EVAL_PROVIDER=openai EVAL_SWEEP=fusion` (pesos de cada canal no `HYBRID`), a variante de nomes no `PathSearch` e o chunking de 80 linhas. Reranking e AST continuam fora: nada mostra um teto do `lines-v1`.  
+**O que levaria à revisão:** os números com vetores (F3), ou um corpus novo que separe melhor as variantes.
+
 ---
 
 ## Decisões em aberto
@@ -1287,6 +1310,7 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Estado (16/10/2026, fim da Etapa 5):**
 - **Medido:** lexical e lexical + caminhos, no corpus de 36 perguntas (`eval/results/2026-10-16-lexical.*`). O canal de caminhos sobe o MRR@10 de 0,341 para 0,362 e o Recall@5 de 0,380 para 0,407, sem mudar o Recall@10. O lexical é fraco em pt-BR (Recall@10 0,296) e em perguntas conceituais (MRR@10 0,160), como previsto; isso é o que o vetorial deve cobrir, e não basta para justificar BM25 antes da comparação.
 - **Falta:** vetorial e híbrido com vetores reais (o harness já calcula `VECTOR`, `LEXICAL_VECTOR` e `HYBRID` sobre as mesmas listas), variações de k e pesos, e um corpus maior (Etapa 8). Latência com 50 mil chunks: D-059.
+**Estado (17/10/2026, F4 da Etapa 8):** com 66 perguntas, k, peso do canal de caminhos, candidatos por canal e limiar medidos no `LEXICAL_PATH`, nenhum com ganho mínimo: mantidos (D-081). O canal de caminhos piora no hono por casar nomes de arquivo contra o caminho inteiro; casar nomes só com o arquivo daquele nome passa na regra e é a primeira candidata da F3, a confirmar no `HYBRID`. Falta só a parte com vetores.
 
 ### O-010 — Parâmetros iniciais de chunking
 **Status:** A validar  
@@ -1294,6 +1318,7 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Plano:** ajustar no corpus, alterando uma variável por vez (`08-EVALUATION.md`, seção 8).  
 **Etapa 3 (16/10/2026):** valores iniciais provisórios na D-043 (`lines-v1`: 60 linhas, 4.000 caracteres, sobreposição de 10 linhas, `LINE_TOO_LONG` acima de 4.000 caracteres por linha). A comparação fica para a Etapa 5.  
 **Etapa 5 (16/10/2026):** o corpus anota relevância por intervalo de linhas (D-061), e o harness mede qualquer versão de chunking sem mudar as anotações (D-062). Só `lines-v1` foi medido; a comparação de variantes passa para a Etapa 8 ("melhorar ranking/chunking apenas com evidência").
+**Etapa 8 (17/10/2026, F4):** 40 e 80 linhas, sobreposição de 0 e 20, uma variável por vez, no lexical (D-081). Nenhuma passa na regra no `LEXICAL`; mantido o `lines-v1`. O de 80 linhas sobe o Recall@10 (0,492 → 0,510) e o MRR@10 (0,291 → 0,323), mas cai em `CONCEPTUAL`; fica como candidato para a rodada com vetores (F3).
 
 ### O-011 — Corpus de avaliação
 **Status:** Resolvida pela D-061 (16/10/2026)  

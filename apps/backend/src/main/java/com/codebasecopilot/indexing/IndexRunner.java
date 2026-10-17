@@ -50,6 +50,7 @@ class IndexRunner {
     private final ProjectSources sources;
     private final JsonMapper json;
     private final IndexingProperties properties;
+    private final LineChunker.Parameters chunking;
     private final Clock clock;
 
     IndexRunner(
@@ -64,6 +65,7 @@ class IndexRunner {
             ProjectSources sources,
             JsonMapper json,
             IndexingProperties properties,
+            LineChunker.Parameters chunking,
             Clock clock) {
         this.jobs = jobs;
         this.snapshots = snapshots;
@@ -76,6 +78,7 @@ class IndexRunner {
         this.sources = sources;
         this.json = json;
         this.properties = properties;
+        this.chunking = chunking;
         this.clock = clock;
     }
 
@@ -151,7 +154,7 @@ class IndexRunner {
             }
         }
         Set<String> chunked =
-                store.chunkedHashes(claim.projectId(), hashes.values(), LineChunker.VERSION);
+                store.chunkedHashes(claim.projectId(), hashes.values(), chunking.version());
         Map<String, TextClassifier.Classification> classified = new HashMap<>();
         Map<String, IndexStore.NewContent> contents = new LinkedHashMap<>();
         List<IndexStore.FileRow> rows = new ArrayList<>();
@@ -177,7 +180,7 @@ class IndexRunner {
                                             text.content(),
                                             bytes.length,
                                             text.lines().size(),
-                                            LineChunker.chunk(text.lines())));
+                                            LineChunker.chunk(text.lines(), chunking)));
                     rows.add(row(file, FileStatus.INDEXED, null, hash));
                 }
                 case TextClassifier.Unsupported unsupported ->

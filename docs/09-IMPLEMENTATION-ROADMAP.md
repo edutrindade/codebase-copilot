@@ -127,6 +127,7 @@
 ## Etapa 9 — Recursos posteriores ao MVP
 
 Priorizar após validar o núcleo:
+
 - adaptadores AST para linguagens prioritárias;
 - comparação entre snapshots;
 - exportação de mapa arquitetural;
@@ -137,7 +138,8 @@ Priorizar após validar o núcleo:
 
 ## Fora do roadmap inicial
 
-Não implementar inicialmente:
+Não iremos implementar inicialmente:
+
 - execução de comandos no repositório;
 - agentes autônomos;
 - edição automática de código;

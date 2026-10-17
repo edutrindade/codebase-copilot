@@ -30,16 +30,19 @@ class ProjectIndexesAdapter implements ProjectIndexes {
     private final IndexJobRepository jobs;
     private final ProjectSettingsVersions settingsVersions;
     private final @Nullable EmbeddingProvider provider;
+    private final LineChunker.Parameters chunking;
 
     ProjectIndexesAdapter(
             SnapshotRepository snapshots,
             IndexJobRepository jobs,
             ProjectSettingsVersions settingsVersions,
-            ObjectProvider<EmbeddingProvider> provider) {
+            ObjectProvider<EmbeddingProvider> provider,
+            LineChunker.Parameters chunking) {
         this.snapshots = snapshots;
         this.jobs = jobs;
         this.settingsVersions = settingsVersions;
         this.provider = provider.getIfAvailable();
+        this.chunking = chunking;
     }
 
     @Override
@@ -75,6 +78,7 @@ class ProjectIndexesAdapter implements ProjectIndexes {
                                     project,
                                     snapshot,
                                     versions.getOrDefault(project.id(), 0),
+                                    chunking.version(),
                                     model)));
         }
         return states;
@@ -85,6 +89,7 @@ class ProjectIndexesAdapter implements ProjectIndexes {
             Project project,
             @Nullable Snapshot snapshot,
             int settingsVersion,
+            String chunkingVersion,
             @Nullable ModelInfo model) {
         List<String> reasons = new ArrayList<>();
         if (snapshot == null) {
@@ -97,7 +102,7 @@ class ProjectIndexesAdapter implements ProjectIndexes {
                 && !Objects.equals(project.currentImportJobId(), snapshot.sourceImportJobId())) {
             reasons.add("SOURCE_REIMPORTED");
         }
-        if (!snapshot.chunkingVersion().equals(LineChunker.VERSION)) {
+        if (!snapshot.chunkingVersion().equals(chunkingVersion)) {
             reasons.add("CHUNKING_CHANGED");
         }
         if (snapshot.lexicalVersion() == null) {
