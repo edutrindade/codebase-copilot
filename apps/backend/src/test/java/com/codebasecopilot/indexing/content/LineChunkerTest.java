@@ -131,6 +131,46 @@ class LineChunkerTest {
     }
 
     @Test
+    void otherParametersChangeSizeOverlapAndHash() {
+        List<String> lines = numbered(130);
+
+        List<Chunk> withoutOverlap =
+                LineChunker.chunk(lines, new LineChunker.Parameters("lines-40-0", 40, 0));
+        List<Chunk> wideOverlap =
+                LineChunker.chunk(lines, new LineChunker.Parameters("lines-80-20", 80, 20));
+
+        assertThat(withoutOverlap)
+                .extracting(Chunk::startLine, Chunk::endLine)
+                .containsExactly(tuple(1, 40), tuple(41, 80), tuple(81, 120), tuple(121, 130));
+        assertThat(wideOverlap)
+                .extracting(Chunk::startLine, Chunk::endLine)
+                .containsExactly(tuple(1, 80), tuple(61, 130));
+        assertThat(withoutOverlap.getFirst().chunkHash())
+                .isEqualTo(
+                        ContentHash.of("lines-40-0\n" + String.join("\n", lines.subList(0, 40))));
+    }
+
+    @Test
+    void defaultParametersAreLinesV1() {
+        List<String> lines = numbered(130);
+
+        assertThat(LineChunker.chunk(lines, LineChunker.V1)).isEqualTo(LineChunker.chunk(lines));
+        assertThat(LineChunker.V1).isEqualTo(new LineChunker.Parameters("lines-v1", 60, 10));
+    }
+
+    @Test
+    void rejectsInvalidParameters() {
+        assertThatThrownBy(() -> new LineChunker.Parameters(" ", 60, 10))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new LineChunker.Parameters("v", 0, 0))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new LineChunker.Parameters("v", 10, 10))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new LineChunker.Parameters("v", 10, -1))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
     void rejectsLinesAboveTheLimit() {
         assertThatThrownBy(() -> LineChunker.chunk(List.of("x".repeat(LineChunker.MAX_CHARS + 1))))
                 .isInstanceOf(IllegalArgumentException.class);

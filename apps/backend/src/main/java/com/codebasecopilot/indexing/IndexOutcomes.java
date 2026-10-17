@@ -23,6 +23,7 @@ class IndexOutcomes {
     private final ProjectService projects;
     private final TransactionTemplate transactions;
     private final IndexingProperties properties;
+    private final LineChunker.Parameters chunking;
     private final Clock clock;
 
     IndexOutcomes(
@@ -33,6 +34,7 @@ class IndexOutcomes {
             ProjectService projects,
             TransactionTemplate transactions,
             IndexingProperties properties,
+            LineChunker.Parameters chunking,
             Clock clock) {
         this.jobs = jobs;
         this.snapshots = snapshots;
@@ -41,6 +43,7 @@ class IndexOutcomes {
         this.projects = projects;
         this.transactions = transactions;
         this.properties = properties;
+        this.chunking = chunking;
         this.clock = clock;
     }
 
@@ -54,12 +57,49 @@ class IndexOutcomes {
                             if (!jobs.fail(claim, code, now)) {
                                 return false;
                             }
-                            snapshots.markFailed(claim.snapshotId(), now);
-                            store.deleteFiles(claim.snapshotId());
-                            snapshots.removeUnreferencedContent(claim.projectId());
-                            projects.finishJobs(List.of(claim.jobId()));
+                            discard(claim, now, false);
                             return true;
                         }));
+    }
+
+    // The active snapshot does not change; embeddings already stored stay cached (D-084).
+    boolean cancel(Claim claim) {
+        return Boolean.TRUE.equals(
+                transactions.execute(
+                        tx -> {
+                            Instant now = now();
+                            if (!jobs.cancel(claim, now)) {
+                                return false;
+                            }
+                            discard(claim, now, true);
+                            return true;
+                        }));
+    }
+
+    boolean cancelPending(UUID jobId) {
+        return Boolean.TRUE.equals(
+                transactions.execute(
+                        tx -> {
+                            Instant now = now();
+                            return jobs.cancelPending(jobId, now)
+                                    .map(
+                                            claim -> {
+                                                discard(claim, now, true);
+                                                return true;
+                                            })
+                                    .orElse(false);
+                        }));
+    }
+
+    private void discard(Claim claim, Instant now, boolean cancelled) {
+        if (cancelled) {
+            snapshots.markCancelled(claim.snapshotId(), now);
+        } else {
+            snapshots.markFailed(claim.snapshotId(), now);
+        }
+        store.deleteFiles(claim.snapshotId());
+        snapshots.removeUnreferencedContent(claim.projectId());
+        projects.finishJobs(List.of(claim.jobId()));
     }
 
     // Activation, change summary, pruning and cleanup in one transaction, so a retried job
@@ -77,7 +117,7 @@ class IndexOutcomes {
                                     snapshots.count(
                                             claim.snapshotId(),
                                             claim.projectId(),
-                                            LineChunker.VERSION);
+                                            chunking.version());
                             snapshots.recordLexical(
                                     claim.snapshotId(), IdentifierTokenizer.VERSION);
                             if (embedding != null) {

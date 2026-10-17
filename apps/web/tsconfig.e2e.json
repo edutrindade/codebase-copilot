@@ -14,5 +14,5 @@
     "noEmit": true,
     "skipLibCheck": true
   },
-  "include": ["e2e/**/*.ts", "playwright.config.ts", "src/messages.ts"]
+  "include": ["e2e/**/*.ts", "playwright.config.ts", "playwright.jar.config.ts", "src/messages.ts"]
 }

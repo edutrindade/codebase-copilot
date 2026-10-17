@@ -25,25 +25,31 @@ class IndexJobService {
     private final IndexJobRepository jobs;
     private final SnapshotRepository snapshots;
     private final IndexWorker worker;
+    private final IndexOutcomes outcomes;
     private final ProjectService projects;
     private final ProjectSources sources;
     private final IdGenerator idGenerator;
+    private final LineChunker.Parameters chunking;
     private final Clock clock;
 
     IndexJobService(
             IndexJobRepository jobs,
             SnapshotRepository snapshots,
             IndexWorker worker,
+            IndexOutcomes outcomes,
             ProjectService projects,
             ProjectSources sources,
             IdGenerator idGenerator,
+            LineChunker.Parameters chunking,
             Clock clock) {
         this.jobs = jobs;
         this.snapshots = snapshots;
         this.worker = worker;
+        this.outcomes = outcomes;
         this.projects = projects;
         this.sources = sources;
         this.idGenerator = idGenerator;
+        this.chunking = chunking;
         this.clock = clock;
     }
 
@@ -62,7 +68,7 @@ class IndexJobService {
                 projectId,
                 project.currentImportJobId(),
                 sources.settingsVersion(projectId),
-                LineChunker.VERSION,
+                chunking.version(),
                 now);
         jobs.insertPending(jobId, projectId, snapshotId, now);
         TransactionSynchronizationManager.registerSynchronization(
@@ -82,9 +88,26 @@ class IndexJobService {
                 null,
                 0,
                 null,
+                false,
                 now,
                 null,
                 null);
+    }
+
+    // A PENDING job ends right away; a RUNNING one is flagged and its worker stops at the next
+    // heartbeat (D-084). The loop covers a job claimed or requeued between the two updates.
+    IndexJob cancel(UUID id) {
+        for (int i = 0; i < 3; i++) {
+            if (outcomes.cancelPending(id)
+                    || jobs.requestCancel(id, clock.instant().truncatedTo(ChronoUnit.MICROS))) {
+                return get(id);
+            }
+            IndexJobStatus status = get(id).status();
+            if (status != IndexJobStatus.PENDING && status != IndexJobStatus.RUNNING) {
+                break;
+            }
+        }
+        throw new ApiException(ErrorCode.JOB_NOT_ACTIVE);
     }
 
     @Transactional(readOnly = true)

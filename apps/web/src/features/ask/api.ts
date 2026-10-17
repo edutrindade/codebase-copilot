@@ -51,6 +51,14 @@ export function listConversations(projectId: string, page: number, signal: Abort
   );
 }
 
+export function deleteConversation(conversationId: string) {
+  return unwrap(
+    api.DELETE('/api/v1/conversations/{conversationId}', {
+      params: { path: { conversationId } },
+    }),
+  );
+}
+
 export function getConversation(conversationId: string, signal: AbortSignal) {
   return unwrap(
     api.GET('/api/v1/conversations/{conversationId}', {

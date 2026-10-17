@@ -1,0 +1,284 @@
+corpus:
+  name: hono
+  directoryEnv: EVAL_CORPUS_HONO
+  repository: https://github.com/honojs/hono
+  commit: "08a023cbfde55b434fb0fb30fae35d42e4bf20aa"
+  license: MIT
+  manifest: eval/corpus/hono.sha256
+
+questions:
+  - id: hn-01
+    question: Where is HTTPException defined and what response does getResponse build?
+    language: en
+    category: EXACT_IDENTIFIER
+    difficulty: EASY
+    expected:
+      - path: src/http-exception.ts
+        startLine: 46
+        endLine: 78
+
+  - id: hn-02
+    question: O que acontece se um middleware chamar next() duas vezes?
+    language: pt-BR
+    category: CONCEPTUAL
+    difficulty: MEDIUM
+    expected:
+      - path: src/compose.ts
+        startLine: 32
+        endLine: 36
+
+  - id: hn-03
+    question: Which router does the default Hono class use, and how is the final router chosen?
+    language: en
+    category: ARCHITECTURE
+    difficulty: MEDIUM
+    expected:
+      - path: src/hono.ts
+        startLine: 26
+        endLine: 33
+      - path: src/router/smart-router/router.ts
+        startLine: 21
+        endLine: 61
+
+  - id: hn-04
+    question: Quando o RegExpRouter não suporta uma rota, como outro roteador assume?
+    language: pt-BR
+    category: CROSS_FILE_FLOW
+    difficulty: HARD
+    expected:
+      - path: src/router/reg-exp-router/router.ts
+        startLine: 60
+        endLine: 66
+      - path: src/router/smart-router/router.ts
+        startLine: 32
+        endLine: 50
+
+  - id: hn-05
+    question: What is the difference between the tiny and quick presets?
+    language: en
+    category: ARCHITECTURE
+    difficulty: EASY
+    expected:
+      - path: src/preset/tiny.ts
+        startLine: 11
+        endLine: 20
+      - path: src/preset/quick.ts
+        startLine: 13
+        endLine: 24
+
+  - id: hn-06
+    question: Qual status e mensagem o bodyLimit devolve quando o corpo passa do limite?
+    language: pt-BR
+    category: EXACT_IDENTIFIER
+    difficulty: EASY
+    expected:
+      - path: src/middleware/body-limit/index.ts
+        startLine: 10
+        endLine: 10
+      - path: src/middleware/body-limit/index.ts
+        startLine: 50
+        endLine: 58
+
+  - id: hn-07
+    question: How does the body size limit work for chunked requests that have no Content-Length?
+    language: en
+    category: CONCEPTUAL
+    difficulty: HARD
+    expected:
+      - path: src/middleware/body-limit/index.ts
+        startLine: 67
+        endLine: 109
+
+  - id: hn-08
+    question: Como o middleware de timeout interrompe um handler lento?
+    language: pt-BR
+    category: CONCEPTUAL
+    difficulty: MEDIUM
+    expected:
+      - path: src/middleware/timeout/index.ts
+        startLine: 12
+        endLine: 14
+      - path: src/middleware/timeout/index.ts
+        startLine: 38
+        endLine: 57
+
+  - id: hn-09
+    question: How does basic auth avoid leaking whether a password is partially right through response time?
+    language: en
+    category: CROSS_FILE_FLOW
+    difficulty: HARD
+    expected:
+      - path: src/middleware/basic-auth/index.ts
+        startLine: 117
+        endLine: 121
+      - path: src/utils/buffer.ts
+        startLine: 29
+        endLine: 63
+
+  - id: hn-10
+    question: Em quais condições o middleware de CSRF recusa uma requisição?
+    language: pt-BR
+    category: CONCEPTUAL
+    difficulty: MEDIUM
+    expected:
+      - path: src/middleware/csrf/index.ts
+        startLine: 28
+        endLine: 30
+      - path: src/middleware/csrf/index.ts
+        startLine: 138
+        endLine: 147
+
+  - id: hn-11
+    question: What origin and methods does the cors middleware allow by default?
+    language: en
+    category: DEPENDENCIES_CONFIGURATION
+    difficulty: EASY
+    expected:
+      - path: src/middleware/cors/index.ts
+        startLine: 63
+        endLine: 70
+
+  - id: hn-12
+    question: Quando o requestId reaproveita o X-Request-Id recebido e quando gera outro?
+    language: pt-BR
+    category: EXACT_IDENTIFIER
+    difficulty: MEDIUM
+    expected:
+      - path: src/middleware/request-id/request-id.ts
+        startLine: 41
+        endLine: 58
+
+  - id: hn-13
+    question: If a sub-app mounted with app.route() has its own onError, what handles an error thrown by one of its routes?
+    language: en
+    category: CROSS_FILE_FLOW
+    difficulty: HARD
+    expected:
+      - path: src/hono-base.ts
+        startLine: 221
+        endLine: 233
+      - path: src/compose.ts
+        startLine: 49
+        endLine: 60
+
+  - id: hn-14
+    question: Qual é a resposta padrão quando nenhuma rota corresponde à requisição?
+    language: pt-BR
+    category: CONCEPTUAL
+    difficulty: EASY
+    expected:
+      - path: src/hono-base.ts
+        startLine: 31
+        endLine: 33
+    notes: Pergunta sem termo do código (notFound, 404); o lexical deve ter dificuldade.
+
+  - id: hn-15
+    question: How are HEAD requests handled?
+    language: en
+    category: CONCEPTUAL
+    difficulty: MEDIUM
+    expected:
+      - path: src/hono-base.ts
+        startLine: 416
+        endLine: 420
+
+  - id: hn-16
+    question: Como um evento do API Gateway vira uma Request do Hono e volta como resultado da Lambda?
+    language: pt-BR
+    category: CROSS_FILE_FLOW
+    difficulty: HARD
+    expected:
+      - path: src/adapter/aws-lambda/handler.ts
+        startLine: 278
+        endLine: 301
+      - path: src/adapter/aws-lambda/handler.ts
+        startLine: 347
+        endLine: 371
+      - path: src/adapter/aws-lambda/handler.ts
+        startLine: 373
+        endLine: 393
+
+  - id: hn-17
+    question: How does the Lambda adapter tell a REST API event behind a custom domain apart from an HTTP API v2 event?
+    language: en
+    category: CONCEPTUAL
+    difficulty: HARD
+    expected:
+      - path: src/adapter/aws-lambda/handler.ts
+        startLine: 690
+        endLine: 695
+
+  - id: hn-18
+    question: De onde o middleware JWT tira o token quando não há cabeçalho Authorization?
+    language: pt-BR
+    category: CONCEPTUAL
+    difficulty: MEDIUM
+    expected:
+      - path: src/middleware/jwt/jwt.ts
+        startLine: 99
+        endLine: 120
+
+  - id: hn-19
+    question: Which algorithm signs the value of a signed cookie?
+    language: en
+    category: EXACT_IDENTIFIER
+    difficulty: MEDIUM
+    expected:
+      - path: src/utils/cookie.ts
+        startLine: 37
+        endLine: 49
+
+  - id: hn-20
+    question: Como o serveStatic impede que um caminho com '..' saia da pasta raiz?
+    language: pt-BR
+    category: CONCEPTUAL
+    difficulty: MEDIUM
+    expected:
+      - path: src/utils/filepath.ts
+        startLine: 32
+        endLine: 40
+
+  - id: hn-21
+    question: Which package manager and minimum Node.js version does the project declare?
+    language: en
+    category: DEPENDENCIES_CONFIGURATION
+    difficulty: EASY
+    expected:
+      - path: package.json
+        startLine: 710
+        endLine: 713
+      - path: docs/CONTRIBUTING.md
+        startLine: 29
+        endLine: 29
+
+  - id: hn-22
+    question: Quais cabeçalhos são enviados por padrão?
+    language: pt-BR
+    category: AMBIGUOUS
+    difficulty: MEDIUM
+    expected:
+      - path: src/middleware/secure-headers/secure-headers.ts
+        startLine: 94
+        endLine: 124
+      - path: src/middleware/cors/index.ts
+        startLine: 63
+        endLine: 70
+      - path: src/middleware/etag/index.ts
+        startLine: 21
+        endLine: 28
+    notes: Ambígua de propósito (secureHeaders, cors, cabeçalhos mantidos no 304 do etag).
+
+  - id: hn-23
+    question: What is the default number of requests per minute allowed by Hono's built-in rate limit middleware?
+    language: en
+    category: UNANSWERABLE
+    difficulty: HARD
+    mustAbstain: true
+    notes: Não há middleware de rate limit no núcleo; a documentação do combine usa um `myRateLimit` com limite 100, importado de fora como exemplo, e a resposta não pode tomá-lo como padrão do Hono.
+
+  - id: hn-24
+    question: Qual banco de dados o Hono usa para guardar as sessões dos usuários?
+    language: pt-BR
+    category: UNANSWERABLE
+    difficulty: MEDIUM
+    mustAbstain: true

@@ -2,7 +2,7 @@
 
 Ferramenta local-first que responde perguntas sobre um repositório com evidências verificáveis (arquivo + linhas). A documentação do produto e da arquitetura está em [`docs/`](docs/README.md), e as decisões técnicas em [`docs/10-DECISIONS.md`](docs/10-DECISIONS.md).
 
-> Estado atual: Etapa 7 do [roadmap](docs/09-IMPLEMENTATION-ROADMAP.md) concluída (UX completa do MVP). Pela UI em `apps/web` dá para criar workspaces, importar uma pasta local ou um ZIP, revisar a pré-análise, indexar, perguntar, abrir as evidências no visualizador e rever as conversas. Próxima: Etapa 8 (qualidade e hardening).
+> Estado atual: Etapa 8 do [roadmap](docs/09-IMPLEMENTATION-ROADMAP.md) concluída (qualidade e hardening). Pela UI dá para criar workspaces, importar uma pasta local ou um ZIP, revisar a pré-análise, indexar (e cancelar), perguntar, abrir as evidências no visualizador, rever e excluir conversas e ver o uso do projeto; tudo num processo só com `java -jar` (seção "Executar empacotado"). Limitações e recuperação de falhas: [`docs/11-OPERATIONS.md`](docs/11-OPERATIONS.md). As medições com o provedor real ficam para quando houver saldo. Próxima: Etapa 9 (recursos posteriores ao MVP).
 
 ## Pré-requisitos
 
@@ -238,7 +238,19 @@ Com o backend no ar:
 - Contrato OpenAPI: <http://localhost:8080/v3/api-docs>
 - Swagger UI: <http://localhost:8080/swagger-ui.html>
 
-O backend só atende a própria máquina (D-072): escuta em `127.0.0.1` e recusa com `403` requisições endereçadas a outro nome que não `localhost`/`127.0.0.1`/`[::1]` (`FORBIDDEN_HOST`) e mudanças de estado vindas de páginas fora das origens da UI (`FORBIDDEN_ORIGIN`). As listas ficam em `app.http.allowed-hosts` e `app.http.allowed-origins` (padrão: o Vite em `localhost`/`127.0.0.1`, portas 5173 e 4173); curl e scripts, que não enviam `Origin`, passam.
+O backend só atende a própria máquina (D-072): escuta em `127.0.0.1` e recusa com `403` requisições endereçadas a outro nome que não `localhost`/`127.0.0.1`/`[::1]` (`FORBIDDEN_HOST`) e mudanças de estado vindas de páginas fora das origens da UI (`FORBIDDEN_ORIGIN`). As listas ficam em `app.http.allowed-hosts` e `app.http.allowed-origins` (padrão: o Vite em `localhost`/`127.0.0.1`, portas 5173 e 4173); a própria origem do backend é aceita em qualquer porta (D-085), e curl e scripts, que não enviam `Origin`, passam.
+
+## Executar empacotado (UI e API num processo)
+
+Backup, recuperação de falhas e limitações conhecidas: [`docs/11-OPERATIONS.md`](docs/11-OPERATIONS.md).
+
+```bash
+cd apps/backend
+./mvnw -Pwith-ui clean package -DskipTests
+java -jar target/backend-0.0.1-SNAPSHOT.jar
+```
+
+O perfil `with-ui` roda `npm ci` e `npm run build` em `apps/web` (exige Node e npm) e põe a UI dentro do jar; o build padrão (`./mvnw verify`) continua sem npm. A UI e a API ficam em <http://localhost:8080>, na mesma origem: recarregar uma tela como `/projects/{id}` funciona, porque o backend devolve o `index.html` para rotas que não são `/api`, `/actuator` nem arquivos. O backend envia a Content Security Policy, `X-Content-Type-Options`, `Referrer-Policy` e `frame-ancestors 'none'` (D-085). Como no `spring-boot:run`, execute de `apps/backend` para o `.env` ser encontrado. Use `clean` ao alternar entre o build com e sem a UI, para não sobrar uma UI antiga em `target/classes/static`.
 
 ## Executar o frontend
 
@@ -276,3 +288,5 @@ npm run e2e
 ```
 
 Fica fora do `npm run check`, como os harnesses do backend. O Playwright faz o build da UI, sobe o backend real na porta 8089 (provedores `fake`, raiz local em `apps/web/e2e/fixtures`, dados em um diretório temporário) e o `vite preview` na 4173, e percorre o fluxo do MVP: cria um workspace, importa o repositório de exemplo `sample-shop`, revisa a pré-análise, indexa, pergunta pelo teclado, abre a evidência no visualizador e reabre a conversa pelo histórico. Cada tela principal passa pelo axe (WCAG 2.1 A e AA, inclusive contraste) e o teste falha com qualquer erro de console. O workspace criado é removido no fim. A porta do backend muda com `E2E_BACKEND_PORT`; a 4173 precisa estar livre, porque é uma das origens aceitas pelo backend.
+
+`npm run e2e:jar` roda os mesmos testes contra o jar empacotado: gera o jar com `-Pwith-ui`, sobe `java -jar` na porta 8089 e usa a UI servida por ele, sem o Vite. Inclui `e2e/packaged.spec.ts`, que confere o recarregamento numa rota da UI, os cabeçalhos de segurança, o `404` da API como ProblemDetail e uma mudança de estado vinda da própria origem.

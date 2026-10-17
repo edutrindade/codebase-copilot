@@ -21,7 +21,9 @@ import org.springframework.web.servlet.HandlerExceptionResolver;
 // The backend has no authentication, so only the local UI may reach it (D-072): a foreign Host
 // is DNS rebinding or remote access, and a foreign Origin on a state change is CSRF. A missing
 // Origin (curl, tests) passes; browsers always send one on cross-origin POST, PUT and DELETE.
-@Order(Ordered.HIGHEST_PRECEDENCE + 1)
+// The backend's own origin passes on any port: the UI it serves is same-origin, and the Host it
+// is compared with was already accepted (D-085).
+@Order(Ordered.HIGHEST_PRECEDENCE + 2)
 class LocalAccessFilter extends OncePerRequestFilter {
 
     private static final Logger log = LoggerFactory.getLogger(LocalAccessFilter.class);
@@ -53,12 +55,21 @@ class LocalAccessFilter extends OncePerRequestFilter {
             return ErrorCode.FORBIDDEN_HOST;
         }
         String origin = request.getHeader(HttpHeaders.ORIGIN);
-        if (origin != null
-                && !SAFE_METHODS.contains(request.getMethod())
-                && !properties.allowedOrigins().contains(origin.strip().toLowerCase(Locale.ROOT))) {
-            return ErrorCode.FORBIDDEN_ORIGIN;
+        if (origin == null || SAFE_METHODS.contains(request.getMethod())) {
+            return null;
         }
-        return null;
+        String normalized = origin.strip().toLowerCase(Locale.ROOT);
+        if (properties.allowedOrigins().contains(normalized) || sameOrigin(normalized, request)) {
+            return null;
+        }
+        return ErrorCode.FORBIDDEN_ORIGIN;
+    }
+
+    private static boolean sameOrigin(String origin, HttpServletRequest request) {
+        String host = request.getHeader(HttpHeaders.HOST);
+        return host != null
+                && origin.equals(
+                        request.getScheme() + "://" + host.strip().toLowerCase(Locale.ROOT));
     }
 
     // The name in the Host header without the port; "[::1]:8080" keeps its brackets.

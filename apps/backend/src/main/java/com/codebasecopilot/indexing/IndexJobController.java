@@ -62,6 +62,19 @@ class IndexJobController {
         return response(service.get(jobId));
     }
 
+    @PostMapping("/index-jobs/{jobId}/cancel")
+    @ApiErrors({ErrorCode.INDEX_JOB_NOT_FOUND, ErrorCode.JOB_NOT_ACTIVE})
+    @Operation(
+            operationId = "cancelIndexJob",
+            summary = "Cancela um job de indexação",
+            description =
+                    "Um job PENDING termina na hora como CANCELLED; num job RUNNING o pedido fica"
+                            + " registrado (cancelRequested) e o job para na próxima etapa ou lote."
+                            + " O snapshot ativo não muda.")
+    ResponseEntity<IndexJobResponse> cancel(@PathVariable UUID jobId) {
+        return ResponseEntity.accepted().body(response(service.cancel(jobId)));
+    }
+
     @GetMapping("/projects/{projectId}/index-jobs")
     @ApiErrors(ErrorCode.PROJECT_NOT_FOUND)
     @Operation(operationId = "listIndexJobs", summary = "Lista os jobs de indexação do projeto")
@@ -93,6 +106,7 @@ class IndexJobController {
                 progress,
                 job.attemptCount(),
                 error,
+                job.cancelRequested(),
                 job.createdAt(),
                 job.startedAt(),
                 job.completedAt());
@@ -102,7 +116,8 @@ class IndexJobController {
             UUID id,
             UUID projectId,
             UUID snapshotId,
-            @Schema(allowableValues = {"PENDING", "RUNNING", "COMPLETED", "FAILED"}) String status,
+            @Schema(allowableValues = {"PENDING", "RUNNING", "COMPLETED", "FAILED", "CANCELLED"})
+                    String status,
             @Schema(
                             nullable = true,
                             allowableValues = {
@@ -116,6 +131,8 @@ class IndexJobController {
             @Schema(nullable = true) @Nullable ProgressResponse progress,
             int attempts,
             @Schema(nullable = true) @Nullable IndexJobErrorResponse error,
+            @Schema(description = "Cancelamento pedido e ainda não concluído, ou concluído.")
+                    boolean cancelRequested,
             Instant createdAt,
             @Nullable Instant startedAt,
             @Nullable Instant completedAt) {}

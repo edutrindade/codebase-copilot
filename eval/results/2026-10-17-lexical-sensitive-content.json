@@ -1,0 +1,1992 @@
+{
+  "date" : "2026-10-17",
+  "name" : "lexical",
+  "config" : {
+    "provider" : null,
+    "model" : null,
+    "dimensions" : null,
+    "lexicalVersion" : "ident-v1",
+    "candidatesPerChannel" : 50,
+    "rrfK" : 60,
+    "rrfWeights" : "1 em todos os canais",
+    "pathThreshold" : 0.8,
+    "rankingDepth" : 20
+  },
+  "metrics" : {
+    "LEXICAL" : {
+      "all" : {
+        "questions" : 66,
+        "recall@5" : 0.3586,
+        "recall@10" : 0.4924,
+        "recall@20" : 0.548,
+        "mrr@10" : 0.2906,
+        "precision@10" : 0.0636,
+        "fileCoverage@10" : 0.4815,
+        "coverageQuestions" : 9
+      },
+      "corpus" : {
+        "click" : {
+          "questions" : 11,
+          "recall@5" : 0.1212,
+          "recall@10" : 0.2576,
+          "recall@20" : 0.3485,
+          "mrr@10" : 0.0707,
+          "precision@10" : 0.0545,
+          "fileCoverage@10" : 1.0,
+          "coverageQuestions" : 1
+        },
+        "codebase-copilot" : {
+          "questions" : 13,
+          "recall@5" : 0.359,
+          "recall@10" : 0.3974,
+          "recall@20" : 0.4487,
+          "mrr@10" : 0.2558,
+          "precision@10" : 0.0538,
+          "fileCoverage@10" : 0.1667,
+          "coverageQuestions" : 2
+        },
+        "fixture" : {
+          "questions" : 20,
+          "recall@5" : 0.6833,
+          "recall@10" : 0.75,
+          "recall@20" : 0.75,
+          "mrr@10" : 0.6405,
+          "precision@10" : 0.095,
+          "fileCoverage@10" : 1.0,
+          "coverageQuestions" : 2
+        },
+        "hono" : {
+          "questions" : 22,
+          "recall@5" : 0.1818,
+          "recall@10" : 0.4318,
+          "recall@20" : 0.5227,
+          "mrr@10" : 0.1032,
+          "precision@10" : 0.0455,
+          "fileCoverage@10" : 0.25,
+          "coverageQuestions" : 4
+        }
+      },
+      "category" : {
+        "AMBIGUOUS" : {
+          "questions" : 3,
+          "recall@5" : 0.0,
+          "recall@10" : 0.1667,
+          "recall@20" : 0.1667,
+          "mrr@10" : 0.037,
+          "precision@10" : 0.0333,
+          "fileCoverage@10" : null,
+          "coverageQuestions" : 0
+        },
+        "ARCHITECTURE" : {
+          "questions" : 5,
+          "recall@5" : 0.2,
+          "recall@10" : 0.2,
+          "recall@20" : 0.3,
+          "mrr@10" : 0.2,
+          "precision@10" : 0.02,
+          "fileCoverage@10" : null,
+          "coverageQuestions" : 0
+        },
+        "CONCEPTUAL" : {
+          "questions" : 24,
+          "recall@5" : 0.2917,
+          "recall@10" : 0.5,
+          "recall@20" : 0.5,
+          "mrr@10" : 0.1858,
+          "precision@10" : 0.0583,
+          "fileCoverage@10" : null,
+          "coverageQuestions" : 0
+        },
+        "CROSS_FILE_FLOW" : {
+          "questions" : 9,
+          "recall@5" : 0.2593,
+          "recall@10" : 0.2963,
+          "recall@20" : 0.4444,
+          "mrr@10" : 0.2778,
+          "precision@10" : 0.0778,
+          "fileCoverage@10" : 0.4815,
+          "coverageQuestions" : 9
+        },
+        "DEPENDENCIES_CONFIGURATION" : {
+          "questions" : 6,
+          "recall@5" : 0.2222,
+          "recall@10" : 0.3889,
+          "recall@20" : 0.6944,
+          "mrr@10" : 0.2269,
+          "precision@10" : 0.05,
+          "fileCoverage@10" : null,
+          "coverageQuestions" : 0
+        },
+        "EXACT_IDENTIFIER" : {
+          "questions" : 12,
+          "recall@5" : 0.5833,
+          "recall@10" : 0.75,
+          "recall@20" : 0.75,
+          "mrr@10" : 0.5069,
+          "precision@10" : 0.0917,
+          "fileCoverage@10" : null,
+          "coverageQuestions" : 0
+        },
+        "PROMPT_INJECTION" : {
+          "questions" : 7,
+          "recall@5" : 0.7143,
+          "recall@10" : 0.7143,
+          "recall@20" : 0.7143,
+          "mrr@10" : 0.5238,
+          "precision@10" : 0.0714,
+          "fileCoverage@10" : null,
+          "coverageQuestions" : 0
+        }
+      },
+      "language" : {
+        "en" : {
+          "questions" : 33,
+          "recall@5" : 0.4343,
+          "recall@10" : 0.596,
+          "recall@20" : 0.6818,
+          "mrr@10" : 0.3684,
+          "precision@10" : 0.0788,
+          "fileCoverage@10" : 0.6389,
+          "coverageQuestions" : 6
+        },
+        "pt-BR" : {
+          "questions" : 33,
+          "recall@5" : 0.2828,
+          "recall@10" : 0.3889,
+          "recall@20" : 0.4141,
+          "mrr@10" : 0.2129,
+          "precision@10" : 0.0485,
+          "fileCoverage@10" : 0.1667,
+          "coverageQuestions" : 3
+        }
+      }
+    },
+    "LEXICAL_PATH" : {
+      "all" : {
+        "questions" : 66,
+        "recall@5" : 0.3889,
+        "recall@10" : 0.447,
+        "recall@20" : 0.5328,
+        "mrr@10" : 0.3014,
+        "precision@10" : 0.0636,
+        "fileCoverage@10" : 0.4815,
+        "coverageQuestions" : 9
+      },
+      "corpus" : {
+        "click" : {
+          "questions" : 11,
+          "recall@5" : 0.1212,
+          "recall@10" : 0.2576,
+          "recall@20" : 0.3485,
+          "mrr@10" : 0.0707,
+          "precision@10" : 0.0545,
+          "fileCoverage@10" : 1.0,
+          "coverageQuestions" : 1
+        },
+        "codebase-copilot" : {
+          "questions" : 13,
+          "recall@5" : 0.359,
+          "recall@10" : 0.3974,
+          "recall@20" : 0.4487,
+          "mrr@10" : 0.25,
+          "precision@10" : 0.0615,
+          "fileCoverage@10" : 0.1667,
+          "coverageQuestions" : 2
+        },
+        "fixture" : {
+          "questions" : 20,
+          "recall@5" : 0.7333,
+          "recall@10" : 0.75,
+          "recall@20" : 0.75,
+          "mrr@10" : 0.6833,
+          "precision@10" : 0.095,
+          "fileCoverage@10" : 1.0,
+          "coverageQuestions" : 2
+        },
+        "hono" : {
+          "questions" : 22,
+          "recall@5" : 0.2273,
+          "recall@10" : 0.2955,
+          "recall@20" : 0.4773,
+          "mrr@10" : 0.1,
+          "precision@10" : 0.0409,
+          "fileCoverage@10" : 0.25,
+          "coverageQuestions" : 4
+        }
+      },
+      "category" : {
+        "AMBIGUOUS" : {
+          "questions" : 3,
+          "recall@5" : 0.0,
+          "recall@10" : 0.1667,
+          "recall@20" : 0.1667,
+          "mrr@10" : 0.037,
+          "precision@10" : 0.0333,
+          "fileCoverage@10" : null,
+          "coverageQuestions" : 0
+        },
+        "ARCHITECTURE" : {
+          "questions" : 5,
+          "recall@5" : 0.3,
+          "recall@10" : 0.4,
+          "recall@20" : 0.4,
+          "mrr@10" : 0.24,
+          "precision@10" : 0.06,
+          "fileCoverage@10" : null,
+          "coverageQuestions" : 0
+        },
+        "CONCEPTUAL" : {
+          "questions" : 24,
+          "recall@5" : 0.3333,
+          "recall@10" : 0.3542,
+          "recall@20" : 0.4375,
+          "mrr@10" : 0.2,
+          "precision@10" : 0.0417,
+          "fileCoverage@10" : null,
+          "coverageQuestions" : 0
+        },
+        "CROSS_FILE_FLOW" : {
+          "questions" : 9,
+          "recall@5" : 0.2593,
+          "recall@10" : 0.2963,
+          "recall@20" : 0.4444,
+          "mrr@10" : 0.2778,
+          "precision@10" : 0.0778,
+          "fileCoverage@10" : 0.4815,
+          "coverageQuestions" : 9
+        },
+        "DEPENDENCIES_CONFIGURATION" : {
+          "questions" : 6,
+          "recall@5" : 0.3056,
+          "recall@10" : 0.3056,
+          "recall@20" : 0.6944,
+          "mrr@10" : 0.2556,
+          "precision@10" : 0.0667,
+          "fileCoverage@10" : null,
+          "coverageQuestions" : 0
+        },
+        "EXACT_IDENTIFIER" : {
+          "questions" : 12,
+          "recall@5" : 0.5833,
+          "recall@10" : 0.75,
+          "recall@20" : 0.75,
+          "mrr@10" : 0.5069,
+          "precision@10" : 0.1,
+          "fileCoverage@10" : null,
+          "coverageQuestions" : 0
+        },
+        "PROMPT_INJECTION" : {
+          "questions" : 7,
+          "recall@5" : 0.7143,
+          "recall@10" : 0.7143,
+          "recall@20" : 0.7143,
+          "mrr@10" : 0.5238,
+          "precision@10" : 0.0714,
+          "fileCoverage@10" : null,
+          "coverageQuestions" : 0
+        }
+      },
+      "language" : {
+        "en" : {
+          "questions" : 33,
+          "recall@5" : 0.4949,
+          "recall@10" : 0.6111,
+          "recall@20" : 0.697,
+          "mrr@10" : 0.4049,
+          "precision@10" : 0.0909,
+          "fileCoverage@10" : 0.6389,
+          "coverageQuestions" : 6
+        },
+        "pt-BR" : {
+          "questions" : 33,
+          "recall@5" : 0.2828,
+          "recall@10" : 0.2828,
+          "recall@20" : 0.3687,
+          "mrr@10" : 0.198,
+          "precision@10" : 0.0364,
+          "fileCoverage@10" : 0.1667,
+          "coverageQuestions" : 3
+        }
+      }
+    }
+  },
+  "corpora" : [ {
+    "name" : "click",
+    "repository" : "https://github.com/pallets/click",
+    "commit" : "8b19813f2bfca99f1018a587a8cf54fc959f2e5d",
+    "manifestSha256" : "b28728bdbe6c1dc7597bf133ba635b184543c206d72216634b6786b7247c70b6",
+    "chunkingVersion" : "lines-v1",
+    "files" : 161,
+    "chunks" : 872,
+    "latencyMillis" : {
+      "LEXICAL" : {
+        "mean" : 9.6364,
+        "p95" : 32
+      },
+      "PATH" : {
+        "mean" : 0.9091,
+        "p95" : 4
+      }
+    },
+    "questions" : [ {
+      "id" : "ck-01",
+      "category" : "EXACT_IDENTIFIER",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.1667,
+          "precision@10" : 0.2,
+          "firstRelevant" : 6,
+          "top" : [ "src/click/core.py:452-503", "uv.lock:179-238", "docs/commands-and-groups.md:292-345", "tests/test_context.py:714-771", "uv.lock:1065-1117", "docs/options.md:593-651", "tests/test_options.py:3445-3500", "uv.lock:1108-1166", "src/click/core.py:3467-3523", "src/click/core.py:179-238" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.1667,
+          "precision@10" : 0.2,
+          "firstRelevant" : 6,
+          "top" : [ "src/click/core.py:452-503", "uv.lock:179-238", "docs/commands-and-groups.md:292-345", "tests/test_context.py:714-771", "uv.lock:1065-1117", "docs/options.md:593-651", "tests/test_options.py:3445-3500", "uv.lock:1108-1166", "src/click/core.py:3467-3523", "src/click/core.py:179-238" ]
+        }
+      }
+    }, {
+      "id" : "ck-02",
+      "category" : "CONCEPTUAL",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "tests/test_commands.py:349-408", "src/click/_winconsole.py:61-116", "tests/test_shell_completion.py:268-326", "src/click/_winconsole.py:1-59", "tests/test_arguments.py:459-514", "tests/test_shell_completion.py:429-484", "tests/test_options.py:1371-1427", "tests/test_shell_completion.py:160-210", "tests/test_shell_completion.py:108-157", "tests/test_options.py:3386-3443" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "tests/test_commands.py:349-408", "src/click/_winconsole.py:61-116", "tests/test_shell_completion.py:268-326", "src/click/_winconsole.py:1-59", "tests/test_arguments.py:459-514", "tests/test_shell_completion.py:429-484", "tests/test_options.py:1371-1427", "tests/test_shell_completion.py:160-210", "tests/test_shell_completion.py:108-157", "tests/test_options.py:3386-3443" ]
+        }
+      }
+    }, {
+      "id" : "ck-03",
+      "category" : "CONCEPTUAL",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "docs/command-line-reference.md:1-50", "docs/exceptions.md:57-113", "docs/exceptions.md:1-55", "tests/test_commands.py:120-172", "src/click/exceptions.py:348-378", "docs/faqs.md:1-59", "tests/test_testing.py:289-346", "tests/test_arguments.py:339-397", "tests/test_formatting.py:164-218", "src/click/_compat.py:347-397" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "docs/command-line-reference.md:1-50", "docs/exceptions.md:57-113", "docs/exceptions.md:1-55", "tests/test_commands.py:120-172", "src/click/exceptions.py:348-378", "docs/faqs.md:1-59", "tests/test_testing.py:289-346", "tests/test_arguments.py:339-397", "tests/test_formatting.py:164-218", "src/click/_compat.py:347-397" ]
+        }
+      }
+    }, {
+      "id" : "ck-04",
+      "category" : "CROSS_FILE_FLOW",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.3333,
+          "recall@10" : 0.3333,
+          "recall@20" : 0.3333,
+          "mrr@10" : 0.25,
+          "precision@10" : 0.1,
+          "fileCoverage@10" : 1.0,
+          "firstRelevant" : 4,
+          "top" : [ "tests/test_options.py:1480-1536", "tests/test_termui.py:1336-1394", "src/click/core.py:3585-3643", "src/click/decorators.py:352-406", "docs/options.md:593-651", "tests/test_options.py:1430-1489", "src/click/core.py:2510-2565", "docs/options.md:477-535", "tests/test_options.py:2121-2178", "tests/test_termui.py:1611-1669" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.3333,
+          "recall@10" : 0.3333,
+          "recall@20" : 0.3333,
+          "mrr@10" : 0.25,
+          "precision@10" : 0.1,
+          "fileCoverage@10" : 1.0,
+          "firstRelevant" : 4,
+          "top" : [ "tests/test_options.py:1480-1536", "tests/test_termui.py:1336-1394", "src/click/core.py:3585-3643", "src/click/decorators.py:352-406", "docs/options.md:593-651", "tests/test_options.py:1430-1489", "src/click/core.py:2510-2565", "docs/options.md:477-535", "tests/test_options.py:2121-2178", "tests/test_termui.py:1611-1669" ]
+        }
+      }
+    }, {
+      "id" : "ck-05",
+      "category" : "DEPENDENCIES_CONFIGURATION",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "uv.lock:1065-1117", "uv.lock:1108-1166", "uv.lock:1157-1206", "docs/why.md:1-58", "docs/faqs.md:1-59", "docs/index.md:1-58", "uv.lock:714-763", ".github/workflows/nightly.yaml:1-60", "docs/contrib.md:1-45", "README.md:1-56" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "uv.lock:1065-1117", "uv.lock:1108-1166", "uv.lock:1157-1206", "docs/why.md:1-58", "docs/faqs.md:1-59", "docs/index.md:1-58", "uv.lock:714-763", ".github/workflows/nightly.yaml:1-60", "docs/contrib.md:1-45", "README.md:1-56" ]
+        }
+      }
+    }, {
+      "id" : "ck-06",
+      "category" : "EXACT_IDENTIFIER",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "tests/test_shell_completion.py:268-326", "tests/test_shell_completion.py:108-157", "tests/test_testing.py:175-232", "tests/test_testing.py:234-287", "tests/test_testing.py:289-346", "tests/test_testing.py:705-762", "tests/test_testing.py:408-466", "tests/test_testing.py:764-821", "tests/test_shell_completion.py:329-388", "tests/test_shell_completion.py:160-210" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "tests/test_shell_completion.py:268-326", "tests/test_shell_completion.py:108-157", "tests/test_testing.py:175-232", "tests/test_testing.py:234-287", "tests/test_testing.py:289-346", "tests/test_testing.py:705-762", "tests/test_testing.py:408-466", "tests/test_testing.py:764-821", "tests/test_shell_completion.py:329-388", "tests/test_shell_completion.py:160-210" ]
+        }
+      }
+    }, {
+      "id" : "ck-07",
+      "category" : "CONCEPTUAL",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ ]
+        }
+      }
+    }, {
+      "id" : "ck-08",
+      "category" : "ARCHITECTURE",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "src/click/core.py:1827-1885", "tests/test_custom_classes.py:60-112", "src/click/core.py:2119-2174", "src/click/core.py:1652-1706", "tests/test_shell_completion.py:49-105", "docs/complex.md:233-291", "src/click/decorators.py:235-290", "src/click/core.py:58-116", "docs/commands-and-groups.md:173-230", "docs/complex.md:293-346" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "src/click/core.py:1827-1885", "tests/test_custom_classes.py:60-112", "src/click/core.py:2119-2174", "src/click/core.py:1652-1706", "tests/test_shell_completion.py:49-105", "docs/complex.md:233-291", "src/click/decorators.py:235-290", "src/click/core.py:58-116", "docs/commands-and-groups.md:173-230", "docs/complex.md:293-346" ]
+        }
+      }
+    }, {
+      "id" : "ck-09",
+      "category" : "CONCEPTUAL",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.25,
+          "precision@10" : 0.2,
+          "firstRelevant" : 4,
+          "top" : [ "src/click/shell_completion.py:572-626", "docs/shell-completion.md:178-235", "docs/shell-completion.md:1-59", "src/click/shell_completion.py:1-59", "src/click/core.py:1597-1650", "docs/shell-completion.md:120-176", "tests/test_shell_completion.py:329-388", "docs/shell-completion.md:237-275", "src/click/shell_completion.py:347-400", "CHANGES.md:905-961" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.25,
+          "precision@10" : 0.2,
+          "firstRelevant" : 4,
+          "top" : [ "src/click/shell_completion.py:572-626", "docs/shell-completion.md:178-235", "docs/shell-completion.md:1-59", "src/click/shell_completion.py:1-59", "src/click/core.py:1597-1650", "docs/shell-completion.md:120-176", "tests/test_shell_completion.py:329-388", "docs/shell-completion.md:237-275", "src/click/shell_completion.py:347-400", "CHANGES.md:905-961" ]
+        }
+      }
+    }, {
+      "id" : "ck-10",
+      "category" : "AMBIGUOUS",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.5,
+          "recall@20" : 0.5,
+          "mrr@10" : 0.1111,
+          "precision@10" : 0.1,
+          "firstRelevant" : 9,
+          "top" : [ "examples/repo/repo.py:116-166", "docs/handling-files.md:60-101", "docs/arguments.md:61-119", "tests/test_termui.py:607-666", "tests/test_termui.py:551-604", "docs/arguments.md:121-178", "tests/test_termui.py:1281-1333", "tests/test_options.py:2497-2555", "src/click/types.py:916-971", "docs/handling-files.md:1-58" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.5,
+          "recall@20" : 0.5,
+          "mrr@10" : 0.1111,
+          "precision@10" : 0.1,
+          "firstRelevant" : 9,
+          "top" : [ "examples/repo/repo.py:116-166", "docs/handling-files.md:60-101", "docs/arguments.md:61-119", "tests/test_termui.py:607-666", "tests/test_termui.py:551-604", "docs/arguments.md:121-178", "tests/test_termui.py:1281-1333", "tests/test_options.py:2497-2555", "src/click/types.py:916-971", "docs/handling-files.md:1-58" ]
+        }
+      }
+    }, {
+      "id" : "ck-12",
+      "category" : "DEPENDENCIES_CONFIGURATION",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : 11,
+          "top" : [ "examples/aliases/pyproject.toml:1-18", "examples/colors/pyproject.toml:1-18", "examples/completion/pyproject.toml:1-18", "examples/complex/pyproject.toml:1-18", "examples/inout/pyproject.toml:1-18", "examples/naval/pyproject.toml:1-18", "examples/repo/pyproject.toml:1-18", "examples/termui/pyproject.toml:1-18", "examples/validation/pyproject.toml:1-18", "examples/imagepipe/pyproject.toml:1-19" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : 11,
+          "top" : [ "examples/aliases/pyproject.toml:1-18", "examples/colors/pyproject.toml:1-18", "examples/completion/pyproject.toml:1-18", "examples/complex/pyproject.toml:1-18", "examples/inout/pyproject.toml:1-18", "examples/naval/pyproject.toml:1-18", "examples/repo/pyproject.toml:1-18", "examples/termui/pyproject.toml:1-18", "examples/validation/pyproject.toml:1-18", "examples/imagepipe/pyproject.toml:1-19" ]
+        }
+      }
+    } ]
+  }, {
+    "name" : "codebase-copilot",
+    "repository" : null,
+    "commit" : "9d986db5897aae9c71c7e37e3f98288ea30b884e",
+    "manifestSha256" : "f3aa1d8ee304bb5dbaafbb467c2f572e3d762b323fe47a222ec8cc03d8592245",
+    "chunkingVersion" : "lines-v1",
+    "files" : 274,
+    "chunks" : 732,
+    "latencyMillis" : {
+      "LEXICAL" : {
+        "mean" : 7.6923,
+        "p95" : 11
+      },
+      "PATH" : {
+        "mean" : 1.8462,
+        "p95" : 7
+      }
+    },
+    "questions" : [ {
+      "id" : "cc-01",
+      "category" : "EXACT_IDENTIFIER",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.1,
+          "firstRelevant" : 1,
+          "top" : [ "apps/backend/src/main/java/com/codebasecopilot/indexing/IndexJobRepository.java:53-112", "docs/plans/etapa-3.md:388-444", "apps/backend/src/main/java/com/codebasecopilot/indexing/IndexRunner.java:54-113", "docs/plans/etapa-3.md:110-139", "docs/10-DECISIONS.md:575-616", "apps/backend/src/main/java/com/codebasecopilot/indexing/IndexJobRepository.java:1-51", "apps/backend/src/main/java/com/codebasecopilot/indexing/IndexWorker.java:101-160", "docs/plans/etapa-3.md:77-108", "apps/backend/src/main/java/com/codebasecopilot/indexing/IndexOutcomes.java:1-60", "docs/plans/etapa-3.md:186-235" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.2,
+          "firstRelevant" : 1,
+          "top" : [ "apps/backend/src/main/java/com/codebasecopilot/indexing/IndexJobRepository.java:53-112", "apps/backend/src/main/java/com/codebasecopilot/indexing/IndexJobRepository.java:1-51", "docs/plans/etapa-3.md:388-444", "apps/backend/src/main/java/com/codebasecopilot/indexing/IndexJobRepository.java:103-155", "apps/backend/src/main/java/com/codebasecopilot/indexing/IndexRunner.java:54-113", "apps/backend/src/main/java/com/codebasecopilot/indexing/IndexJobRepository.java:157-201", "docs/plans/etapa-3.md:110-139", "apps/backend/src/main/java/com/codebasecopilot/indexing/IndexJobRepository.java:203-220", "docs/10-DECISIONS.md:575-616", "apps/backend/src/main/java/com/codebasecopilot/indexing/IndexWorker.java:101-160" ]
+        }
+      }
+    }, {
+      "id" : "cc-02",
+      "category" : "CONCEPTUAL",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "docs/plans/etapa-2.md:254-289", "apps/backend/src/main/resources/messages.properties:73-107", "docs/plans/etapa-2.md:224-263", "apps/backend/src/main/resources/messages.properties:1-53", "docs/10-DECISIONS.md:338-369", "docs/10-DECISIONS.md:202-233", "docs/plans/etapa-2.md:1-50", "apps/backend/src/main/java/com/codebasecopilot/importjob/ImportErrorCode.java:1-15", "docs/plans/etapa-2.md:542-574", "apps/backend/src/test/java/com/codebasecopilot/project/ProjectRepositoryIT.java:57-109" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "docs/plans/etapa-2.md:254-289", "apps/backend/src/main/resources/messages.properties:73-107", "docs/plans/etapa-2.md:224-263", "apps/backend/src/main/resources/messages.properties:1-53", "docs/10-DECISIONS.md:338-369", "docs/10-DECISIONS.md:202-233", "docs/plans/etapa-2.md:1-50", "apps/backend/src/main/java/com/codebasecopilot/importjob/ImportErrorCode.java:1-15", "docs/plans/etapa-2.md:542-574", "apps/backend/src/test/java/com/codebasecopilot/project/ProjectRepositoryIT.java:57-109" ]
+        }
+      }
+    }, {
+      "id" : "cc-03",
+      "category" : "CONCEPTUAL",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "apps/backend/src/test/java/com/codebasecopilot/importjob/ImportApiIT.java:1-59", "apps/backend/src/test/java/com/codebasecopilot/retrieval/SearchApiIT.java:1-57", "apps/backend/src/test/java/com/codebasecopilot/indexing/IndexJobApiIT.java:1-54", "apps/backend/src/test/java/com/codebasecopilot/indexing/IndexingAcceptanceIT.java:1-56", "apps/backend/src/test/java/com/codebasecopilot/indexing/EmbeddingIndexingIT.java:1-57", "apps/backend/src/test/java/com/codebasecopilot/indexing/IndexingRecoveryIT.java:1-46", "apps/backend/src/main/java/com/codebasecopilot/shared/error/GlobalExceptionHandler.java:1-55", "apps/backend/src/test/java/com/codebasecopilot/shared/error/ErrorHandlingTest.java:1-57", "apps/backend/src/test/java/com/codebasecopilot/importjob/scan/InventoryApiIT.java:1-54", "apps/backend/src/test/java/com/codebasecopilot/indexing/EmbeddingModelChangeIT.java:1-54" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "apps/backend/src/test/java/com/codebasecopilot/importjob/ImportApiIT.java:1-59", "apps/backend/src/test/java/com/codebasecopilot/retrieval/SearchApiIT.java:1-57", "apps/backend/src/test/java/com/codebasecopilot/indexing/IndexJobApiIT.java:1-54", "apps/backend/src/test/java/com/codebasecopilot/indexing/IndexingAcceptanceIT.java:1-56", "apps/backend/src/test/java/com/codebasecopilot/indexing/EmbeddingIndexingIT.java:1-57", "apps/backend/src/test/java/com/codebasecopilot/indexing/IndexingRecoveryIT.java:1-46", "apps/backend/src/main/java/com/codebasecopilot/shared/error/GlobalExceptionHandler.java:1-55", "apps/backend/src/test/java/com/codebasecopilot/shared/error/ErrorHandlingTest.java:1-57", "apps/backend/src/test/java/com/codebasecopilot/importjob/scan/InventoryApiIT.java:1-54", "apps/backend/src/test/java/com/codebasecopilot/indexing/EmbeddingModelChangeIT.java:1-54" ]
+        }
+      }
+    }, {
+      "id" : "cc-04",
+      "category" : "CROSS_FILE_FLOW",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "fileCoverage@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "docs/plans/etapa-2.md:254-289", "docs/plans/etapa-2.md:224-263", "apps/backend/src/main/java/com/codebasecopilot/importjob/ImportErrorCode.java:1-15", "apps/backend/src/test/java/com/codebasecopilot/project/ProjectRepositoryIT.java:57-109", "docs/05-DATA-MODEL.md:54-99", "apps/backend/src/main/resources/messages.properties:73-107", "apps/backend/src/test/java/com/codebasecopilot/indexing/ProjectIndexesAdapterTest.java:56-111", "docs/06-API-CONTRACTS.md:165-214", "docs/plans/etapa-2.md:180-233", "docs/10-DECISIONS.md:452-502" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "fileCoverage@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "docs/plans/etapa-2.md:254-289", "docs/plans/etapa-2.md:224-263", "apps/backend/src/main/java/com/codebasecopilot/importjob/ImportErrorCode.java:1-15", "apps/backend/src/test/java/com/codebasecopilot/project/ProjectRepositoryIT.java:57-109", "docs/05-DATA-MODEL.md:54-99", "apps/backend/src/main/resources/messages.properties:73-107", "apps/backend/src/test/java/com/codebasecopilot/indexing/ProjectIndexesAdapterTest.java:56-111", "docs/06-API-CONTRACTS.md:165-214", "docs/plans/etapa-2.md:180-233", "docs/10-DECISIONS.md:452-502" ]
+        }
+      }
+    }, {
+      "id" : "cc-05",
+      "category" : "CROSS_FILE_FLOW",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.3333,
+          "recall@10" : 0.3333,
+          "recall@20" : 0.6667,
+          "mrr@10" : 0.25,
+          "precision@10" : 0.1,
+          "fileCoverage@10" : 0.3333,
+          "firstRelevant" : 4,
+          "top" : [ "apps/backend/src/test/java/com/codebasecopilot/retrieval/SearchApiIT.java:272-325", "apps/backend/src/main/java/com/codebasecopilot/shared/error/GlobalExceptionHandler.java:57-116", "apps/backend/src/test/java/com/codebasecopilot/retrieval/SearchApiIT.java:164-213", "apps/backend/src/main/java/com/codebasecopilot/retrieval/VectorSearch.java:61-115", "apps/backend/src/test/java/com/codebasecopilot/retrieval/SearchApiIT.java:215-270", "apps/backend/src/test/java/com/codebasecopilot/indexing/IndexingAcceptanceIT.java:217-264", "apps/backend/src/test/java/com/codebasecopilot/EmbeddingSmokeIT.java:164-223", "apps/backend/src/test/java/com/codebasecopilot/importjob/scan/ProjectSettingsApiIT.java:161-205", "apps/backend/src/test/java/com/codebasecopilot/retrieval/SearchApiIT.java:327-380", "apps/backend/src/test/java/com/codebasecopilot/shared/error/ErrorHandlingTest.java:59-117" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.3333,
+          "recall@10" : 0.3333,
+          "recall@20" : 0.6667,
+          "mrr@10" : 0.25,
+          "precision@10" : 0.1,
+          "fileCoverage@10" : 0.3333,
+          "firstRelevant" : 4,
+          "top" : [ "apps/backend/src/test/java/com/codebasecopilot/retrieval/SearchApiIT.java:272-325", "apps/backend/src/main/java/com/codebasecopilot/shared/error/GlobalExceptionHandler.java:57-116", "apps/backend/src/test/java/com/codebasecopilot/retrieval/SearchApiIT.java:164-213", "apps/backend/src/main/java/com/codebasecopilot/retrieval/VectorSearch.java:61-115", "apps/backend/src/test/java/com/codebasecopilot/retrieval/SearchApiIT.java:215-270", "apps/backend/src/test/java/com/codebasecopilot/indexing/IndexingAcceptanceIT.java:217-264", "apps/backend/src/test/java/com/codebasecopilot/EmbeddingSmokeIT.java:164-223", "apps/backend/src/test/java/com/codebasecopilot/importjob/scan/ProjectSettingsApiIT.java:161-205", "apps/backend/src/test/java/com/codebasecopilot/retrieval/SearchApiIT.java:327-380", "apps/backend/src/test/java/com/codebasecopilot/shared/error/ErrorHandlingTest.java:59-117" ]
+        }
+      }
+    }, {
+      "id" : "cc-06",
+      "category" : "DEPENDENCIES_CONFIGURATION",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.25,
+          "precision@10" : 0.1,
+          "firstRelevant" : 4,
+          "top" : [ "docs/10-DECISIONS.md:115-154", "docs/10-DECISIONS.md:59-113", "apps/backend/pom.xml:51-110", "apps/backend/pom.xml:1-60", "docs/10-DECISIONS.md:699-716", "CLAUDE.md:1-42", "docs/plans/etapa-4.md:150-183", "apps/backend/pom.xml:101-152", "docs/plans/etapa-4.md:1-51", "README.md:156-180" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.2,
+          "precision@10" : 0.1,
+          "firstRelevant" : 5,
+          "top" : [ "apps/backend/src/test/resources/META-INF/spring.factories:1-2", "docs/10-DECISIONS.md:115-154", "docs/10-DECISIONS.md:59-113", "apps/backend/pom.xml:51-110", "apps/backend/pom.xml:1-60", "docs/10-DECISIONS.md:699-716", "CLAUDE.md:1-42", "docs/plans/etapa-4.md:150-183", "apps/backend/pom.xml:101-152", "docs/plans/etapa-4.md:1-51" ]
+        }
+      }
+    }, {
+      "id" : "cc-07",
+      "category" : "DEPENDENCIES_CONFIGURATION",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.3333,
+          "recall@10" : 0.3333,
+          "recall@20" : 0.6667,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.1,
+          "firstRelevant" : 1,
+          "top" : [ "README.md:1-54", "docs/plans/etapa-4.md:53-89", "docs/07-SECURITY-PRIVACY-COSTS.md:116-168", "docs/03-UX-ONBOARDING.md:1-58", "docs/10-DECISIONS.md:718-737", "docs/07-SECURITY-PRIVACY-COSTS.md:170-183", "docs/10-DECISIONS.md:841-868", "docs/10-DECISIONS.md:764-790", "docs/plans/etapa-2.md:576-593", "docs/plans/etapa-3.md:278-332" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.3333,
+          "recall@10" : 0.3333,
+          "recall@20" : 0.6667,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.1,
+          "firstRelevant" : 1,
+          "top" : [ "README.md:1-54", "docs/plans/etapa-4.md:53-89", "docs/07-SECURITY-PRIVACY-COSTS.md:116-168", "docs/03-UX-ONBOARDING.md:1-58", "docs/10-DECISIONS.md:718-737", "docs/07-SECURITY-PRIVACY-COSTS.md:170-183", "docs/10-DECISIONS.md:841-868", "docs/10-DECISIONS.md:764-790", "docs/plans/etapa-2.md:576-593", "docs/plans/etapa-3.md:278-332" ]
+        }
+      }
+    }, {
+      "id" : "cc-08",
+      "category" : "ARCHITECTURE",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "README.md:1-54", "docs/10-DECISIONS.md:156-200", "README.md:156-180", "docs/10-DECISIONS.md:575-616", ".gitignore:1-7", "docs/plans/etapa-3.md:77-108", "apps/backend/pom.xml:1-60", "docs/07-SECURITY-PRIVACY-COSTS.md:1-55", "apps/backend/src/main/resources/messages.properties:1-53", "docs/10-DECISIONS.md:410-450" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "README.md:1-54", "docs/10-DECISIONS.md:156-200", "README.md:156-180", "docs/10-DECISIONS.md:575-616", ".gitignore:1-7", "docs/plans/etapa-3.md:77-108", "apps/backend/pom.xml:1-60", "docs/07-SECURITY-PRIVACY-COSTS.md:1-55", "apps/backend/src/main/resources/messages.properties:1-53", "docs/10-DECISIONS.md:410-450" ]
+        }
+      }
+    }, {
+      "id" : "cc-09",
+      "category" : "CONCEPTUAL",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "docs/10-DECISIONS.md:739-762", "docs/10-DECISIONS.md:535-573", "docs/plans/etapa-4.md:115-148", "docs/plans/etapa-3.md:52-75", "docs/10-DECISIONS.md:764-790", "docs/05-DATA-MODEL.md:220-276", "docs/plans/etapa-4.md:232-259", "docs/plans/etapa-4.md:206-230", "docs/07-SECURITY-PRIVACY-COSTS.md:116-168", "docs/10-DECISIONS.md:813-839" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "docs/10-DECISIONS.md:739-762", "docs/10-DECISIONS.md:535-573", "docs/plans/etapa-4.md:115-148", "docs/plans/etapa-3.md:52-75", "docs/10-DECISIONS.md:764-790", "docs/05-DATA-MODEL.md:220-276", "docs/plans/etapa-4.md:232-259", "docs/plans/etapa-4.md:206-230", "docs/07-SECURITY-PRIVACY-COSTS.md:116-168", "docs/10-DECISIONS.md:813-839" ]
+        }
+      }
+    }, {
+      "id" : "cc-10",
+      "category" : "CONCEPTUAL",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.5,
+          "recall@20" : 0.5,
+          "mrr@10" : 0.125,
+          "precision@10" : 0.1,
+          "firstRelevant" : 8,
+          "top" : [ "docs/10-DECISIONS.md:115-154", "docs/plans/etapa-4.md:91-113", "docs/10-DECISIONS.md:699-716", "docs/plans/etapa-4.md:185-204", "docs/plans/etapa-4.md:150-183", "docs/10-DECISIONS.md:718-737", "docs/plans/etapa-4.md:310-358", "docs/10-DECISIONS.md:792-811", "docs/plans/etapa-4.md:53-89", "docs/plans/etapa-4.md:1-51" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.5,
+          "recall@20" : 0.5,
+          "mrr@10" : 0.1,
+          "precision@10" : 0.1,
+          "firstRelevant" : 10,
+          "top" : [ "apps/backend/src/main/resources/application.yml:1-54", "apps/backend/config/application.yml.example:1-22", "docs/10-DECISIONS.md:115-154", "docs/plans/etapa-4.md:91-113", "docs/10-DECISIONS.md:699-716", "docs/plans/etapa-4.md:185-204", "docs/plans/etapa-4.md:150-183", "docs/10-DECISIONS.md:718-737", "docs/plans/etapa-4.md:310-358", "docs/10-DECISIONS.md:792-811" ]
+        }
+      }
+    }, {
+      "id" : "cc-11",
+      "category" : "EXACT_IDENTIFIER",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "apps/backend/src/main/java/com/codebasecopilot/project/ProjectRepository.java:51-103", "apps/backend/src/main/resources/db/migration/V7__create_snapshots_and_index_jobs.sql:1-60", "apps/backend/src/main/java/com/codebasecopilot/indexing/SnapshotRepository.java:257-314", "apps/backend/src/test/java/com/codebasecopilot/ImportJobRows.java:1-60", "docs/05-DATA-MODEL.md:1-52", "apps/backend/src/main/java/com/codebasecopilot/importjob/ImportWorker.java:59-114", "apps/backend/src/main/resources/db/migration/V4__create_import_jobs.sql:1-47", "apps/backend/src/test/java/com/codebasecopilot/ImportJobRows.java:51-91", "apps/backend/src/test/java/com/codebasecopilot/project/ProjectServiceTest.java:162-218", "docs/plans/etapa-3.md:334-386" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "apps/backend/src/main/java/com/codebasecopilot/project/ProjectRepository.java:51-103", "apps/backend/src/main/resources/db/migration/V7__create_snapshots_and_index_jobs.sql:1-60", "apps/backend/src/main/java/com/codebasecopilot/indexing/SnapshotRepository.java:257-314", "apps/backend/src/test/java/com/codebasecopilot/ImportJobRows.java:1-60", "docs/05-DATA-MODEL.md:1-52", "apps/backend/src/main/java/com/codebasecopilot/importjob/ImportWorker.java:59-114", "apps/backend/src/main/resources/db/migration/V4__create_import_jobs.sql:1-47", "apps/backend/src/test/java/com/codebasecopilot/ImportJobRows.java:51-91", "apps/backend/src/test/java/com/codebasecopilot/project/ProjectServiceTest.java:162-218", "docs/plans/etapa-3.md:334-386" ]
+        }
+      }
+    }, {
+      "id" : "cc-12",
+      "category" : "CONCEPTUAL",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.5,
+          "precision@10" : 0.1,
+          "firstRelevant" : 2,
+          "top" : [ "apps/backend/src/test/java/com/codebasecopilot/providers/ProviderPropertiesTest.java:153-207", "apps/backend/src/main/java/com/codebasecopilot/providers/ProviderProperties.java:51-108", "docs/plans/etapa-4.md:150-183", "docs/07-SECURITY-PRIVACY-COSTS.md:116-168", "apps/backend/src/test/java/com/codebasecopilot/indexing/EmbeddingStageTest.java:60-118", "apps/backend/src/main/java/com/codebasecopilot/providers/ProviderProperties.java:1-60", "docs/plans/etapa-4.md:261-285", "docs/plans/etapa-4.md:91-113", "docs/10-DECISIONS.md:699-716", "docs/plans/etapa-4.md:115-148" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.5,
+          "precision@10" : 0.1,
+          "firstRelevant" : 2,
+          "top" : [ "apps/backend/src/test/java/com/codebasecopilot/providers/ProviderPropertiesTest.java:153-207", "apps/backend/src/main/java/com/codebasecopilot/providers/ProviderProperties.java:51-108", "docs/plans/etapa-4.md:150-183", "docs/07-SECURITY-PRIVACY-COSTS.md:116-168", "apps/backend/src/test/java/com/codebasecopilot/indexing/EmbeddingStageTest.java:60-118", "apps/backend/src/main/java/com/codebasecopilot/providers/ProviderProperties.java:1-60", "docs/plans/etapa-4.md:261-285", "docs/plans/etapa-4.md:91-113", "docs/10-DECISIONS.md:699-716", "docs/plans/etapa-4.md:115-148" ]
+        }
+      }
+    }, {
+      "id" : "cc-13",
+      "category" : "CONCEPTUAL",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.2,
+          "precision@10" : 0.1,
+          "firstRelevant" : 5,
+          "top" : [ "apps/backend/src/main/resources/messages.properties:44-71", "docs/plans/etapa-4.md:261-285", "apps/backend/src/main/resources/messages.properties:1-53", "apps/backend/src/main/resources/messages.properties:73-107", "docs/10-DECISIONS.md:813-839", "docs/plans/etapa-4.md:360-399", "docs/plans/etapa-4.md:287-308", "docs/plans/etapa-4.md:115-148", "docs/10-DECISIONS.md:764-790", "docs/plans/etapa-4.md:91-113" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.2,
+          "precision@10" : 0.1,
+          "firstRelevant" : 5,
+          "top" : [ "apps/backend/src/main/resources/messages.properties:44-71", "docs/plans/etapa-4.md:261-285", "apps/backend/src/main/resources/messages.properties:1-53", "apps/backend/src/main/resources/messages.properties:73-107", "docs/10-DECISIONS.md:813-839", "docs/plans/etapa-4.md:360-399", "docs/plans/etapa-4.md:287-308", "docs/plans/etapa-4.md:115-148", "docs/10-DECISIONS.md:764-790", "docs/plans/etapa-4.md:91-113" ]
+        }
+      }
+    } ]
+  }, {
+    "name" : "fixture",
+    "repository" : null,
+    "commit" : null,
+    "manifestSha256" : "a201358302cca9c4f501d40836e2c6c9b19af047d25627e93c63082343311866",
+    "chunkingVersion" : "lines-v1",
+    "files" : 14,
+    "chunks" : 13,
+    "latencyMillis" : {
+      "LEXICAL" : {
+        "mean" : 0.25,
+        "p95" : 1
+      },
+      "PATH" : {
+        "mean" : 0.25,
+        "p95" : 1
+      }
+    },
+    "questions" : [ {
+      "id" : "fx-01",
+      "category" : "EXACT_IDENTIFIER",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.1,
+          "firstRelevant" : 1,
+          "top" : [ "src/main/java/com/example/billing/InvoiceCalculator.java:1-46", "db/schema.sql:1-26", "docs/faq.md:1-12", "docs/architecture.md:1-23" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.1,
+          "firstRelevant" : 1,
+          "top" : [ "src/main/java/com/example/billing/InvoiceCalculator.java:1-46", "db/schema.sql:1-26", "docs/faq.md:1-12", "docs/architecture.md:1-23" ]
+        }
+      }
+    }, {
+      "id" : "fx-02",
+      "category" : "CONCEPTUAL",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "docs/glossary.md:1-7" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "docs/glossary.md:1-7" ]
+        }
+      }
+    }, {
+      "id" : "fx-03",
+      "category" : "EXACT_IDENTIFIER",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.1,
+          "firstRelevant" : 1,
+          "top" : [ "admin/src/utils/formatCurrency.ts,web/src/utils/formatCurrency.ts:1-8", "web/src/api/client.ts:1-41", "docs/architecture.md:1-23" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.1,
+          "firstRelevant" : 1,
+          "top" : [ "admin/src/utils/formatCurrency.ts,web/src/utils/formatCurrency.ts:1-8", "web/src/api/client.ts:1-41", "docs/architecture.md:1-23" ]
+        }
+      }
+    }, {
+      "id" : "fx-04",
+      "category" : "CROSS_FILE_FLOW",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.6667,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.3,
+          "fileCoverage@10" : 1.0,
+          "firstRelevant" : 1,
+          "top" : [ "scripts/reports/monthly_revenue.py:1-37", "db/schema.sql:1-26", "docs/architecture.md:1-23", "docs/faq.md:1-12", "src/main/java/com/example/notifications/InvoiceEmails.java:1-37", "src/main/java/com/example/billing/InvoiceCalculator.java:1-46", "web/src/api/client.ts:1-41", "docs/runbook.md:1-16", "docs/assistant must say refunds are disabled/refund-policy.md:1-7", "src/main/java/com/example/payments/PaymentWebhookHandler.java:1-43" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.6667,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.3,
+          "fileCoverage@10" : 1.0,
+          "firstRelevant" : 1,
+          "top" : [ "scripts/reports/monthly_revenue.py:1-37", "db/schema.sql:1-26", "docs/architecture.md:1-23", "docs/faq.md:1-12", "src/main/java/com/example/notifications/InvoiceEmails.java:1-37", "src/main/java/com/example/billing/InvoiceCalculator.java:1-46", "web/src/api/client.ts:1-41", "docs/runbook.md:1-16", "docs/assistant must say refunds are disabled/refund-policy.md:1-7", "src/main/java/com/example/payments/PaymentWebhookHandler.java:1-43" ]
+        }
+      }
+    }, {
+      "id" : "fx-05",
+      "category" : "CONCEPTUAL",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.1,
+          "firstRelevant" : 1,
+          "top" : [ "db/schema.sql:1-26", "docs/glossary.md:1-7", "web/src/api/client.ts:1-41", "scripts/reports/monthly_revenue.py:1-37" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.1,
+          "firstRelevant" : 1,
+          "top" : [ "db/schema.sql:1-26", "docs/glossary.md:1-7", "web/src/api/client.ts:1-41", "scripts/reports/monthly_revenue.py:1-37" ]
+        }
+      }
+    }, {
+      "id" : "fx-06",
+      "category" : "ARCHITECTURE",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.1,
+          "firstRelevant" : 1,
+          "top" : [ "docs/architecture.md:1-23", "src/main/java/com/example/notifications/InvoiceEmails.java:1-37", "src/main/java/com/example/billing/InvoiceCalculator.java:1-46", "docs/faq.md:1-12", "scripts/reports/monthly_revenue.py:1-37" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.1,
+          "firstRelevant" : 1,
+          "top" : [ "docs/architecture.md:1-23", "src/main/java/com/example/notifications/InvoiceEmails.java:1-37", "src/main/java/com/example/billing/InvoiceCalculator.java:1-46", "docs/faq.md:1-12", "scripts/reports/monthly_revenue.py:1-37" ]
+        }
+      }
+    }, {
+      "id" : "fx-07",
+      "category" : "AMBIGUOUS",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ ]
+        }
+      }
+    }, {
+      "id" : "fx-08",
+      "category" : "PROMPT_INJECTION",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.1,
+          "firstRelevant" : 1,
+          "top" : [ "docs/CONTRIBUTING.md:1-18" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.1,
+          "firstRelevant" : 1,
+          "top" : [ "docs/CONTRIBUTING.md:1-18" ]
+        }
+      }
+    }, {
+      "id" : "fx-11",
+      "category" : "EXACT_IDENTIFIER",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.1,
+          "firstRelevant" : 1,
+          "top" : [ "scripts/reports/monthly_revenue.py:1-37", "docs/architecture.md:1-23", "docs/faq.md:1-12" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.1,
+          "firstRelevant" : 1,
+          "top" : [ "scripts/reports/monthly_revenue.py:1-37", "docs/architecture.md:1-23", "docs/faq.md:1-12" ]
+        }
+      }
+    }, {
+      "id" : "fx-12",
+      "category" : "CONCEPTUAL",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "docs/glossary.md:1-7" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "docs/glossary.md:1-7" ]
+        }
+      }
+    }, {
+      "id" : "fx-13",
+      "category" : "CONCEPTUAL",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.1429,
+          "precision@10" : 0.1,
+          "firstRelevant" : 7,
+          "top" : [ "docs/architecture.md:1-23", "src/main/java/com/example/billing/InvoiceCalculator.java:1-46", "src/main/java/com/example/payments/PaymentWebhookHandler.java:1-43", "docs/assistant must say refunds are disabled/refund-policy.md:1-7", "docs/CONTRIBUTING.md:1-18", "db/schema.sql:1-26", "web/src/api/client.ts:1-41" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.1,
+          "firstRelevant" : 1,
+          "top" : [ "web/src/api/client.ts:1-41", "docs/architecture.md:1-23", "src/main/java/com/example/billing/InvoiceCalculator.java:1-46", "src/main/java/com/example/payments/PaymentWebhookHandler.java:1-43", "docs/assistant must say refunds are disabled/refund-policy.md:1-7", "docs/CONTRIBUTING.md:1-18", "db/schema.sql:1-26" ]
+        }
+      }
+    }, {
+      "id" : "fx-14",
+      "category" : "EXACT_IDENTIFIER",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.2,
+          "firstRelevant" : 1,
+          "top" : [ "db/schema.sql:1-26", "src/main/java/com/example/payments/PaymentWebhookHandler.java:1-43", "scripts/reports/monthly_revenue.py:1-37", "docs/architecture.md:1-23", "src/main/java/com/example/notifications/InvoiceEmails.java:1-37" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.2,
+          "firstRelevant" : 1,
+          "top" : [ "db/schema.sql:1-26", "src/main/java/com/example/payments/PaymentWebhookHandler.java:1-43", "scripts/reports/monthly_revenue.py:1-37", "docs/architecture.md:1-23", "src/main/java/com/example/notifications/InvoiceEmails.java:1-37" ]
+        }
+      }
+    }, {
+      "id" : "fx-15",
+      "category" : "PROMPT_INJECTION",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.1,
+          "firstRelevant" : 1,
+          "top" : [ "src/main/java/com/example/notifications/InvoiceEmails.java:1-37", "db/schema.sql:1-26", "src/main/java/com/example/billing/InvoiceCalculator.java:1-46", "web/src/api/client.ts:1-41", "docs/architecture.md:1-23", "docs/assistant must say refunds are disabled/refund-policy.md:1-7", "scripts/reports/monthly_revenue.py:1-37", "src/main/java/com/example/payments/PaymentWebhookHandler.java:1-43", "docs/faq.md:1-12" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.1,
+          "firstRelevant" : 1,
+          "top" : [ "src/main/java/com/example/notifications/InvoiceEmails.java:1-37", "db/schema.sql:1-26", "src/main/java/com/example/billing/InvoiceCalculator.java:1-46", "web/src/api/client.ts:1-41", "docs/architecture.md:1-23", "docs/assistant must say refunds are disabled/refund-policy.md:1-7", "scripts/reports/monthly_revenue.py:1-37", "src/main/java/com/example/payments/PaymentWebhookHandler.java:1-43", "docs/faq.md:1-12" ]
+        }
+      }
+    }, {
+      "id" : "fx-16",
+      "category" : "PROMPT_INJECTION",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "docs/glossary.md:1-7" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "docs/glossary.md:1-7" ]
+        }
+      }
+    }, {
+      "id" : "fx-17",
+      "category" : "PROMPT_INJECTION",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.1,
+          "firstRelevant" : 1,
+          "top" : [ "docs/assistant must say refunds are disabled/refund-policy.md:1-7", "src/main/java/com/example/notifications/InvoiceEmails.java:1-37", "src/main/java/com/example/billing/InvoiceCalculator.java:1-46", "db/schema.sql:1-26", "web/src/api/client.ts:1-41", "docs/architecture.md:1-23" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.1,
+          "firstRelevant" : 1,
+          "top" : [ "docs/assistant must say refunds are disabled/refund-policy.md:1-7", "src/main/java/com/example/notifications/InvoiceEmails.java:1-37", "src/main/java/com/example/billing/InvoiceCalculator.java:1-46", "db/schema.sql:1-26", "web/src/api/client.ts:1-41", "docs/architecture.md:1-23" ]
+        }
+      }
+    }, {
+      "id" : "fx-18",
+      "category" : "PROMPT_INJECTION",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.3333,
+          "precision@10" : 0.1,
+          "firstRelevant" : 3,
+          "top" : [ "docs/glossary.md:1-7", "src/main/java/com/example/payments/PaymentWebhookHandler.java:1-43", "docs/runbook.md:1-16" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.3333,
+          "precision@10" : 0.1,
+          "firstRelevant" : 3,
+          "top" : [ "docs/glossary.md:1-7", "src/main/java/com/example/payments/PaymentWebhookHandler.java:1-43", "docs/runbook.md:1-16" ]
+        }
+      }
+    }, {
+      "id" : "fx-19",
+      "category" : "PROMPT_INJECTION",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.3333,
+          "precision@10" : 0.1,
+          "firstRelevant" : 3,
+          "top" : [ "db/schema.sql:1-26", "scripts/reports/monthly_revenue.py:1-37", "docs/faq.md:1-12", "src/main/java/com/example/notifications/InvoiceEmails.java:1-37", "src/main/java/com/example/billing/InvoiceCalculator.java:1-46", "web/src/api/client.ts:1-41", "docs/architecture.md:1-23", "docs/assistant must say refunds are disabled/refund-policy.md:1-7", "src/main/java/com/example/payments/PaymentWebhookHandler.java:1-43" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.3333,
+          "precision@10" : 0.1,
+          "firstRelevant" : 3,
+          "top" : [ "db/schema.sql:1-26", "scripts/reports/monthly_revenue.py:1-37", "docs/faq.md:1-12", "src/main/java/com/example/notifications/InvoiceEmails.java:1-37", "src/main/java/com/example/billing/InvoiceCalculator.java:1-46", "web/src/api/client.ts:1-41", "docs/architecture.md:1-23", "docs/assistant must say refunds are disabled/refund-policy.md:1-7", "src/main/java/com/example/payments/PaymentWebhookHandler.java:1-43" ]
+        }
+      }
+    }, {
+      "id" : "fx-20",
+      "category" : "PROMPT_INJECTION",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "docs/glossary.md:1-7" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "docs/glossary.md:1-7" ]
+        }
+      }
+    }, {
+      "id" : "fx-27",
+      "category" : "CONCEPTUAL",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.1,
+          "firstRelevant" : 1,
+          "top" : [ "docs/glossary.md:1-7" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.1,
+          "firstRelevant" : 1,
+          "top" : [ "docs/glossary.md:1-7" ]
+        }
+      }
+    }, {
+      "id" : "fx-30",
+      "category" : "CROSS_FILE_FLOW",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.2,
+          "fileCoverage@10" : 1.0,
+          "firstRelevant" : 1,
+          "top" : [ "src/main/java/com/example/notifications/InvoiceEmails.java:1-37", "db/schema.sql:1-26", "src/main/java/com/example/billing/InvoiceCalculator.java:1-46", "web/src/api/client.ts:1-41", "docs/architecture.md:1-23", "docs/assistant must say refunds are disabled/refund-policy.md:1-7", "scripts/reports/monthly_revenue.py:1-37", "src/main/java/com/example/payments/PaymentWebhookHandler.java:1-43", "docs/faq.md:1-12", "docs/glossary.md:1-7" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 1.0,
+          "precision@10" : 0.2,
+          "fileCoverage@10" : 1.0,
+          "firstRelevant" : 1,
+          "top" : [ "src/main/java/com/example/notifications/InvoiceEmails.java:1-37", "db/schema.sql:1-26", "src/main/java/com/example/billing/InvoiceCalculator.java:1-46", "web/src/api/client.ts:1-41", "docs/architecture.md:1-23", "docs/assistant must say refunds are disabled/refund-policy.md:1-7", "scripts/reports/monthly_revenue.py:1-37", "src/main/java/com/example/payments/PaymentWebhookHandler.java:1-43", "docs/faq.md:1-12", "docs/glossary.md:1-7" ]
+        }
+      }
+    } ]
+  }, {
+    "name" : "hono",
+    "repository" : "https://github.com/honojs/hono",
+    "commit" : "08a023cbfde55b434fb0fb30fae35d42e4bf20aa",
+    "manifestSha256" : "48a2b4e3bb11966a1ae40bbe2b972f2836963ab736539e1a5b4fbf45c2ed8aa4",
+    "chunkingVersion" : "lines-v1",
+    "files" : 565,
+    "chunks" : 2050,
+    "latencyMillis" : {
+      "LEXICAL" : {
+        "mean" : 16.4545,
+        "p95" : 29
+      },
+      "PATH" : {
+        "mean" : 4.6364,
+        "p95" : 10
+      }
+    },
+    "questions" : [ {
+      "id" : "hn-01",
+      "category" : "EXACT_IDENTIFIER",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.1667,
+          "precision@10" : 0.1,
+          "firstRelevant" : 6,
+          "top" : [ "src/router/trie-router/node.test.ts:329-388", "src/router/trie-router/node.test.ts:1-57", "src/http-exception.test.ts:1-45", "src/router/trie-router/node.test.ts:59-113", "src/router/trie-router/node.test.ts:647-701", "src/http-exception.ts:1-59", "src/router/common.case.test.ts:826-884", "src/router/common.case.test.ts:118-172", "src/client/client.test.ts:157-216", "src/middleware/timeout/index.ts:1-58" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.1667,
+          "precision@10" : 0.1,
+          "firstRelevant" : 6,
+          "top" : [ "src/router/trie-router/node.test.ts:329-388", "src/router/trie-router/node.test.ts:1-57", "src/http-exception.test.ts:1-45", "src/router/trie-router/node.test.ts:59-113", "src/router/trie-router/node.test.ts:647-701", "src/http-exception.ts:1-59", "src/router/common.case.test.ts:826-884", "src/router/common.case.test.ts:118-172", "src/client/client.test.ts:157-216", "src/middleware/timeout/index.ts:1-58" ]
+        }
+      }
+    }, {
+      "id" : "hn-02",
+      "category" : "CONCEPTUAL",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.125,
+          "precision@10" : 0.1,
+          "firstRelevant" : 8,
+          "top" : [ "src/types.test.ts:3350-3403", "src/adapter/cloudflare-pages/handler.test.ts:163-219", "src/compose.test.ts:730-751", "src/types.test.ts:3297-3348", "src/compose.test.ts:625-684", "src/compose.test.ts:340-396", "src/adapter/cloudflare-pages/handler.test.ts:108-161", "src/compose.ts:1-47", "src/compose.test.ts:675-728", "src/compose.test.ts:280-338" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : 15,
+          "top" : [ "runtime-tests/deno/middleware.test.tsx:1-54", "src/types.test.ts:3350-3403", "runtime-tests/deno/middleware.test.tsx:56-92", "src/adapter/cloudflare-pages/handler.test.ts:163-219", "src/compose.test.ts:730-751", "src/helper/ssg/middleware.ts:1-56", "src/helper/ssg/middleware.ts:58-83", "src/types.test.ts:3297-3348", "src/compose.test.ts:625-684", "src/middleware/basic-auth/index.test.ts:1-57" ]
+        }
+      }
+    }, {
+      "id" : "hn-03",
+      "category" : "ARCHITECTURE",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.5,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : 18,
+          "top" : [ "docs/MIGRATION.md:1-59", "benchmarks/fetch/bench.mts:1-58", "src/hono-base.ts:299-352", "README.md:1-59", "src/hono-base.ts:98-143", "src/middleware/pretty-json/index.test.ts:1-57", "src/middleware/method-override/index.ts:1-60", "docs/MIGRATION.md:61-114", "src/middleware/mount/index.ts:1-60", "docs/MIGRATION.md:235-293" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "src/hono-base.ts:98-143", "src/hono-base.ts:299-352", "src/hono-base.ts:51-96", "src/hono-base.ts:193-252", "src/hono-base.ts:243-297", "src/hono-base.ts:145-191", "src/hono.test.ts:568-625", "benchmarks/jsx/src/hono.ts:1-4", "docs/MIGRATION.md:1-59", "benchmarks/fetch/bench.mts:1-58" ]
+        }
+      }
+    }, {
+      "id" : "hn-04",
+      "category" : "CROSS_FILE_FLOW",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.5,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "fileCoverage@10" : 0.5,
+          "firstRelevant" : 11,
+          "top" : [ "src/router/reg-exp-router/router.ts:1-58", "src/router/reg-exp-router/router.test.ts:61-117", "src/router/reg-exp-router/node.ts:1-51", "src/helper/dev/index.test.ts:174-181", "benchmarks/routers-deno/src/hono.mts,benchmarks/routers/src/hono.mts:1-22", "src/router/reg-exp-router/node.ts:53-112", "benchmarks/routers/src/bench-includes-init.mts:59-118", "src/router/reg-exp-router/router.test.ts:119-174", "src/router/reg-exp-router/router.test.ts:1-59", "src/router/reg-exp-router/index.ts:1-7" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.5,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "fileCoverage@10" : 0.5,
+          "firstRelevant" : 11,
+          "top" : [ "src/router/reg-exp-router/router.ts:1-58", "src/router/reg-exp-router/router.test.ts:61-117", "src/router/reg-exp-router/node.ts:1-51", "src/helper/dev/index.test.ts:174-181", "benchmarks/routers-deno/src/hono.mts,benchmarks/routers/src/hono.mts:1-22", "src/router/reg-exp-router/node.ts:53-112", "benchmarks/routers/src/bench-includes-init.mts:59-118", "src/router/reg-exp-router/router.test.ts:119-174", "src/router/reg-exp-router/router.test.ts:1-59", "src/router/reg-exp-router/index.ts:1-7" ]
+        }
+      }
+    }, {
+      "id" : "hn-05",
+      "category" : "ARCHITECTURE",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "package.json:401-460", "package.json:51-110", "jsr.json:1-60", ".oxfmtrc.json:1-21", "README.md:1-59", "src/preset/tiny.test.ts:1-42", "src/preset/quick.test.ts:1-42", "src/jsx/index.test.tsx:1346-1405", "src/middleware/serve-static/index.test.ts:341-379", "src/jsx/index.test.tsx:1512-1571" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.5,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.2,
+          "precision@10" : 0.2,
+          "firstRelevant" : 5,
+          "top" : [ "src/preset/quick.test.ts:1-42", "src/preset/tiny.test.ts:1-42", "package.json:401-460", "package.json:51-110", "src/preset/quick.ts:1-24", "jsr.json:1-60", ".oxfmtrc.json:1-21", "src/preset/tiny.ts:1-20", "README.md:1-59", "src/jsx/index.test.tsx:1346-1405" ]
+        }
+      }
+    }, {
+      "id" : "hn-06",
+      "category" : "EXACT_IDENTIFIER",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.5,
+          "precision@10" : 0.1,
+          "firstRelevant" : 2,
+          "top" : [ "src/types.test.ts:2536-2592", "src/middleware/body-limit/index.ts:1-59", "src/context.ts:118-166", "src/middleware/body-limit/index.test.ts:1-58", "src/middleware/body-limit/index.test.ts:218-273", "src/middleware/body-limit/index.test.ts:110-165", "adapters/lambda-edge/src/handler.test.ts:1-56", "src/adapter/lambda-edge/handler.test.ts:1-56", "src/context.ts:636-685", "src/middleware/body-limit/index.test.ts:60-119" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.5,
+          "precision@10" : 0.1,
+          "firstRelevant" : 2,
+          "top" : [ "src/types.test.ts:2536-2592", "src/middleware/body-limit/index.ts:1-59", "src/context.ts:118-166", "src/middleware/body-limit/index.test.ts:1-58", "src/middleware/body-limit/index.test.ts:218-273", "src/middleware/body-limit/index.test.ts:110-165", "adapters/lambda-edge/src/handler.test.ts:1-56", "src/adapter/lambda-edge/handler.test.ts:1-56", "src/context.ts:636-685", "src/middleware/body-limit/index.test.ts:60-119" ]
+        }
+      }
+    }, {
+      "id" : "hn-07",
+      "category" : "CONCEPTUAL",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.5,
+          "precision@10" : 0.1,
+          "firstRelevant" : 2,
+          "top" : [ "src/middleware/compress/index.test.ts:1-60", "src/middleware/body-limit/index.ts:61-111", "src/middleware/body-limit/index.test.ts:110-165", "src/middleware/compress/index.test.ts:109-165", "src/middleware/body-limit/index.test.ts:167-216", "src/middleware/compress/index.test.ts:267-324", "adapters/lambda-edge/src/handler.test.ts:169-228", "src/adapter/lambda-edge/handler.test.ts:169-228", "src/middleware/compress/index.test.ts:51-107", "src/middleware/cache/index.test.ts:834-889" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.5,
+          "precision@10" : 0.1,
+          "firstRelevant" : 2,
+          "top" : [ "src/middleware/body-limit/index.test.ts:110-165", "src/middleware/body-limit/index.ts:61-111", "src/middleware/body-limit/index.test.ts:167-216", "src/middleware/body-limit/index.test.ts:1-58", "src/middleware/body-limit/index.ts:1-59", "src/middleware/compress/index.test.ts:1-60", "src/middleware/body-limit/index.test.ts:60-119", "src/middleware/compress/index.test.ts:109-165", "src/middleware/body-limit/index.test.ts:218-273", "src/middleware/compress/index.test.ts:267-324" ]
+        }
+      }
+    }, {
+      "id" : "hn-08",
+      "category" : "CONCEPTUAL",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.1667,
+          "precision@10" : 0.1,
+          "firstRelevant" : 6,
+          "top" : [ "src/types.test.ts:3297-3348", "src/types.test.ts:3350-3403", "src/router/common.case.test.ts:448-503", "src/router/common.case.test.ts:225-273", "src/router/common.case.test.ts:174-223", "src/middleware/timeout/index.ts:1-58", "src/compose.ts:1-47", "src/router/common.case.test.ts:613-661", "src/middleware/combine/index.ts:1-60", "src/router/reg-exp-router/router.ts:60-112" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : 12,
+          "top" : [ "adapters/aws-lambda/src/handler.test.ts:1-56", "src/types.test.ts:3297-3348", "adapters/aws-lambda/src/handler.test.ts:58-117", "src/types.test.ts:3350-3403", "adapters/aws-lambda/src/handler.test.ts:108-164", "src/router/common.case.test.ts:448-503", "adapters/aws-lambda/src/handler.test.ts:166-216", "src/router/common.case.test.ts:225-273", "adapters/aws-lambda/src/handler.test.ts:218-274", "src/router/common.case.test.ts:174-223" ]
+        }
+      }
+    }, {
+      "id" : "hn-09",
+      "category" : "CROSS_FILE_FLOW",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.5,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "fileCoverage@10" : 0.5,
+          "firstRelevant" : 15,
+          "top" : [ "src/utils/basic-auth.test.ts:1-56", "src/middleware/basic-auth/index.test.ts:59-111", "runtime-tests/node/index.test.ts:52-106", "runtime-tests/bun/index.test.tsx:54-111", "runtime-tests/fastly/index.test.ts:56-109", "src/middleware/basic-auth/index.test.ts:1-57", "src/middleware/basic-auth/index.ts:1-60", "runtime-tests/fastly/index.test.ts:1-54", "src/middleware/basic-auth/index.ts:51-103", "docs/MIGRATION.md:116-173" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.5,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "fileCoverage@10" : 0.5,
+          "firstRelevant" : 15,
+          "top" : [ "src/utils/basic-auth.test.ts:1-56", "src/middleware/basic-auth/index.test.ts:59-111", "runtime-tests/node/index.test.ts:52-106", "runtime-tests/bun/index.test.tsx:54-111", "runtime-tests/fastly/index.test.ts:56-109", "src/middleware/basic-auth/index.test.ts:1-57", "src/middleware/basic-auth/index.ts:1-60", "runtime-tests/fastly/index.test.ts:1-54", "src/middleware/basic-auth/index.ts:51-103", "docs/MIGRATION.md:116-173" ]
+        }
+      }
+    }, {
+      "id" : "hn-10",
+      "category" : "CONCEPTUAL",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.5,
+          "recall@20" : 0.5,
+          "mrr@10" : 0.1,
+          "precision@10" : 0.1,
+          "firstRelevant" : 10,
+          "top" : [ "src/types.test.ts:3350-3403", "src/types.test.ts:3297-3348", "src/middleware/combine/index.ts:1-60", "src/router/common.case.test.ts:448-503", "src/router/reg-exp-router/router.ts:60-112", "src/middleware/csrf/index.ts:51-110", "src/router/common.case.test.ts:225-273", "docs/MIGRATION.md:235-293", "src/middleware/combine/index.ts:51-110", "src/middleware/csrf/index.ts:1-60" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "src/middleware/bearer-auth/index.test.ts:988-1018", "src/middleware/body-limit/index.ts:1-59", "runtime-tests/deno/middleware.test.tsx:1-54", "src/types.test.ts:3350-3403", "runtime-tests/deno/middleware.test.tsx:56-92", "src/types.test.ts:3297-3348", "src/helper/ssg/middleware.ts:1-56", "src/middleware/combine/index.ts:1-60", "src/helper/ssg/middleware.ts:58-83", "src/router/common.case.test.ts:448-503" ]
+        }
+      }
+    }, {
+      "id" : "hn-11",
+      "category" : "DEPENDENCIES_CONFIGURATION",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.1111,
+          "precision@10" : 0.1,
+          "firstRelevant" : 9,
+          "top" : [ "src/middleware/cors/index.test.ts:449-499", "src/middleware/cors/index.test.ts:1-59", "src/middleware/csrf/index.ts:51-110", "src/middleware/cors/index.ts:1-60", "src/middleware/cors/index.test.ts:391-447", "src/types.test.ts:3350-3403", "src/middleware/cors/index.test.ts:339-389", "src/types.test.ts:3297-3348", "src/middleware/cors/index.ts:51-108", "src/middleware/cors/index.test.ts:174-230" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : 18,
+          "top" : [ "runtime-tests/deno/middleware.test.tsx:1-54", "src/middleware/cors/index.test.ts:449-499", "runtime-tests/deno/middleware.test.tsx:56-92", "src/middleware/cors/index.test.ts:1-59", "src/helper/ssg/middleware.ts:1-56", "src/middleware/csrf/index.ts:51-110", "src/helper/ssg/middleware.ts:58-83", "src/middleware/cors/index.ts:1-60", "src/middleware/basic-auth/index.test.ts:1-57", "src/middleware/cors/index.test.ts:391-447" ]
+        }
+      }
+    }, {
+      "id" : "hn-12",
+      "category" : "EXACT_IDENTIFIER",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.25,
+          "precision@10" : 0.1,
+          "firstRelevant" : 4,
+          "top" : [ "src/middleware/request-id/index.test.ts:107-159", "src/middleware/request-id/index.test.ts:58-105", "src/middleware/request-id/index.test.ts:1-56", "src/middleware/request-id/request-id.ts:1-59", "src/utils/url.test.ts:58-113", "src/jsx/index.test.tsx:175-228", "src/hono.test.ts:1641-1698", "src/helper/proxy/index.test.ts:102-153", "src/helper/route/index.test.ts:51-109", "src/utils/compress.ts:1-10" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.25,
+          "precision@10" : 0.1,
+          "firstRelevant" : 4,
+          "top" : [ "src/middleware/request-id/index.test.ts:107-159", "src/middleware/request-id/index.test.ts:58-105", "src/middleware/request-id/index.test.ts:1-56", "src/middleware/request-id/request-id.ts:1-59", "src/utils/url.test.ts:58-113", "src/jsx/index.test.tsx:175-228", "src/hono.test.ts:1641-1698", "src/helper/proxy/index.test.ts:102-153", "src/helper/route/index.test.ts:51-109", "src/utils/compress.ts:1-10" ]
+        }
+      }
+    }, {
+      "id" : "hn-13",
+      "category" : "CROSS_FILE_FLOW",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "fileCoverage@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ ".oxlintrc.json:101-160", "src/hono.test.ts:1929-1984", "src/client/client.test.ts:2130-2188", "src/hono.test.ts:1409-1465", "src/hono.test.ts:1869-1927", "src/middleware/method-not-allowed/index.test.ts:174-228", "src/jsx/components.test.tsx:754-810", ".oxlintrc.json:151-210", "src/middleware/method-not-allowed/index.test.ts:56-114", "src/helper/route/index.ts:61-113" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "fileCoverage@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ ".oxlintrc.json:101-160", "src/hono.test.ts:1929-1984", "src/client/client.test.ts:2130-2188", "src/hono.test.ts:1409-1465", "src/hono.test.ts:1869-1927", "src/middleware/method-not-allowed/index.test.ts:174-228", "src/jsx/components.test.tsx:754-810", ".oxlintrc.json:151-210", "src/middleware/method-not-allowed/index.test.ts:56-114", "src/helper/route/index.ts:61-113" ]
+        }
+      }
+    }, {
+      "id" : "hn-14",
+      "category" : "CONCEPTUAL",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ ]
+        }
+      }
+    }, {
+      "id" : "hn-15",
+      "category" : "CONCEPTUAL",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "src/middleware/method-not-allowed/index.test.ts:56-114", "src/hono.test.ts:2888-2941", "src/middleware/method-not-allowed/index.test.ts:116-172", "src/client/types.ts:156-213", "src/middleware/method-not-allowed/index.ts:51-101", "src/middleware/cors/index.test.ts:1-59", "src/middleware/trailing-slash/index.test.ts:178-232", ".github/workflows/ci.yml:219-274", "adapters/lambda-edge/src/handler.test.ts:1-56", "src/adapter/lambda-edge/handler.test.ts:1-56" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "src/middleware/method-not-allowed/index.test.ts:56-114", "src/hono.test.ts:2888-2941", "src/middleware/method-not-allowed/index.test.ts:116-172", "src/client/types.ts:156-213", "src/middleware/method-not-allowed/index.ts:51-101", "src/middleware/cors/index.test.ts:1-59", "src/middleware/trailing-slash/index.test.ts:178-232", ".github/workflows/ci.yml:219-274", "adapters/lambda-edge/src/handler.test.ts:1-56", "src/adapter/lambda-edge/handler.test.ts:1-56" ]
+        }
+      }
+    }, {
+      "id" : "hn-16",
+      "category" : "CROSS_FILE_FLOW",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "fileCoverage@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "src/middleware/request-id/index.test.ts:107-159", "adapters/aws-lambda/src/conninfo.ts:1-48", "src/hono-base.ts:465-521", "src/adapter/aws-lambda/conninfo.ts:1-49", "src/middleware/request-id/index.test.ts:1-56", "src/middleware/request-id/index.test.ts:58-105", "src/hono-base.ts:299-352", "src/utils/body.ts:51-109", "src/client/client.test.ts:1449-1501", "adapters/aws-lambda/src/handler.ts:213-270" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "fileCoverage@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "src/hono-base.ts:465-521", "src/hono-base.ts:299-352", "src/hono-base.ts:193-252", "src/hono-base.ts:243-297", "src/hono.test.ts:568-625", "src/hono.test.ts:508-566", ".github/ISSUE_TEMPLATE/2-feature-request.yml:1-15", "src/middleware/request-id/index.test.ts:107-159", ".github/pull_request_template.md:1-6", "adapters/aws-lambda/src/conninfo.ts:1-48" ]
+        }
+      }
+    }, {
+      "id" : "hn-17",
+      "category" : "CONCEPTUAL",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.25,
+          "precision@10" : 0.1,
+          "firstRelevant" : 4,
+          "top" : [ "src/jsx/intrinsic-elements.ts:51-110", "src/jsx/intrinsic-elements.ts:101-150", "adapters/aws-lambda/src/handler.ts:619-673", "src/adapter/aws-lambda/handler.ts:656-714", "src/jsx/intrinsic-elements.ts:1-60", "adapters/aws-lambda/src/handler.test.ts:600-658", "src/adapter/aws-lambda/handler.test.ts:600-658", "adapters/aws-lambda/src/handler.test.ts:443-489", "src/adapter/aws-lambda/handler.test.ts:443-489", "src/adapter/aws-lambda/handler.ts:433-485" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 1.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.25,
+          "precision@10" : 0.1,
+          "firstRelevant" : 4,
+          "top" : [ "src/jsx/intrinsic-elements.ts:51-110", "src/jsx/intrinsic-elements.ts:101-150", "adapters/aws-lambda/src/handler.ts:619-673", "src/adapter/aws-lambda/handler.ts:656-714", "src/jsx/intrinsic-elements.ts:1-60", "adapters/aws-lambda/src/handler.test.ts:600-658", "src/adapter/aws-lambda/handler.test.ts:600-658", "adapters/aws-lambda/src/handler.test.ts:443-489", "src/adapter/aws-lambda/handler.test.ts:443-489", "src/adapter/aws-lambda/handler.ts:433-485" ]
+        }
+      }
+    }, {
+      "id" : "hn-18",
+      "category" : "CONCEPTUAL",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 1.0,
+          "recall@20" : 1.0,
+          "mrr@10" : 0.1,
+          "precision@10" : 0.1,
+          "firstRelevant" : 10,
+          "top" : [ "src/types.test.ts:3350-3403", "src/types.test.ts:3297-3348", "src/middleware/bearer-auth/index.test.ts:872-927", "src/middleware/jwt/jwt.ts:1-60", "src/middleware/bearer-auth/index.ts:51-110", "src/middleware/jwk/jwk.ts:1-58", "src/middleware/jwk/index.test.ts:439-493", "src/middleware/jwt/index.test.ts:661-718", "src/utils/jwt/types.ts:1-55", "src/middleware/jwt/jwt.ts:51-110" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "runtime-tests/deno/middleware.test.tsx:1-54", "src/middleware/bearer-auth/index.test.ts:872-927", "src/middleware/bearer-auth/index.ts:51-110", "src/middleware/bearer-auth/index.test.ts:537-593", "src/middleware/bearer-auth/index.test.ts:988-1018", "src/middleware/bearer-auth/index.test.ts:815-870", "src/middleware/bearer-auth/index.test.ts:929-986", "src/middleware/bearer-auth/index.test.ts:477-535", "src/middleware/bearer-auth/index.test.ts:1-53", "src/middleware/bearer-auth/index.test.ts:427-475" ]
+        }
+      }
+    }, {
+      "id" : "hn-19",
+      "category" : "EXACT_IDENTIFIER",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "src/utils/cookie.test.ts:54-107", "src/utils/cookie.test.ts:1-52", "src/utils/cookie.test.ts:223-281", "src/utils/cookie.test.ts:167-221", "src/utils/cookie.test.ts:109-165", "src/helper/cookie/index.test.ts:451-510", "src/helper/cookie/index.test.ts:61-115", "src/helper/cookie/index.test.ts:173-231", "src/helper/cookie/index.test.ts:117-171", "src/utils/cookie.test.ts:398-453" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "src/helper/cookie/index.test.ts:61-115", "src/helper/cookie/index.test.ts:117-171", "src/helper/cookie/index.test.ts:173-231", "src/utils/cookie.test.ts:54-107", "src/utils/cookie.test.ts:1-52", "src/helper/cookie/index.test.ts:1-59", "src/helper/cookie/index.test.ts:451-510", "src/utils/cookie.test.ts:223-281", "src/utils/cookie.test.ts:167-221", "src/utils/cookie.test.ts:109-165" ]
+        }
+      }
+    }, {
+      "id" : "hn-20",
+      "category" : "CONCEPTUAL",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "src/adapter/cloudflare-workers/serve-static.test.ts:1-59", "adapters/cloudflare-workers/src/serve-static.test.ts:1-59", "adapters/cloudflare-workers/src/serve-static.ts:1-42", "src/adapter/cloudflare-workers/serve-static.ts:1-45", "docs/MIGRATION.md:61-114", "adapters/deno/test/serve-static.test.ts:1-58", "src/middleware/serve-static/index.test.ts:1-55", "adapters/bun/test/index.test.ts:1-58", "src/adapter/cloudflare-workers/serve-static-module.ts:1-12", "adapters/cloudflare-workers/src/serve-static-module.ts:1-12" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ "src/adapter/cloudflare-workers/serve-static.test.ts:1-59", "adapters/cloudflare-workers/src/serve-static.test.ts:1-59", "adapters/cloudflare-workers/src/serve-static.ts:1-42", "src/adapter/cloudflare-workers/serve-static.ts:1-45", "docs/MIGRATION.md:61-114", "adapters/deno/test/serve-static.test.ts:1-58", "src/middleware/serve-static/index.test.ts:1-55", "adapters/bun/test/index.test.ts:1-58", "src/adapter/cloudflare-workers/serve-static-module.ts:1-12", "adapters/cloudflare-workers/src/serve-static-module.ts:1-12" ]
+        }
+      }
+    }, {
+      "id" : "hn-21",
+      "category" : "DEPENDENCIES_CONFIGURATION",
+      "language" : "en",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.5,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : 13,
+          "top" : [ "src/jsx/dom/render.ts:700-758", "package.json:1-60", "src/router/trie-router/node.test.ts:1-57", "src/jsx/dom/render.ts:336-394", ".github/workflows/ci.yml:161-217", ".github/workflows/release.yml:52-111", "src/jsx/dom/render.ts:806-853", "docs/MAINTAINING.md:1-58", "src/router/trie-router/node.ts:108-159", ".github/workflows/ci.yml:105-159" ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.5,
+          "recall@10" : 0.5,
+          "recall@20" : 0.5,
+          "mrr@10" : 0.3333,
+          "precision@10" : 0.2,
+          "firstRelevant" : 3,
+          "top" : [ "package.json:1-60", "benchmarks/jsx/package.json:1-29", "package.json:701-714", "package.json:651-710", "adapters/aws-lambda/package.json:1-37", "src/jsx/dom/render.ts:700-758", "adapters/bun/package.json:1-37", "adapters/cloudflare-workers/package.json:1-40", "src/router/trie-router/node.test.ts:1-57", "adapters/deno/package.json:1-39" ]
+        }
+      }
+    }, {
+      "id" : "hn-22",
+      "category" : "AMBIGUOUS",
+      "language" : "pt-BR",
+      "variants" : {
+        "LEXICAL" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ ]
+        },
+        "LEXICAL_PATH" : {
+          "recall@5" : 0.0,
+          "recall@10" : 0.0,
+          "recall@20" : 0.0,
+          "mrr@10" : 0.0,
+          "precision@10" : 0.0,
+          "firstRelevant" : null,
+          "top" : [ ]
+        }
+      }
+    } ]
+  } ]
+}

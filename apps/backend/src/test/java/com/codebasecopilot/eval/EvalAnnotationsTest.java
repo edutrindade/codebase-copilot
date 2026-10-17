@@ -3,6 +3,7 @@ package com.codebasecopilot.eval;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -27,7 +28,8 @@ class EvalAnnotationsTest {
     @Test
     void everyCorpusHasAQuestionFile() throws IOException {
         assertThat(questionFiles().map(f -> f.getFileName().toString()))
-                .containsExactly("click.yaml", "codebase-copilot.yaml", "fixture.yaml");
+                .containsExactly(
+                        "click.yaml", "codebase-copilot.yaml", "fixture.yaml", "hono.yaml");
     }
 
     @ParameterizedTest
@@ -49,15 +51,20 @@ class EvalAnnotationsTest {
                 .isEqualTo(REPOSITORY_ROOT.resolve("eval/corpus/fixture"));
     }
 
-    // Otherwise a typo in the annotation would make the leak check pass on every answer.
+    // Otherwise a typo in the annotation would make the leak check pass on every answer. Paths
+    // count, since they reach the model too; the fixture has files in Latin-1 and UTF-16 on
+    // purpose, hence the lenient decoding.
     @Test
     void forbiddenTextsOfTheFixtureAppearInIt() throws IOException {
         QuestionSet fixture = QuestionSets.load(QUESTIONS.resolve("fixture.yaml"));
         String corpus;
-        try (Stream<Path> files = Files.walk(REPOSITORY_ROOT.resolve("eval/corpus/fixture"))) {
+        Path root = REPOSITORY_ROOT.resolve("eval/corpus/fixture");
+        try (Stream<Path> files = Files.walk(root)) {
             StringBuilder all = new StringBuilder();
             for (Path file : files.filter(Files::isRegularFile).toList()) {
-                all.append(Files.readString(file)).append('\n');
+                all.append(root.relativize(file)).append('\n');
+                all.append(new String(Files.readAllBytes(file), StandardCharsets.UTF_8))
+                        .append('\n');
             }
             corpus = all.toString();
         }

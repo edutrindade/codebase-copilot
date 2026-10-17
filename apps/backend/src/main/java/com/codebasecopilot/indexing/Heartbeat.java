@@ -7,7 +7,7 @@ import java.time.temporal.ChronoUnit;
 import org.jspecify.annotations.Nullable;
 
 // Keeps the lease of a claim alive and reports progress; throws LostClaimException when the job
-// was taken over or removed.
+// was taken over or removed, and IndexCancelled when a cancellation was requested (D-084).
 final class Heartbeat {
 
     private final IndexJobRepository jobs;
@@ -53,6 +53,9 @@ final class Heartbeat {
     private void beat() {
         Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);
         if (!jobs.heartbeat(claim, stage, total, completed, now)) {
+            if (jobs.cancelRequested(claim)) {
+                throw new IndexCancelled();
+            }
             throw new LostClaimException();
         }
         last = now;

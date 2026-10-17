@@ -19,7 +19,9 @@ class ProjectIndexesAdapterTest {
 
     @Test
     void noSnapshotIsNeverOutdated() {
-        assertThat(ProjectIndexesAdapter.outdatedReasons(zip(UUID.randomUUID()), null, 5, null))
+        assertThat(
+                        ProjectIndexesAdapter.outdatedReasons(
+                                zip(UUID.randomUUID()), null, 5, LineChunker.VERSION, null))
                 .isEmpty();
     }
 
@@ -27,7 +29,11 @@ class ProjectIndexesAdapterTest {
     void snapshotMatchingTheProjectIsUpToDate() {
         assertThat(
                         ProjectIndexesAdapter.outdatedReasons(
-                                zip(IMPORT), snapshot(2, IMPORT, LineChunker.VERSION), 2, null))
+                                zip(IMPORT),
+                                snapshot(2, IMPORT, LineChunker.VERSION),
+                                2,
+                                LineChunker.VERSION,
+                                null))
                 .isEmpty();
     }
 
@@ -35,7 +41,11 @@ class ProjectIndexesAdapterTest {
     void reportsEveryReason() {
         assertThat(
                         ProjectIndexesAdapter.outdatedReasons(
-                                zip(UUID.randomUUID()), snapshot(1, IMPORT, "lines-v0"), 2, null))
+                                zip(UUID.randomUUID()),
+                                snapshot(1, IMPORT, "lines-v0"),
+                                2,
+                                LineChunker.VERSION,
+                                null))
                 .containsExactly("SETTINGS_CHANGED", "SOURCE_REIMPORTED", "CHUNKING_CHANGED");
     }
 
@@ -56,13 +66,19 @@ class ProjectIndexesAdapterTest {
 
         assertThat(
                         ProjectIndexesAdapter.outdatedReasons(
-                                local, snapshot(0, null, LineChunker.VERSION), 0, null))
+                                local,
+                                snapshot(0, null, LineChunker.VERSION),
+                                0,
+                                LineChunker.VERSION,
+                                null))
                 .isEmpty();
     }
 
     @Test
     void snapshotWithVectorsOfTheConfiguredModelIsUpToDate() {
-        assertThat(ProjectIndexesAdapter.outdatedReasons(zip(IMPORT), snapshot(MODEL), 0, MODEL))
+        assertThat(
+                        ProjectIndexesAdapter.outdatedReasons(
+                                zip(IMPORT), snapshot(MODEL), 0, LineChunker.VERSION, MODEL))
                 .isEmpty();
     }
 
@@ -76,7 +92,11 @@ class ProjectIndexesAdapterTest {
                 }) {
             assertThat(
                             ProjectIndexesAdapter.outdatedReasons(
-                                    zip(IMPORT), snapshot(MODEL), 0, configured))
+                                    zip(IMPORT),
+                                    snapshot(MODEL),
+                                    0,
+                                    LineChunker.VERSION,
+                                    configured))
                     .containsExactly("EMBEDDING_MODEL_CHANGED");
         }
     }
@@ -85,27 +105,37 @@ class ProjectIndexesAdapterTest {
     void snapshotWithoutVectorsIsMissingThemOnlyWhenAProviderIsConfigured() {
         Snapshot withoutVectors = snapshot(0, IMPORT, LineChunker.VERSION);
 
-        assertThat(ProjectIndexesAdapter.outdatedReasons(zip(IMPORT), withoutVectors, 0, MODEL))
+        assertThat(
+                        ProjectIndexesAdapter.outdatedReasons(
+                                zip(IMPORT), withoutVectors, 0, LineChunker.VERSION, MODEL))
                 .containsExactly("EMBEDDINGS_MISSING");
-        assertThat(ProjectIndexesAdapter.outdatedReasons(zip(IMPORT), withoutVectors, 0, null))
+        assertThat(
+                        ProjectIndexesAdapter.outdatedReasons(
+                                zip(IMPORT), withoutVectors, 0, LineChunker.VERSION, null))
                 .isEmpty();
     }
 
     @Test
     void vectorsAreIgnoredWhenNoProviderIsConfigured() {
-        assertThat(ProjectIndexesAdapter.outdatedReasons(zip(IMPORT), snapshot(MODEL), 0, null))
+        assertThat(
+                        ProjectIndexesAdapter.outdatedReasons(
+                                zip(IMPORT), snapshot(MODEL), 0, LineChunker.VERSION, null))
                 .isEmpty();
     }
 
     @Test
     void snapshotWithoutLexicalIndexIsMissingIt() {
-        assertThat(ProjectIndexesAdapter.outdatedReasons(zip(IMPORT), lexical(null), 0, null))
+        assertThat(
+                        ProjectIndexesAdapter.outdatedReasons(
+                                zip(IMPORT), lexical(null), 0, LineChunker.VERSION, null))
                 .containsExactly("LEXICAL_INDEX_MISSING");
     }
 
     @Test
     void anotherTokenizerVersionIsALexicalChange() {
-        assertThat(ProjectIndexesAdapter.outdatedReasons(zip(IMPORT), lexical("ident-v0"), 0, null))
+        assertThat(
+                        ProjectIndexesAdapter.outdatedReasons(
+                                zip(IMPORT), lexical("ident-v0"), 0, LineChunker.VERSION, null))
                 .containsExactly("LEXICAL_INDEX_CHANGED");
     }
 

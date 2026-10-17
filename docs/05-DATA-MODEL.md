@@ -130,7 +130,7 @@ Estado de cada arquivo incluído pela varredura de um snapshot. Substitui a tabe
 - `project_id`
 - `relative_path`
 - `status` (`INDEXED`, `UNSUPPORTED`, `FAILED`)
-- `reason` nullable: `UNSUPPORTED` → `BINARY`, `INVALID_ENCODING` ou `LINE_TOO_LONG`; `FAILED` → `READ_ERROR` ou `CHANGED_DURING_READ` (D-042)
+- `reason` nullable: `UNSUPPORTED` → `BINARY`, `INVALID_ENCODING`, `LINE_TOO_LONG` ou `SENSITIVE_CONTENT` (V11, D-083); `FAILED` → `READ_ERROR` ou `CHANGED_DURING_READ` (D-042)
 - `content_hash` nullable: FK composta `(project_id, content_hash)` → `file_contents`; obrigatório só em `INDEXED`
 - `language`
 - `size_bytes`

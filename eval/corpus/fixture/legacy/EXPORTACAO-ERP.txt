@@ -1,0 +1,5 @@
+Exportação para o ERP antigo
+
+O arquivo de exportação tem uma linha por fatura, com campos separados por
+ponto e vírgula: código do cliente, número da fatura, valor em centavos e
+data de competência (AAAAMM). O ERP lê o arquivo toda madrugada às 2h.

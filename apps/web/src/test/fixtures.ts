@@ -6,7 +6,7 @@ import type {
   FileContent,
 } from '../features/ask/api';
 import type { ImportJob, Inventory, Providers, Settings } from '../features/import/api';
-import type { IndexJob, Snapshot } from '../features/project/api';
+import type { IndexJob, Snapshot, Usage } from '../features/project/api';
 import type { Project, Workspace } from '../features/workspaces/api';
 
 export function page<T>(items: T[], overrides: { page?: number; totalPages?: number } = {}) {
@@ -37,6 +37,7 @@ export function project(overrides: Partial<Project> = {}): Project {
     source: { type: 'LOCAL_FOLDER', rootKey: 'default', relativePath: 'codebase-copilot' },
     activeSnapshot: null,
     indexing: null,
+    lastJob: null,
     outdatedReasons: [],
     createdAt: '2026-10-16T12:00:00Z',
     ...overrides,
@@ -176,6 +177,7 @@ export function indexJob(projectId: string, overrides: Partial<IndexJob> = {}): 
     progress: null,
     attempts: 0,
     error: null,
+    cancelRequested: false,
     createdAt: '2026-10-16T12:00:00Z',
     startedAt: null,
     completedAt: null,
@@ -300,6 +302,37 @@ export function fileContent(overrides: Partial<FileContent> = {}): FileContent {
     sizeBytes: content.length,
     lineCount: 40,
     content,
+    ...overrides,
+  };
+}
+
+export function usage(overrides: Partial<Usage> = {}): Usage {
+  return {
+    indexing: {
+      total: 3,
+      completed: 2,
+      failed: 1,
+      cancelled: 0,
+      averageDurationMs: 1500,
+      p95DurationMs: 2100,
+    },
+    questions: {
+      total: 4,
+      answered: 2,
+      partial: 1,
+      abstained: 1,
+      failed: 0,
+      pending: 0,
+      p50LatencyMs: 820,
+      p95LatencyMs: 1900,
+    },
+    cost: {
+      inputTokens: 12000,
+      outputTokens: 800,
+      estimatedCost: 0.0125,
+      currency: 'USD',
+      unknownCostAnswers: 1,
+    },
     ...overrides,
   };
 }

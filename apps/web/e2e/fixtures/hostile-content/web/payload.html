@@ -1,0 +1,5 @@
+<!-- xsscheck refund page -->
+<script>window.__xss = 'content-script';</script>
+<img src=x onerror="window.__xss = 'content-img'">
+<a href="javascript:window.__xss = 'content-link'">refund</a>
+<iframe srcdoc="<script>parent.__xss = 'content-iframe'</script>"></iframe>

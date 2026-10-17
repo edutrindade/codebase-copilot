@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 // Generic line-based chunking, provisional values of D-043 (O-010). Any change to the
-// parameters or the algorithm requires a new VERSION.
+// parameters or the algorithm requires a new version.
 public final class LineChunker {
 
     public static final String VERSION = "lines-v1";
@@ -12,6 +12,23 @@ public final class LineChunker {
     public static final int MAX_CHARS = 4000;
     public static final int OVERLAP_LINES = 10;
     static final int BLANK_LINE_WINDOW = 15;
+
+    // The version goes into every chunk hash and snapshot, so other values need another version.
+    // Only V1 is used outside the evaluation, which measures other values (P3 of Etapa 8).
+    public record Parameters(String version, int maxLines, int overlapLines) {
+
+        public Parameters {
+            if (version.isBlank()) {
+                throw new IllegalArgumentException("version must not be blank");
+            }
+            if (maxLines < 1 || overlapLines < 0 || overlapLines >= maxLines) {
+                throw new IllegalArgumentException(
+                        "maxLines must be positive and overlapLines below it");
+            }
+        }
+    }
+
+    public static final Parameters V1 = new Parameters(VERSION, MAX_LINES, OVERLAP_LINES);
 
     private LineChunker() {}
 
@@ -25,6 +42,10 @@ public final class LineChunker {
             int tokenCountEstimate) {}
 
     public static List<Chunk> chunk(List<String> lines) {
+        return chunk(lines, V1);
+    }
+
+    public static List<Chunk> chunk(List<String> lines, Parameters parameters) {
         for (String line : lines) {
             if (line.length() > MAX_CHARS) {
                 throw new IllegalArgumentException("line longer than " + MAX_CHARS);
@@ -34,7 +55,7 @@ public final class LineChunker {
         int last = lastNonBlank(lines);
         int start = nextNonBlank(lines, 0);
         while (start >= 0 && start <= last) {
-            int end = hardEnd(lines, start);
+            int end = hardEnd(lines, start, parameters.maxLines());
             boolean softCut = false;
             if (end < last) {
                 for (int k = end; k > start && k > end - BLANK_LINE_WINDOW; k--) {
@@ -48,24 +69,26 @@ public final class LineChunker {
             while (lines.get(end).isBlank()) {
                 end--;
             }
-            chunks.add(chunk(chunks.size(), lines, start, end));
+            chunks.add(chunk(chunks.size(), lines, start, end, parameters.version()));
             if (end >= last) {
                 break;
             }
             int size = end - start + 1;
             int next =
-                    softCut ? end + 1 : Math.max(end + 1 - OVERLAP_LINES, start + (size + 1) / 2);
+                    softCut
+                            ? end + 1
+                            : Math.max(end + 1 - parameters.overlapLines(), start + (size + 1) / 2);
             start = nextNonBlank(lines, next);
         }
         return chunks;
     }
 
     // Largest end (inclusive) within the line and character limits.
-    private static int hardEnd(List<String> lines, int start) {
+    private static int hardEnd(List<String> lines, int start, int maxLines) {
         int end = start;
         int chars = lines.get(start).length();
         while (end + 1 < lines.size()
-                && end + 1 - start < MAX_LINES
+                && end + 1 - start < maxLines
                 && chars + 1 + lines.get(end + 1).length() <= MAX_CHARS) {
             end++;
             chars += 1 + lines.get(end).length();
@@ -73,14 +96,15 @@ public final class LineChunker {
         return end;
     }
 
-    private static Chunk chunk(int ordinal, List<String> lines, int start, int end) {
+    private static Chunk chunk(
+            int ordinal, List<String> lines, int start, int end, String version) {
         String content = String.join("\n", lines.subList(start, end + 1));
         return new Chunk(
                 ordinal,
                 start + 1,
                 end + 1,
                 content,
-                ContentHash.of(VERSION + "\n" + content),
+                ContentHash.of(version + "\n" + content),
                 (content.length() + 3) / 4);
     }
 

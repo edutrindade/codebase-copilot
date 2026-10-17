@@ -55,6 +55,7 @@ class ProjectApiIT {
                           "source": {"type": "ZIP", "currentImport": null},
                           "activeSnapshot": null,
                           "indexing": null,
+                          "lastJob": null,
                           "outdatedReasons": [],
                           "createdAt": "%s"
                         }

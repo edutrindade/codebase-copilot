@@ -151,6 +151,36 @@ class SafeScannerTest {
                 .containsExactly(root.resolve("src/A.java"));
     }
 
+    // Neither Git nor the ZIP extractor creates hard links, so one only exists if the user made
+    // it; it is read as the regular file it is (documented limitation, D-082).
+    @Test
+    void readsAHardLinkAsARegularFile() throws IOException {
+        Files.createLink(root.resolve("linked.txt"), outside.resolve("secret.txt"));
+
+        ScanResult result = scan(DEFAULTS, LIMITS);
+
+        assertThat(result.totals().includedFiles()).isEqualTo(1);
+        assertThat(sampled).containsExactly(root.resolve("linked.txt"));
+    }
+
+    @Test
+    void reportsNfdNamesInNfcAndKeepsTheRealFile() throws IOException {
+        write("cafe\u0301/notas.md", "# Notas");
+        List<String> reported = new ArrayList<>();
+
+        new SafeScanner()
+                .scan(
+                        root,
+                        DEFAULTS,
+                        LIMITS,
+                        (relativePath, file, sizeBytes, language) -> {
+                            assertThat(file).isRegularFile();
+                            reported.add(relativePath);
+                        });
+
+        assertThat(reported).containsExactly("caf\u00e9/notas.md");
+    }
+
     @Test
     void neverOpensSpecialFiles() throws Exception {
         assumeTrue(mkfifo(root.resolve("pipe")), "mkfifo not available");

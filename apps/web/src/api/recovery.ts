@@ -46,6 +46,7 @@ export const recoveryByCode: Record<ErrorCode, Recovery> = {
   SOURCE_NOT_READABLE: 'checkSource',
   SOURCE_NOT_IMPORTED: 'uploadZip',
   INDEX_JOB_NOT_FOUND: 'goBack',
+  JOB_NOT_ACTIVE: 'reload',
   SNAPSHOT_NOT_FOUND: 'goBack',
   SNAPSHOT_NOT_SEARCHABLE: 'reindex',
   SNAPSHOT_LEXICAL_MISMATCH: 'reindex',

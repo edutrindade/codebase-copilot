@@ -17,9 +17,10 @@ public interface ProjectIndexes {
     record IndexState(
             @Nullable ActiveSnapshot activeSnapshot,
             @Nullable Indexing indexing,
+            @Nullable LastJob lastJob,
             List<String> outdatedReasons) {
 
-        public static final IndexState NONE = new IndexState(null, null, List.of());
+        public static final IndexState NONE = new IndexState(null, null, null, List.of());
     }
 
     record ActiveSnapshot(UUID id, String status, @Nullable Instant completedAt, Counts counts) {}
@@ -37,5 +38,9 @@ public interface ProjectIndexes {
             String status,
             @Nullable String stage,
             @Nullable Integer total,
-            @Nullable Integer completed) {}
+            @Nullable Integer completed,
+            boolean cancelRequested) {}
+
+    // The most recent index job that ended, successfully or not.
+    record LastJob(UUID id, String status, Instant finishedAt, @Nullable String errorCode) {}
 }

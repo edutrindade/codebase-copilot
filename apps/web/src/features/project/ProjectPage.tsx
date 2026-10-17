@@ -11,11 +11,12 @@ import { IndexPanel } from '../import/IndexPanel';
 import { workspaceKeys, type Project } from '../workspaces/api';
 import { projectSource, projectStatus } from '../workspaces/projectStatus';
 import { ActiveSnapshot } from './ActiveSnapshot';
-import { getLatestIndexJob, projectKeys, type IndexJob } from './api';
+import { cancelIndexJob, getLatestIndexJob, projectKeys, type IndexJob } from './api';
 import { IndexingProgress } from './IndexingProgress';
 import { jobRecovery } from './jobRecovery';
 import { SnapshotList } from './SnapshotList';
 import { UnindexedFiles } from './UnindexedFiles';
+import { UsagePanel } from './UsagePanel';
 
 const ACTIVE_JOB_POLL_MS = 1000;
 
@@ -71,6 +72,7 @@ function useRefreshWhenJobChanges(projectId: string, indexingId: string | null) 
 
 function ProjectSummary({ project }: { project: Project }) {
   const text = messages.project;
+  const queryClient = useQueryClient();
   const status = projectStatus(project);
   const { activeSnapshot, indexing } = project;
   const review = `/workspaces/${project.workspaceId}/new?project=${project.id}`;
@@ -84,6 +86,12 @@ function ProjectSummary({ project }: { project: Project }) {
     queryFn: ({ signal }) => getProviders(signal),
   });
   const failedJob = !indexing && latestJob.data?.status === 'FAILED' ? latestJob.data : null;
+  const cancelledJob = !indexing && latestJob.data?.status === 'CANCELLED' ? latestJob.data : null;
+
+  async function cancel(jobId: string) {
+    await cancelIndexJob(jobId);
+    await queryClient.invalidateQueries({ queryKey: importKeys.project(project.id) });
+  }
 
   return (
     <section className="stack">
@@ -121,6 +129,7 @@ function ProjectSummary({ project }: { project: Project }) {
         <IndexingProgress
           indexing={indexing}
           embeddingsEnabled={providers.data?.embeddings.provider !== 'none'}
+          onCancel={() => cancel(indexing.id)}
         />
       )}
       {latestJob.isError && (
@@ -128,6 +137,17 @@ function ProjectSummary({ project }: { project: Project }) {
       )}
       {failedJob && (
         <JobFailure job={failedJob} hasActiveSnapshot={activeSnapshot !== null} review={review} />
+      )}
+      {cancelledJob && (
+        <div className="notice stack">
+          <p>
+            <strong>{text.cancelled.title}</strong>
+          </p>
+          {cancelledJob.completedAt && (
+            <p className="muted">{text.cancelled.at(formatDateTime(cancelledJob.completedAt))}</p>
+          )}
+          {activeSnapshot && <p>{text.cancelled.previousInUse}</p>}
+        </div>
       )}
       {!activeSnapshot && !indexing && !awaitingUpload && (
         <div className="notice stack">
@@ -171,6 +191,7 @@ function ProjectSummary({ project }: { project: Project }) {
           />
         )}
       <SnapshotList projectId={project.id} />
+      <UsagePanel projectId={project.id} />
     </section>
   );
 }

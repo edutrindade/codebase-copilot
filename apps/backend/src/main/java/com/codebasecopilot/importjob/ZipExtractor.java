@@ -8,6 +8,7 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
@@ -78,10 +79,15 @@ class ZipExtractor {
         }
     }
 
-    private List<String> segments(String name) throws ZipRejectedException {
+    // Names are written in NFC, as the scanner reports them: an NFD and an NFC spelling of the
+    // same name are a duplicate on every file system.
+    private List<String> segments(String raw) throws ZipRejectedException {
+        String name = Normalizer.normalize(raw, Normalizer.Form.NFC);
         if (name.length() > limits.maxPathLength()
                 || name.startsWith("/")
-                || name.chars().anyMatch(c -> c == '\\' || Character.isISOControl(c))) {
+                || name.chars()
+                        .anyMatch(
+                                c -> c == '\\' || Character.isISOControl(c) || isBidiControl(c))) {
             throw new ZipRejectedException(ImportErrorCode.ZIP_UNSAFE_PATH);
         }
         List<String> segments = new ArrayList<>();
@@ -100,6 +106,15 @@ class ZipExtractor {
             throw new ZipRejectedException(ImportErrorCode.ZIP_TOO_DEEP);
         }
         return segments;
+    }
+
+    // Bidirectional controls make a name display differently from what it is (CVE-2021-42574).
+    private static boolean isBidiControl(int c) {
+        return c == 0x061C
+                || c == 0x200E
+                || c == 0x200F
+                || (c >= 0x202A && c <= 0x202E)
+                || (c >= 0x2066 && c <= 0x2069);
     }
 
     // CREATE_NEW rejects duplicates, including case variants on case-insensitive file systems.

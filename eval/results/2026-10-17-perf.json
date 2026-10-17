@@ -1,0 +1,740 @@
+{
+  "date" : "2026-10-17",
+  "environment" : {
+    "os" : "Mac OS X 26.6.2",
+    "arch" : "aarch64",
+    "cpus" : 10,
+    "memory" : "16.0 GB",
+    "java" : "OpenJDK 64-Bit Server VM 25.0.4.1",
+    "jvmMemoryArguments" : [ ],
+    "heapMax" : "4.0 GB",
+    "postgres" : "17.11 (Debian 17.11-1.pgdg12+2) (Testcontainers, pgvector)"
+  },
+  "config" : {
+    "embeddings" : "fake, 1536 dimensões (só o custo local)",
+    "generation" : "fake (sem o tempo do provedor)",
+    "maxChunksPerJob" : 200000,
+    "searchRuns" : "50 (mais 5 de aquecimento)",
+    "questionRuns" : 20,
+    "searchLimit" : 10,
+    "synthetic" : "3000 arquivos de 200 a 1480 linhas, vocabulário de 5000, semente 42",
+    "mutation" : "3 rodadas de 10%"
+  },
+  "targets" : [ {
+    "name" : "click",
+    "files" : 161,
+    "chunks" : 872,
+    "sourceBytes" : 1604055,
+    "scanMillis" : 61,
+    "zipImport" : null,
+    "indexRuns" : [ {
+      "label" : "completa",
+      "changedFiles" : 166,
+      "totalMillis" : 784,
+      "stageMillis" : {
+        "SCANNING" : 20,
+        "PROCESSING_FILES" : 134,
+        "LEXICAL" : 365,
+        "EMBEDDING" : 200,
+        "FINALIZING" : 26
+      },
+      "storage" : {
+        "file_contents" : {
+          "rows" : 158,
+          "bytes" : 819200,
+          "indexBytes" : 40960
+        },
+        "snapshot_files" : {
+          "rows" : 161,
+          "bytes" : 237568,
+          "indexBytes" : 172032
+        },
+        "chunks" : {
+          "rows" : 872,
+          "bytes" : 1867776,
+          "indexBytes" : 335872
+        },
+        "chunk_lexical" : {
+          "rows" : 872,
+          "bytes" : 7741440,
+          "indexBytes" : 4243456
+        },
+        "chunk_embeddings" : {
+          "rows" : 872,
+          "bytes" : 7561216,
+          "indexBytes" : 131072
+        }
+      }
+    }, {
+      "label" : "sem mudanças",
+      "changedFiles" : 0,
+      "totalMillis" : 62,
+      "stageMillis" : {
+        "SCANNING" : 12,
+        "PROCESSING_FILES" : 12,
+        "FINALIZING" : 24
+      },
+      "storage" : {
+        "file_contents" : {
+          "rows" : 158,
+          "bytes" : 819200,
+          "indexBytes" : 40960
+        },
+        "snapshot_files" : {
+          "rows" : 322,
+          "bytes" : 360448,
+          "indexBytes" : 262144
+        },
+        "chunks" : {
+          "rows" : 872,
+          "bytes" : 1867776,
+          "indexBytes" : 335872
+        },
+        "chunk_lexical" : {
+          "rows" : 872,
+          "bytes" : 7741440,
+          "indexBytes" : 4243456
+        },
+        "chunk_embeddings" : {
+          "rows" : 872,
+          "bytes" : 7561216,
+          "indexBytes" : 131072
+        }
+      }
+    } ],
+    "searchMillis" : {
+      "LEXICAL" : {
+        "runs" : 50,
+        "mean" : 5.62,
+        "p50" : 6,
+        "p95" : 8,
+        "max" : 8
+      },
+      "VECTOR" : {
+        "runs" : 50,
+        "mean" : 36.36,
+        "p50" : 39,
+        "p95" : 43,
+        "max" : 43
+      },
+      "HYBRID" : {
+        "runs" : 50,
+        "mean" : 36.76,
+        "p50" : 36,
+        "p95" : 40,
+        "max" : 45
+      }
+    },
+    "questionMillis" : {
+      "runs" : 20,
+      "mean" : 45.6,
+      "p50" : 43,
+      "p95" : 52,
+      "max" : 91
+    },
+    "memory" : {
+      "heapMaxBytes" : 4294967296,
+      "heapPeakBytes" : 159220488,
+      "rssPeakBytes" : 459636736
+    }
+  }, {
+    "name" : "codebase-copilot",
+    "files" : 274,
+    "chunks" : 732,
+    "sourceBytes" : 1358684,
+    "scanMillis" : 50,
+    "zipImport" : null,
+    "indexRuns" : [ {
+      "label" : "completa",
+      "changedFiles" : 274,
+      "totalMillis" : 496,
+      "stageMillis" : {
+        "SCANNING" : 13,
+        "PROCESSING_FILES" : 148,
+        "LEXICAL" : 174,
+        "EMBEDDING" : 124,
+        "FINALIZING" : 25
+      },
+      "storage" : {
+        "file_contents" : {
+          "rows" : 274,
+          "bytes" : 770048,
+          "indexBytes" : 57344
+        },
+        "snapshot_files" : {
+          "rows" : 274,
+          "bytes" : 614400,
+          "indexBytes" : 516096
+        },
+        "chunks" : {
+          "rows" : 732,
+          "bytes" : 1409024,
+          "indexBytes" : 262144
+        },
+        "chunk_lexical" : {
+          "rows" : 732,
+          "bytes" : 5267456,
+          "indexBytes" : 2940928
+        },
+        "chunk_embeddings" : {
+          "rows" : 732,
+          "bytes" : 6365184,
+          "indexBytes" : 114688
+        }
+      }
+    }, {
+      "label" : "sem mudanças",
+      "changedFiles" : 0,
+      "totalMillis" : 79,
+      "stageMillis" : {
+        "SCANNING" : 11,
+        "PROCESSING_FILES" : 31,
+        "FINALIZING" : 24
+      },
+      "storage" : {
+        "file_contents" : {
+          "rows" : 274,
+          "bytes" : 770048,
+          "indexBytes" : 57344
+        },
+        "snapshot_files" : {
+          "rows" : 548,
+          "bytes" : 1097728,
+          "indexBytes" : 933888
+        },
+        "chunks" : {
+          "rows" : 732,
+          "bytes" : 1409024,
+          "indexBytes" : 262144
+        },
+        "chunk_lexical" : {
+          "rows" : 732,
+          "bytes" : 5267456,
+          "indexBytes" : 2940928
+        },
+        "chunk_embeddings" : {
+          "rows" : 732,
+          "bytes" : 6365184,
+          "indexBytes" : 114688
+        }
+      }
+    } ],
+    "searchMillis" : {
+      "LEXICAL" : {
+        "runs" : 50,
+        "mean" : 5.42,
+        "p50" : 5,
+        "p95" : 7,
+        "max" : 8
+      },
+      "VECTOR" : {
+        "runs" : 50,
+        "mean" : 35.4,
+        "p50" : 34,
+        "p95" : 39,
+        "max" : 98
+      },
+      "HYBRID" : {
+        "runs" : 50,
+        "mean" : 37.68,
+        "p50" : 36,
+        "p95" : 57,
+        "max" : 72
+      }
+    },
+    "questionMillis" : {
+      "runs" : 20,
+      "mean" : 40.55,
+      "p50" : 40,
+      "p95" : 45,
+      "max" : 50
+    },
+    "memory" : {
+      "heapMaxBytes" : 4294967296,
+      "heapPeakBytes" : 165138688,
+      "rssPeakBytes" : 456212480
+    }
+  }, {
+    "name" : "fixture",
+    "files" : 18,
+    "chunks" : 17,
+    "sourceBytes" : 12508,
+    "scanMillis" : 6,
+    "zipImport" : null,
+    "indexRuns" : [ {
+      "label" : "completa",
+      "changedFiles" : 22,
+      "totalMillis" : 37,
+      "stageMillis" : {
+        "PROCESSING_FILES" : 6,
+        "LEXICAL" : 5,
+        "EMBEDDING" : 5,
+        "FINALIZING" : 6
+      },
+      "storage" : {
+        "file_contents" : {
+          "rows" : 17,
+          "bytes" : 65536,
+          "indexBytes" : 16384
+        },
+        "snapshot_files" : {
+          "rows" : 19,
+          "bytes" : 81920,
+          "indexBytes" : 65536
+        },
+        "chunks" : {
+          "rows" : 17,
+          "bytes" : 98304,
+          "indexBytes" : 49152
+        },
+        "chunk_lexical" : {
+          "rows" : 17,
+          "bytes" : 131072,
+          "indexBytes" : 65536
+        },
+        "chunk_embeddings" : {
+          "rows" : 17,
+          "bytes" : 204800,
+          "indexBytes" : 16384
+        }
+      }
+    }, {
+      "label" : "sem mudanças",
+      "changedFiles" : 0,
+      "totalMillis" : 30,
+      "stageMillis" : {
+        "PROCESSING_FILES" : 6,
+        "LEXICAL" : 6,
+        "FINALIZING" : 6
+      },
+      "storage" : {
+        "file_contents" : {
+          "rows" : 17,
+          "bytes" : 65536,
+          "indexBytes" : 16384
+        },
+        "snapshot_files" : {
+          "rows" : 38,
+          "bytes" : 90112,
+          "indexBytes" : 73728
+        },
+        "chunks" : {
+          "rows" : 17,
+          "bytes" : 98304,
+          "indexBytes" : 49152
+        },
+        "chunk_lexical" : {
+          "rows" : 17,
+          "bytes" : 131072,
+          "indexBytes" : 65536
+        },
+        "chunk_embeddings" : {
+          "rows" : 17,
+          "bytes" : 204800,
+          "indexBytes" : 16384
+        }
+      }
+    } ],
+    "searchMillis" : {
+      "LEXICAL" : {
+        "runs" : 50,
+        "mean" : 1.44,
+        "p50" : 1,
+        "p95" : 3,
+        "max" : 3
+      },
+      "VECTOR" : {
+        "runs" : 50,
+        "mean" : 1.62,
+        "p50" : 2,
+        "p95" : 2,
+        "max" : 3
+      },
+      "HYBRID" : {
+        "runs" : 50,
+        "mean" : 2.7,
+        "p50" : 2,
+        "p95" : 5,
+        "max" : 7
+      }
+    },
+    "questionMillis" : {
+      "runs" : 20,
+      "mean" : 7.1,
+      "p50" : 7,
+      "p95" : 9,
+      "max" : 9
+    },
+    "memory" : {
+      "heapMaxBytes" : 4294967296,
+      "heapPeakBytes" : 167460688,
+      "rssPeakBytes" : 380289024
+    }
+  }, {
+    "name" : "hono",
+    "files" : 565,
+    "chunks" : 2050,
+    "sourceBytes" : 5028233,
+    "scanMillis" : 110,
+    "zipImport" : null,
+    "indexRuns" : [ {
+      "label" : "completa",
+      "changedFiles" : 585,
+      "totalMillis" : 1358,
+      "stageMillis" : {
+        "SCANNING" : 111,
+        "PROCESSING_FILES" : 318,
+        "LEXICAL" : 478,
+        "EMBEDDING" : 262,
+        "FINALIZING" : 88
+      },
+      "storage" : {
+        "file_contents" : {
+          "rows" : 541,
+          "bytes" : 1245184,
+          "indexBytes" : 90112
+        },
+        "snapshot_files" : {
+          "rows" : 565,
+          "bytes" : 679936,
+          "indexBytes" : 532480
+        },
+        "chunks" : {
+          "rows" : 2050,
+          "bytes" : 3661824,
+          "indexBytes" : 745472
+        },
+        "chunk_lexical" : {
+          "rows" : 2050,
+          "bytes" : 10682368,
+          "indexBytes" : 6340608
+        },
+        "chunk_embeddings" : {
+          "rows" : 2017,
+          "bytes" : 17383424,
+          "indexBytes" : 286720
+        }
+      }
+    }, {
+      "label" : "sem mudanças",
+      "changedFiles" : 0,
+      "totalMillis" : 156,
+      "stageMillis" : {
+        "SCANNING" : 19,
+        "PROCESSING_FILES" : 44,
+        "FINALIZING" : 80
+      },
+      "storage" : {
+        "file_contents" : {
+          "rows" : 541,
+          "bytes" : 1245184,
+          "indexBytes" : 90112
+        },
+        "snapshot_files" : {
+          "rows" : 1130,
+          "bytes" : 1204224,
+          "indexBytes" : 950272
+        },
+        "chunks" : {
+          "rows" : 2050,
+          "bytes" : 3661824,
+          "indexBytes" : 745472
+        },
+        "chunk_lexical" : {
+          "rows" : 2050,
+          "bytes" : 10682368,
+          "indexBytes" : 6340608
+        },
+        "chunk_embeddings" : {
+          "rows" : 2017,
+          "bytes" : 17383424,
+          "indexBytes" : 286720
+        }
+      }
+    } ],
+    "searchMillis" : {
+      "LEXICAL" : {
+        "runs" : 50,
+        "mean" : 10.42,
+        "p50" : 9,
+        "p95" : 18,
+        "max" : 21
+      },
+      "VECTOR" : {
+        "runs" : 50,
+        "mean" : 81.64,
+        "p50" : 81,
+        "p95" : 86,
+        "max" : 90
+      },
+      "HYBRID" : {
+        "runs" : 50,
+        "mean" : 83.98,
+        "p50" : 83,
+        "p95" : 90,
+        "max" : 95
+      }
+    },
+    "questionMillis" : {
+      "runs" : 20,
+      "mean" : 88.85,
+      "p50" : 88,
+      "p95" : 93,
+      "max" : 94
+    },
+    "memory" : {
+      "heapMaxBytes" : 4294967296,
+      "heapPeakBytes" : 173413088,
+      "rssPeakBytes" : 399147008
+    }
+  }, {
+    "name" : "synthetic",
+    "files" : 3000,
+    "chunks" : 46547,
+    "sourceBytes" : 117443576,
+    "scanMillis" : 215,
+    "zipImport" : {
+      "zipBytes" : 35892366,
+      "millis" : 741
+    },
+    "indexRuns" : [ {
+      "label" : "completa",
+      "changedFiles" : 3000,
+      "totalMillis" : 89135,
+      "stageMillis" : {
+        "SCANNING" : 126,
+        "PROCESSING_FILES" : 4876,
+        "LEXICAL" : 28342,
+        "EMBEDDING" : 18842,
+        "FINALIZING" : 36930
+      },
+      "storage" : {
+        "file_contents" : {
+          "rows" : 3000,
+          "bytes" : 49356800,
+          "indexBytes" : 499712
+        },
+        "snapshot_files" : {
+          "rows" : 3000,
+          "bytes" : 3883008,
+          "indexBytes" : 3276800
+        },
+        "chunks" : {
+          "rows" : 46530,
+          "bytes" : 90824704,
+          "indexBytes" : 15826944
+        },
+        "chunk_lexical" : {
+          "rows" : 46530,
+          "bytes" : 465166336,
+          "indexBytes" : 150323200
+        },
+        "chunk_embeddings" : {
+          "rows" : 46530,
+          "bytes" : 399155200,
+          "indexBytes" : 6258688
+        }
+      }
+    }, {
+      "label" : "sem mudanças",
+      "changedFiles" : 0,
+      "totalMillis" : 3062,
+      "stageMillis" : {
+        "SCANNING" : 1083,
+        "PROCESSING_FILES" : 1749,
+        "LEXICAL" : 147,
+        "FINALIZING" : 56
+      },
+      "storage" : {
+        "file_contents" : {
+          "rows" : 3000,
+          "bytes" : 49356800,
+          "indexBytes" : 499712
+        },
+        "snapshot_files" : {
+          "rows" : 6000,
+          "bytes" : 4841472,
+          "indexBytes" : 3678208
+        },
+        "chunks" : {
+          "rows" : 46530,
+          "bytes" : 90824704,
+          "indexBytes" : 15826944
+        },
+        "chunk_lexical" : {
+          "rows" : 46530,
+          "bytes" : 465166336,
+          "indexBytes" : 150323200
+        },
+        "chunk_embeddings" : {
+          "rows" : 46530,
+          "bytes" : 399155200,
+          "indexBytes" : 6258688
+        }
+      }
+    }, {
+      "label" : "10% alterados, rodada 1",
+      "changedFiles" : 300,
+      "totalMillis" : 7318,
+      "stageMillis" : {
+        "SCANNING" : 111,
+        "PROCESSING_FILES" : 2265,
+        "LEXICAL" : 3625,
+        "EMBEDDING" : 518,
+        "FINALIZING" : 780
+      },
+      "storage" : {
+        "file_contents" : {
+          "rows" : 3300,
+          "bytes" : 54321152,
+          "indexBytes" : 540672
+        },
+        "snapshot_files" : {
+          "rows" : 9000,
+          "bytes" : 7806976,
+          "indexBytes" : 6086656
+        },
+        "chunks" : {
+          "rows" : 51160,
+          "bytes" : 99770368,
+          "indexBytes" : 17293312
+        },
+        "chunk_lexical" : {
+          "rows" : 51160,
+          "bytes" : 513458176,
+          "indexBytes" : 167149568
+        },
+        "chunk_embeddings" : {
+          "rows" : 51160,
+          "bytes" : 440025088,
+          "indexBytes" : 8044544
+        }
+      }
+    }, {
+      "label" : "10% alterados, rodada 2",
+      "changedFiles" : 300,
+      "totalMillis" : 7031,
+      "stageMillis" : {
+        "SCANNING" : 98,
+        "PROCESSING_FILES" : 2225,
+        "LEXICAL" : 3372,
+        "EMBEDDING" : 519,
+        "FINALIZING" : 793
+      },
+      "storage" : {
+        "file_contents" : {
+          "rows" : 3600,
+          "bytes" : 59293696,
+          "indexBytes" : 573440
+        },
+        "snapshot_files" : {
+          "rows" : 12000,
+          "bytes" : 9371648,
+          "indexBytes" : 7094272
+        },
+        "chunks" : {
+          "rows" : 55901,
+          "bytes" : 109002752,
+          "indexBytes" : 18890752
+        },
+        "chunk_lexical" : {
+          "rows" : 55901,
+          "bytes" : 559620096,
+          "indexBytes" : 181125120
+        },
+        "chunk_embeddings" : {
+          "rows" : 55901,
+          "bytes" : 483975168,
+          "indexBytes" : 11968512
+        }
+      }
+    }, {
+      "label" : "10% alterados, rodada 3",
+      "changedFiles" : 300,
+      "totalMillis" : 7404,
+      "stageMillis" : {
+        "SCANNING" : 198,
+        "PROCESSING_FILES" : 2294,
+        "LEXICAL" : 3520,
+        "EMBEDDING" : 571,
+        "FINALIZING" : 807
+      },
+      "storage" : {
+        "file_contents" : {
+          "rows" : 3900,
+          "bytes" : 64249856,
+          "indexBytes" : 573440
+        },
+        "snapshot_files" : {
+          "rows" : 12000,
+          "bytes" : 10403840,
+          "indexBytes" : 7569408
+        },
+        "chunks" : {
+          "rows" : 60663,
+          "bytes" : 118308864,
+          "indexBytes" : 20545536
+        },
+        "chunk_lexical" : {
+          "rows" : 60663,
+          "bytes" : 603848704,
+          "indexBytes" : 193257472
+        },
+        "chunk_embeddings" : {
+          "rows" : 60663,
+          "bytes" : 524673024,
+          "indexBytes" : 12476416
+        }
+      }
+    } ],
+    "searchMillis" : {
+      "LEXICAL" : {
+        "runs" : 50,
+        "mean" : 254.22,
+        "p50" : 269,
+        "p95" : 486,
+        "max" : 632
+      },
+      "VECTOR" : {
+        "runs" : 50,
+        "mean" : 321.28,
+        "p50" : 315,
+        "p95" : 364,
+        "max" : 394
+      },
+      "HYBRID" : {
+        "runs" : 50,
+        "mean" : 418.74,
+        "p50" : 396,
+        "p95" : 676,
+        "max" : 744
+      },
+      "LEXICAL, termo comum" : {
+        "runs" : 50,
+        "mean" : 468.84,
+        "p50" : 440,
+        "p95" : 609,
+        "max" : 1046
+      },
+      "HYBRID, termo comum" : {
+        "runs" : 50,
+        "mean" : 562.3,
+        "p50" : 472,
+        "p95" : 1059,
+        "max" : 1478
+      }
+    },
+    "questionMillis" : {
+      "runs" : 20,
+      "mean" : 446.4,
+      "p50" : 406,
+      "p95" : 620,
+      "max" : 674
+    },
+    "memory" : {
+      "heapMaxBytes" : 4294967296,
+      "heapPeakBytes" : 384551864,
+      "rssPeakBytes" : 597950464
+    }
+  } ]
+}

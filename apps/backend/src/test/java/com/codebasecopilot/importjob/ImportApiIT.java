@@ -102,6 +102,18 @@ class ImportApiIT {
     }
 
     @Test
+    void deletingTheProjectRemovesItsExtractedFiles() {
+        String id = completedImport(zip("src/Main.java", "class Main {}"));
+        Path dir = dataDirectory.importDir(UUID.fromString(id));
+        assertThat(dir.resolve("source/src/Main.java")).exists();
+
+        assertThat(mvc.delete().uri("/api/v1/projects/" + projectId))
+                .hasStatus(HttpStatus.NO_CONTENT);
+
+        assertThat(dir).doesNotExist();
+    }
+
+    @Test
     void newImportReplacesCurrentAndRemovesPreviousFiles() {
         String first = completedImport(zip("a.txt", "1"));
         String second = completedImport(zip("b.txt", "2"));

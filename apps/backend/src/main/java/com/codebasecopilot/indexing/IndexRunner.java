@@ -4,13 +4,16 @@ import com.codebasecopilot.importjob.scan.ProjectSources;
 import com.codebasecopilot.importjob.scan.ScanResult;
 import com.codebasecopilot.indexing.content.ContentHash;
 import com.codebasecopilot.indexing.content.LineChunker;
+import com.codebasecopilot.indexing.content.SecretDetector;
 import com.codebasecopilot.indexing.content.TextClassifier;
+import com.codebasecopilot.indexing.content.UnsupportedReason;
 import com.codebasecopilot.shared.error.ApiException;
 import java.time.Clock;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,6 +53,7 @@ class IndexRunner {
     private final ProjectSources sources;
     private final JsonMapper json;
     private final IndexingProperties properties;
+    private final LineChunker.Parameters chunking;
     private final Clock clock;
 
     IndexRunner(
@@ -64,6 +68,7 @@ class IndexRunner {
             ProjectSources sources,
             JsonMapper json,
             IndexingProperties properties,
+            LineChunker.Parameters chunking,
             Clock clock) {
         this.jobs = jobs;
         this.snapshots = snapshots;
@@ -76,6 +81,7 @@ class IndexRunner {
         this.sources = sources;
         this.json = json;
         this.properties = properties;
+        this.chunking = chunking;
         this.clock = clock;
     }
 
@@ -99,6 +105,10 @@ class IndexRunner {
         } catch (IndexFailure e) {
             if (outcomes.fail(claim, e.code())) {
                 log.info("Index job {} failed: {}", claim.jobId(), e.code());
+            }
+        } catch (IndexCancelled e) {
+            if (outcomes.cancel(claim)) {
+                log.info("Index job {} cancelled", claim.jobId());
             }
         } catch (LostClaimException e) {
             log.info("Index job {} attempt {} lost its claim", claim.jobId(), claim.attempt());
@@ -143,15 +153,22 @@ class IndexRunner {
         }
     }
 
+    // Possible secrets are checked on every read, before the already-chunked shortcut, so a
+    // content indexed before the detection existed is excluded by the next job (D-083).
     private void store(Claim claim, List<Read> batch, Heartbeat heartbeat, int completed) {
         Map<ProjectSources.SourceFile, String> hashes = new HashMap<>();
+        Set<ProjectSources.SourceFile> sensitive = new HashSet<>();
         for (Read read : batch) {
             if (read.result() instanceof SourceFileReader.Bytes bytes) {
-                hashes.put(read.file(), ContentHash.of(bytes.bytes()));
+                if (SecretDetector.containsPossibleSecret(bytes.bytes())) {
+                    sensitive.add(read.file());
+                } else {
+                    hashes.put(read.file(), ContentHash.of(bytes.bytes()));
+                }
             }
         }
         Set<String> chunked =
-                store.chunkedHashes(claim.projectId(), hashes.values(), LineChunker.VERSION);
+                store.chunkedHashes(claim.projectId(), hashes.values(), chunking.version());
         Map<String, TextClassifier.Classification> classified = new HashMap<>();
         Map<String, IndexStore.NewContent> contents = new LinkedHashMap<>();
         List<IndexStore.FileRow> rows = new ArrayList<>();
@@ -159,6 +176,15 @@ class IndexRunner {
             ProjectSources.SourceFile file = read.file();
             if (read.result() instanceof SourceFileReader.Failed failed) {
                 rows.add(row(file, FileStatus.FAILED, failed.reason().name(), null));
+                continue;
+            }
+            if (sensitive.contains(file)) {
+                rows.add(
+                        row(
+                                file,
+                                FileStatus.UNSUPPORTED,
+                                UnsupportedReason.SENSITIVE_CONTENT.name(),
+                                null));
                 continue;
             }
             byte[] bytes = ((SourceFileReader.Bytes) read.result()).bytes();
@@ -177,7 +203,7 @@ class IndexRunner {
                                             text.content(),
                                             bytes.length,
                                             text.lines().size(),
-                                            LineChunker.chunk(text.lines())));
+                                            LineChunker.chunk(text.lines(), chunking)));
                     rows.add(row(file, FileStatus.INDEXED, null, hash));
                 }
                 case TextClassifier.Unsupported unsupported ->

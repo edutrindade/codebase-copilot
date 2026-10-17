@@ -1,6 +1,7 @@
 package com.codebasecopilot.answering;
 
 import com.codebasecopilot.answering.AnswerResponses.AnswerResponse;
+import com.codebasecopilot.history.AnswerHistory;
 import com.codebasecopilot.history.ConversationAnswers;
 import com.codebasecopilot.history.StoredConversation;
 import com.codebasecopilot.shared.error.ErrorCode;
@@ -15,9 +16,12 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -27,10 +31,12 @@ class ConversationController {
 
     private final AnswerReads reads;
     private final AnswerResponses responses;
+    private final AnswerHistory history;
 
-    ConversationController(AnswerReads reads, AnswerResponses responses) {
+    ConversationController(AnswerReads reads, AnswerResponses responses, AnswerHistory history) {
         this.reads = reads;
         this.responses = responses;
+        this.history = history;
     }
 
     @GetMapping("/projects/{projectId}/conversations")
@@ -57,6 +63,19 @@ class ConversationController {
         return new ConversationResponse(
                 summary(found.conversation()),
                 found.answers().stream().map(responses::answer).toList());
+    }
+
+    @DeleteMapping("/conversations/{conversationId}")
+    @ApiErrors(ErrorCode.CONVERSATION_NOT_FOUND)
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(
+            operationId = "deleteConversation",
+            summary = "Remove uma conversa",
+            description =
+                    "Remove as perguntas, as respostas e as evidências copiadas. Uma resposta"
+                            + " ainda PENDING é descartada quando o provedor responder.")
+    void delete(@PathVariable UUID conversationId) {
+        history.deleteConversation(conversationId);
     }
 
     private static ConversationSummaryResponse summary(StoredConversation conversation) {

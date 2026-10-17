@@ -189,10 +189,11 @@ class ErrorHandlingTest {
                                         "O valor informado é inválido.")));
     }
 
+    // Under /api: other unknown paths get the UI's index.html when it is packaged (D-085).
     @Test
     void unknownRouteIsResourceNotFound() {
         assertProblem(
-                mvc.get().uri("/test/errors/missing").exchange(),
+                mvc.get().uri("/api/v1/test/errors/missing").exchange(),
                 HttpStatus.NOT_FOUND,
                 "RESOURCE_NOT_FOUND");
     }

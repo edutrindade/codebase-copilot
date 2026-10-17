@@ -9,6 +9,8 @@ interface ConfirmDialogProps {
   title: string;
   description: ReactNode;
   confirmLabel: string;
+  dismissLabel?: string;
+  workingLabel?: string;
   onConfirm: () => Promise<unknown>;
 }
 
@@ -18,6 +20,8 @@ export function ConfirmDialog({
   title,
   description,
   confirmLabel,
+  dismissLabel = messages.confirm.cancel,
+  workingLabel = messages.confirm.working,
   onConfirm,
 }: ConfirmDialogProps) {
   const [open, setOpen] = useState(false);
@@ -67,7 +71,7 @@ export function ConfirmDialog({
           <div className="dialog__actions">
             <AlertDialog.Cancel asChild>
               <button type="button" className="button" disabled={pending}>
-                {messages.confirm.cancel}
+                {dismissLabel}
               </button>
             </AlertDialog.Cancel>
             <AlertDialog.Action asChild>
@@ -77,7 +81,7 @@ export function ConfirmDialog({
                 disabled={pending}
                 onClick={confirm}
               >
-                {pending ? messages.confirm.working : confirmLabel}
+                {pending ? workingLabel : confirmLabel}
               </button>
             </AlertDialog.Action>
           </div>

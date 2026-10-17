@@ -3,5 +3,6 @@ package com.codebasecopilot.indexing.content;
 public enum UnsupportedReason {
     BINARY,
     INVALID_ENCODING,
-    LINE_TOO_LONG
+    LINE_TOO_LONG,
+    SENSITIVE_CONTENT
 }

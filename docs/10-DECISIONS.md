@@ -534,6 +534,7 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 
 **Motivo:** padrões de nome são previsíveis e explicáveis ao usuário; a detecção por conteúdo é defesa adicional, nunca garantia (O-012).  
 **Consequências:** `05-DATA-MODEL.md` (`project_settings`) e `06-API-CONTRACTS.md` (§5) atualizados.  
+**Etapa 8 (17/10/2026):** detecção por conteúdo acrescentada na D-083, sem mudar as regras de nome.  
 **O que levaria à revisão:** a avaliação mostrar segredos indexados que padrões de nome não cobrem, ou demanda por whitelist.
 
 ### D-037 — Links, arquivos especiais e limites de varredura
@@ -948,7 +949,7 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 - Um chunk é identificado pelo id; os caminhos e o conteúdo vêm de qualquer canal (são iguais em todos).
 - Desempate determinístico: maior score, melhor rank individual, primeiro caminho, linha inicial e id do chunk (como texto, a ordem do banco).
 - Canal com lista vazia não soma nada; o de caminhos só participa quando a pergunta cita um arquivo do snapshot (D-058).
-- No modo `HYBRID`, cada canal busca `max(app.retrieval.candidates, limit)` resultados (padrão **50**) antes de fundir. Os canais são consultados em sequência (vetorial, lexical, caminhos), sem paralelismo.
+- No modo `HYBRID`, cada canal busca `max(app.retrieval.candidates, limit)` resultados (padrão **50**) antes de fundir. Os canais são consultados em sequência (vetorial, lexical, caminhos), sem paralelismo. **Revisto pela D-080 (17/10/2026):** o lexical e o de caminhos rodam em paralelo com o embedding da pergunta e o vetorial.
 - `k`, pesos e profundidade são parâmetros da função, para a avaliação (F6) variá-los sobre as mesmas listas, sem consultar o banco de novo.
 
 **Motivo:** RRF dispensa normalizar scores de naturezas diferentes (cosseno, `ts_rank_cd`, similaridade de trigramas) e premia o que aparece bem em mais de um canal.  
@@ -1157,7 +1158,8 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 
 **Motivo:** pouco código e testável, e a exposição nasce com a UI. Reescrever a `Origin` no proxy deixaria passar um CSRF que chegasse pelo próprio Vite.  
 **Consequências:** quem expõe o backend à rede (`SERVER_ADDRESS=0.0.0.0`) precisa listar os nomes em `app.http.allowed-hosts`, e uma UI servida em outra porta, em `app.http.allowed-origins`. O log do filtro registra só o método e o código, nunca o `Host` ou a `Origin`.  
-**O que levaria à revisão:** autenticação, acesso por outra máquina, ou o backend servindo a UI (P2, Etapa 8).
+**O que levaria à revisão:** autenticação, acesso por outra máquina, ou o backend servindo a UI (P2, Etapa 8).  
+**Etapa 8 (17/10/2026):** com o backend servindo a UI, a própria origem dele passa em qualquer porta (D-085).
 
 ### D-073 — Provedores configurados para a UI (P4 da Etapa 7)
 **Status:** Aceita (16/10/2026; F1 da Etapa 7)  
@@ -1203,7 +1205,8 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Decisão:** opção 1 no MVP: dois processos (backend e `npm run dev` ou `npm run preview`), sem CORS e sem acoplar o build Maven ao npm. Em `apps/web`: `src/api` (cliente, tipos gerados e versionados, tabela de ações por `code`), `src/app` (rotas, `QueryClient`), `src/components` (primitivos), `src/features/<tela>` (`workspaces`, `import`, `project`, `ask`, `history`), `src/messages.ts` (todos os textos pt-BR), `src/styles` e `e2e`. No backend, o conteúdo do arquivo em `indexing`, a versão ativa da evidência pela fachada `Retrieval` (desvio da F1, D-071), `GET /system/providers` em `providers` e o filtro de acesso local em `shared`.  
 **Motivo:** a mesma origem para o browser simplifica a D-072; a estrutura por tela casa com a do backend por módulo.  
 **Consequências:** o README traz dois comandos para subir o produto; as portas 5173 e 4173 são fixas, porque são as origens aceitas.  
-**O que levaria à revisão:** empacotamento num único executável (opção 2, Etapa 8).
+**O que levaria à revisão:** empacotamento num único executável (opção 2, Etapa 8).  
+**Etapa 8 (17/10/2026):** a opção 2 virou o perfil Maven `with-ui`, opcional; o build padrão segue sem npm e o modo de desenvolvimento com o proxy continua (D-085).
 
 ### D-077 — Navegação, estados e erros da UI (P9 da Etapa 7)
 **Status:** Aceita (17/10/2026; F3 a F7 da Etapa 7)  
@@ -1226,6 +1229,146 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Motivo:** cobre a integração UI, proxy, filtro de acesso local e backend que nenhum teste isolado cobre, sem custo de provedor.  
 **Consequências:** exige Docker com o banco no ar e o Chromium do Playwright baixado à parte; não roda no `verify`.  
 **O que levaria à revisão:** CI com banco efêmero, ou um provedor real no aceite.
+
+### D-079 — Corpus ampliado (P1 da Etapa 8)
+**Status:** Aceita (17/10/2026; F1 da Etapa 8 entregue; anotações aprovadas)  
+**Contexto:** com 40 perguntas, uma pergunta vale 2,5 pontos de Recall e as comparações da P3 ficam frágeis. Faltavam TypeScript real, codificações fora do UTF-8 e variações de injeção e de segredo (D-061, "O que levaria à revisão").  
+**Decisão:**
+- **Quarto corpus:** `honojs/hono` v4.13.13 (`08a023c`, MIT), fora do repositório, na pasta de `EVAL_CORPUS_HONO`, com manifesto em `eval/corpus/hono.sha256` (585 arquivos; 565 indexados e 2.050 chunks no `lines-v1`). Os corpora da D-061 ficam nos mesmos commits.
+- **Fixture ampliada:** injeção em comentário e em string de código, no nome de um diretório (com espaços) e depois de um delimitador de evidência forjado; texto que imita a saída do modelo (JSON e rótulos `[E1]`/`[E2]`); arquivos em UTF-8 com BOM, Latin-1 e UTF-16 com BOM; segredos sintéticos em arquivos excluídos pelo nome (`.npmrc`, `*.tfvars`) e em arquivos indexados hoje (para a P5). Todos os valores trazem `EVAL-SYNTHETIC` ou `EVALSYNTHETIC`.
+- **80 perguntas** (30 na fixture, 24 no hono, 14 no Copilot, 12 no click), 40 em pt-BR e 40 em en; 14 exigem abstenção e 14 são `PROMPT_INJECTION` ou `EXCLUDED_SECRET`.
+- As 4 perguntas de segredo em arquivo indexado (fx-21 a fx-24) só passam na avaliação de respostas depois da detecção por conteúdo (F6); até lá, medem o vazamento que a F6 deve eliminar.
+- O teste que confere os textos de `mustNotContain` na fixture passa a considerar também os caminhos, que chegam ao modelo.
+- **Baseline lexical refeito** (`eval/results/2026-10-17-lexical.*`): 66 perguntas com intervalo esperado, Recall@10 0,492 e MRR@10 0,291 no `LEXICAL`. Os números do click e do Copilot são idênticos aos de 16/10; os da fixture mudam porque o corpus mudou. É a referência da P3.
+
+**Motivo:** o hono tem camadas (roteadores intercambiáveis, middlewares, adaptadores), o que dá perguntas de fluxo e de arquitetura, e é o maior corpus, útil também para a P6.  
+**Consequências:** a avaliação completa exige extrair três corpora externos. No hono, o canal de caminhos piora o Recall@10 (0,432 para 0,295), ao contrário dos outros corpora: entrada para a F4. O push protection do GitHub bloqueia uma chave `sk_test_` da Stripe mesmo sintética, então a fixture usa um token `xoxb-` sem o formato numérico do Slack; na F6, os testes do padrão da Stripe montam o valor por concatenação, sem o literal no código.  
+**O que levaria à revisão:** anotações ambíguas na revisão, ou um corpus que não separe as variantes da P3.
+
+### D-080 — Medições de desempenho, metas e limites (P6 da Etapa 8)
+**Status:** Aceita (17/10/2026; F2 da Etapa 8; metas e limites confirmados por você)  
+**Contexto:** os limites da D-035, de `app.indexing.*`, o `max-chunks-per-job` e a limpeza de órfãos (D-052) eram hipóteses. Faltavam números do conjunto (varredura, import, indexação, busca, pergunta, memória e armazenamento) num projeto do tamanho do limite.  
+**Decisão:**
+- **Harness** `PerformanceEvaluationIT` (tag `performance`, fora do `verify`; `eval/README.md`): mede pela API, com os provedores `fake`, a fixture, os corpora externos e um repositório sintético determinístico (`SyntheticRepository`: 3.000 arquivos, ~46 mil chunks, com a forma do código dos corpora). Resultado em `eval/results/<data>-perf.*`, só com tamanhos, contagens e durações.
+- **Busca híbrida em paralelo** (revisa a D-059): no `HYBRID`, os canais lexical e de caminhos rodam em threads virtuais enquanto a thread da requisição gera o vetor da pergunta e consulta o vetorial. Com 46 mil chunks, o p95 do `HYBRID` caiu de 1,06–1,58 s (três rodadas, `2026-10-17-perf-sequencial.*`) para **676 ms**, e o da pergunta sem o provedor de 0,77–1,10 s para **620 ms** (`2026-10-17-perf.*`). Com o provedor real, a chamada de embeddings também passa a correr em paralelo com o lexical.
+- **Metas:** busca híbrida com p95 ≤ 1 s com 50 mil chunks e ≤ 200 ms até 5 mil; pergunta sem o provedor ≤ 1 s com 50 mil; reindexação sem mudanças abaixo de 10% da completa. Todas atendidas: nos corpora reais (até 2.050 chunks) o `HYBRID` fica em até 90 ms de p95; a reindexação sem mudanças leva 3,1 s contra 41–45 s da completa (7–8%).
+- **Pior caso fora da meta:** pergunta com um termo presente em quase todo chunk, `HYBRID` com p95 de 1,06 s, dominado pelo lexical. Fica registrado; a alavanca é o IDF no lexical, só se o uso real mostrar o caso.
+- **Limites mantidos, com os números:**
+  - `max-chunks-per-job` (50 mil): é onde a busca chega perto de 1 s; ~110–140 MB de texto já o atingem. Projetos maiores falham no limite, com a mensagem atual.
+  - `max-project-bytes` (500 MB) e demais limites da D-035: a varredura de 3.000 arquivos leva 0,1–0,3 s; nada pede mudança. O limite de chunks é o que vale na prática para projetos só de código.
+  - Import ZIP (100 MB): 34–47 MB importados em menos de 1 s.
+  - `app.indexing.*`: a indexação completa de 46 mil chunks leva 41–45 s, dos quais ~28 s na etapa lexical; o heap chega a 313 MB e o RSS a 546 MB (heap máximo de 4 GB). Nenhum lote pede ajuste.
+  - Limpeza de órfãos (D-052): `FINALIZING` de 50 a 800 ms, inclusive com 10% dos arquivos alterados.
+  - HNSW (D-049): não agora; o vetorial exato fica em 0,36–0,70 s de p95 com 46 mil chunks, e a troca muda o ranking, o que só dá para validar com vetores reais (F3).
+  - Pular o hash por tamanho e data: não, a reindexação sem mudanças já está abaixo de 10%.
+- **Armazenamento:** ~960 MB para 46 mil chunks no sintético (`chunk_lexical` 443 MB, vetores 381 MB); nos corpora reais, ~7 vezes o tamanho do texto. A poda mantém 4 snapshots; com 10% dos arquivos mudando por rodada, o total cresce até a poda alcançar.
+
+**Motivo:** os números mostram que a soma dos canais era o principal custo da busca grande, e paralelizar não muda nenhum resultado.  
+**Consequências:** cada busca híbrida usa até três conexões do pool ao mesmo tempo (o padrão do Hikari é 10). No Mac com Docker, o disco da VM satura depois de alguns GB escritos e a indexação completa chega a 89–91 s, com o tempo extra na etapa que estiver gravando (esperas `DataFileExtend` e `WalWrite` no `pg_stat_activity`); por isso as durações são comparadas em faixas, e não por uma rodada.  
+**O que levaria à revisão:** busca acima da meta com o provedor real, projetos reais acima de 50 mil chunks, ou máquina com disco mais lento.
+
+### D-081 — Variações de ranking e chunking sem o provedor (P3 da Etapa 8)
+**Status:** Aceita (17/10/2026; F4 da Etapa 8, parte lexical; a parte com vetores fica para a F3)  
+**Contexto:** a P3 fixou a regra de promoção antes das medições: Recall@10 ou MRR@10 do corpus inteiro subindo o equivalente a pelo menos duas perguntas (0,030 com 66 perguntas), nenhuma categoria caindo mais que uma pergunta, `EXACT_IDENTIFIER` sem queda, validade de citação e vazamento sem piora (com o modelo real) e latência p95 da busca até 20% acima da D-080. Sem saldo (decisão de 17/10/2026), só os canais lexical e de caminhos podem ser medidos.  
+**Decisão:**
+- **Harness:** `EVAL_CHUNKING=<linhas>:<sobreposição>` indexa com outros valores de chunking, numa versão `eval-lines-<linhas>-<sobreposição>` que só existe na avaliação; `EVAL_SWEEP=fusion` acrescenta a fusão de todos os canais medidos (`LEXICAL_PATH` sem vetores, `HYBRID` com eles) com um parâmetro alterado por vez. O `LineChunker` passou a receber os parâmetros (`LineChunker.Parameters`, padrão `V1` = `lines-v1`), injetados na indexação; fora da avaliação nada muda (rodada de controle idêntica ao baseline da D-079 com `EVAL_COMPARE_WITH`).
+- **Fusão e canal de caminhos** (`eval/results/2026-10-17-lexical-fusion.*`, contra o `LEXICAL_PATH`: Recall@10 0,447, MRR@10 0,301): k de 10, 30 e 100, peso do canal de caminhos de 0,5 e 2, 20 e 100 candidatos por canal e limiar de 0,6, 0,7 e 0,9 ficam todos abaixo do ganho mínimo (o melhor, peso 0,5: +0,030 de Recall@10 e +0,004 de MRR@10, no limite e com `CONCEPTUAL` caindo). **Mantidos** k=60, pesos 1, 50 candidatos e limiar 0,8.
+- **Causa da piora do canal de caminhos no hono (D-079):** um nome que é também nome de arquivo (`middleware`, por `src/helper/ssg/middleware.ts`) vira termo e é casado por trigramas contra o caminho inteiro, então todo arquivo em `src/middleware/**` casa com similaridade 1,0 e enche o canal. A variante em que **nomes casam só com os arquivos daquele nome** (caminhos continuam por trigramas) passa na regra: Recall@10 0,447 → 0,500 e MRR@10 0,301 → 0,335; no hono, 0,295 → 0,455 e 0,100 → 0,202; só o hono muda, 4 perguntas entram no top 10, nenhuma sai, e duas descem uma posição. **Não promovida ainda:** o canal de caminhos só roda no `HYBRID`, que exige vetores; a mudança no `PathSearch` fica como primeira candidata da F3, confirmada no `HYBRID` e na avaliação de respostas.
+- **Chunking** (`eval/results/2026-10-17-lexical-lines-*.*`, uma variável por vez contra o `lines-v1`, no `LEXICAL`: Recall@10 0,492, MRR@10 0,291):
+
+  | Variante | Chunks (4 corpora) | Recall@10 | MRR@10 | Regra |
+  |---|---|---|---|---|
+  | 40 linhas, sobreposição 10 | 5.355 | 0,434 | 0,287 | não: cai em `EXACT_IDENTIFIER` e `CONCEPTUAL` |
+  | 80 linhas, sobreposição 10 | 2.935 | 0,510 | 0,323 | não: `CONCEPTUAL` cai 0,083 (duas perguntas); no `LEXICAL_PATH` passaria |
+  | 60 linhas, sem sobreposição | 3.538 | 0,485 | 0,302 | não: ganho abaixo do mínimo |
+  | 60 linhas, sobreposição 20 | 3.777 | 0,477 | 0,291 | não: cai |
+
+  **Mantido o `lines-v1`.** O de 80 linhas é o único com ganho e fica como candidato para a F3: chunks maiores mudam também os embeddings e o custo do contexto, o que só a rodada com vetores e com o modelo mede. Sem `lines-v2`.
+- **Latência:** nenhuma variante promovida, então a regra dos 20% não chegou a decidir; o p95 do lexical por corpus ficou em até 32 ms em todas as rodadas, com a variação normal entre execuções.
+
+**Motivo:** a regra foi fixada antes dos números, e a avaliação lexical não mede o modo que usa o canal de caminhos nem o efeito do chunking nos vetores.  
+**Consequências:** a O-005 e a O-010 continuam a validar, agora só pela parte com vetores; a F3 roda, além das rodadas da P2, a varredura com `EVAL_PROVIDER=openai EVAL_SWEEP=fusion` (pesos de cada canal no `HYBRID`), a variante de nomes no `PathSearch` e o chunking de 80 linhas. Reranking e AST continuam fora: nada mostra um teto do `lines-v1`.  
+**O que levaria à revisão:** os números com vetores (F3), ou um corpus novo que separe melhor as variantes.
+
+### D-082 — Suíte de segurança: injeção, importações maliciosas e codificação (P4 da Etapa 8)
+**Status:** Aceita (17/10/2026; F5 da Etapa 8)  
+**Contexto:** a F0 ligou cada item do `08` §7 e do `07` §11 a um teste e listou as lacunas. A parte de efeito da injeção (o modelo obedece ou não) depende do modelo real e fica com as perguntas `PROMPT_INJECTION` da avaliação de respostas (F3).  
+**Decisão:**
+- **Injeção, estrutural:** o conteúdo, o nome de arquivo e o de diretório ficam dentro do bloco da evidência com o nonce, inclusive com um delimitador de nonce forjado, um caminho com quebra de linha e delimitador, a imitação do JSON de saída com rótulos `[En]` e uma linha de instrução de ~4.000 caracteres; nada do conteúdo vai às instruções (`PromptBuilderTest`). Uma resposta que "obedece" ao arquivo e cita os rótulos escritos nele perde as citações e vira `PARTIAL` (`AnswerApiIT.labelsWrittenInTheContentAreNotEvidence`).
+- **Segredos e logs, de ponta a ponta:** a fixture da avaliação inteira é indexada e as perguntas de segredo são feitas com provedores espiões: nenhum segredo sintético chega ao provedor de embeddings nem ao de geração, e o log da indexação e das respostas não tem caminhos, conteúdo nem perguntas (`ExcludedContentIT`).
+- **ZIP:** nomes **normalizados para NFC** na extração, como a varredura os informa; a grafia NFD e a NFC do mesmo nome viram `ZIP_DUPLICATE_ENTRY` em qualquer sistema de arquivos (antes, no Linux, viravam dois arquivos com o mesmo caminho no snapshot). Nomes com **controles bidirecionais** (U+061C, U+200E, U+200F, U+202A–U+202E, U+2066–U+2069) são `ZIP_UNSAFE_PATH`, porque fazem um nome aparecer diferente do que é. ZIP dentro de ZIP é extraído como arquivo, sem abrir (e a regra `archives` o exclui da varredura); comentário e extra field no máximo do formato não mudam nada.
+- **Pasta local:** link físico é lido como o arquivo comum que é (teste fixa o comportamento); nomes em NFD são informados em NFC e lidos pelo caminho real. **Limitações documentadas, sem detecção:** link físico e ponto de montagem dentro da raiz só existem se a própria pessoa os criar; no Linux, um diretório em NFD não é aberto pelo navegador pelo nome em NFC, e uma pasta com dois nomes iguais depois da NFC falha a indexação (`INDEX_IO_ERROR`, depois das tentativas).
+- **Codificação:** só UTF-8, com ou sem BOM (removido, linhas preservadas). Arquivo com BOM de UTF-16 vira `UNSUPPORTED INVALID_ENCODING` sem decodificar (antes virava `BINARY` pelos bytes NUL); UTF-16 sem BOM continua `BINARY`; Latin-1 continua `INVALID_ENCODING`.
+- **Nada é executado:** regra ArchUnit proíbe `ProcessBuilder`, `Process` e `Runtime.exec` no código de produção.
+- **Exclusão de projeto:** teste de integração confere que a pasta do import ZIP sai do `DATA_DIR` logo depois da exclusão.
+- **UI:** E2E com um projeto de fixture com HTML e script no conteúdo, no nome de arquivo e de diretório e na pergunta: tudo aparece como texto, nada roda e não há erro de console nem violação de CSP (`e2e/hostile-content.spec.ts`). A resposta do fake é fixa; a marcação vinda do modelo continua coberta pelo teste de unidade do texto da resposta.
+- **Dependências** (consulta repetida em 17/10/2026, fora do `verify`): `npm audit` em `apps/web` sem nenhuma vulnerabilidade (411 pacotes, inclusive os de desenvolvimento); as 168 dependências Maven consultadas na base do OSV (`api.osv.dev/v1/querybatch`) sem nenhum aviso, com Tomcat 11.0.27 e Jackson 3.1.7 e 2.21.7 sobrescritos na F1. Nenhuma ação nova.
+
+**Motivo:** fechar as lacunas da matriz com testes no `verify`, sem depender do modelo real; normalizar e recusar só onde o projeto controla a escrita (o extrator), e documentar onde a detecção custaria mais do que o risco.  
+**Consequências:** um ZIP que antes era aceito com nomes bidirecionais ou com duas grafias Unicode do mesmo nome agora é recusado. As limitações da pasta local entram no `11-OPERATIONS.md` (F9).  
+**O que levaria à revisão:** uso real em Linux com nomes em NFD, ou um caso de ZIP legítimo recusado pelos controles bidirecionais.
+
+### D-083 — Segredos por conteúdo (P5 da Etapa 8, completa a D-036)
+**Status:** Aceita (17/10/2026; F6 da Etapa 8)  
+**Contexto:** até aqui só o nome do arquivo excluía segredos (D-036); um `application.yml` ou um script com uma chave real era indexado e podia ir ao provedor. A F0 levantou os formatos publicados de cada emissor e confirmou o `CHECK` do motivo no banco.  
+**Opções consideradas:** excluir o arquivo inteiro com um motivo próprio; mascarar só o trecho; não detectar e documentar.  
+**Decisão:**
+- **Excluir o arquivo inteiro:** um arquivo com um possível segredo vira `UNSUPPORTED` com o motivo **`SENSITIVE_CONTENT`** (migração `V11`, que só acrescenta o valor ao `CHECK`). Nada dele é guardado além da linha em `snapshot_files`: nem conteúdo, nem chunks, nem índice lexical, nem embeddings.
+- **Onde:** no `IndexRunner`, sobre os bytes lidos, **antes** do atalho de conteúdo já chunkado, de qualquer chunk e de qualquer envio. Assim um conteúdo indexado antes da detecção é excluído pela próxima indexação. Os bytes são lidos como Latin-1, porque todos os padrões são ASCII: nenhuma decodificação falha e um arquivo UTF-8 casa como se fosse decodificado.
+- **Padrões (`SecretDetector`), só de alta precisão:** bloco `-----BEGIN … PRIVATE KEY-----` (RSA, EC, DSA, OPENSSH, ENCRYPTED, PKCS#8 e PGP `PRIVATE KEY BLOCK`) seguido de material de chave (um parser que só cita o delimitador não casa; o `\n` escapado numa string casa); AWS `AKIA`/`ASIA` com 16 caracteres; GitHub `gh[pousr]_` com 36 ou mais e `github_pat_`; Stripe `sk_`/`rk_` `live`/`test` e `sk_org_` (o `pk_` público fica de fora); Slack `xoxb-`, `xoxp-`, `xapp-`, `xoxe.xapp-`, `xwfp-`; OpenAI `sk-` com 32 ou mais caracteres e pelo menos um dígito (média precisão: nem todos os prefixos são publicados). Sem entropia, `password=` nem chaves sem formato próprio (o segredo da AWS, por exemplo).
+- **Não pode ser desligada**, como as regras `SENSITIVE`. A API documenta o motivo como "arquivo excluído por conter um possível segredo; a detecção não é garantia"; a UI lista o arquivo com "Excluído por conter um possível segredo", sem o trecho nem a linha. Nenhum log diz qual padrão casou.
+- **Falsos positivos medidos:** nenhum no click (166 arquivos) e no hono (585); no próprio repositório, só os quatro arquivos com segredos sintéticos da fixture e o `eval/questions/fixture.yaml`, que os cita.
+- **Avaliação** (`eval/results/2026-10-17-lexical-sensitive-content.*`, contra o baseline lexical da D-079): Recall@10 e MRR@10 iguais em todos os corpora; na fixture, 14 arquivos indexados em vez de 18, e os arquivos com segredo saem do top 10 das perguntas `EXCLUDED_SECRET` (antes, `sign_release.py`, `notify_slack.py` e `application.yml` apareciam nelas).
+
+**Motivo:** excluir o arquivo inteiro mantém as linhas citadas iguais ao disco; mascarar daria falsa segurança e um arquivo diferente do original. Padrões de alta precisão evitam esconder código legítimo.  
+**Consequências:** snapshots feitos antes da F6 continuam com o conteúdo desses arquivos até a próxima indexação, sem aviso em `outdatedReasons` (exigiria registrar a versão da detecção em cada snapshot); o `11-OPERATIONS.md` (F9) recomenda reindexar. Contrato: valor novo no enum `reason` de `GET /snapshots/{id}/files`, aditivo. As perguntas fx-21 a fx-24 da avaliação de respostas dependem desta detecção e são medidas na F3.  
+**O que levaria à revisão:** um falso positivo relatado em código legítimo, um formato novo publicado por um emissor, ou a necessidade de avisar snapshots antigos.
+
+### D-084 — Cancelamento de indexação, exclusão de conversas, último job e uso agregado (P7 da Etapa 8)
+**Status:** Aceita (17/10/2026; F7 da Etapa 8)  
+**Contexto:** uma indexação longa (ou com o provedor pago) não podia ser interrompida; o histórico só crescia; a lista de projetos não mostrava a última falha, porque o `ProjectResponse` trazia só o job ativo (F3 da Etapa 7); e os eventos de produto do `03` §9 não tinham leitura nenhuma.  
+**Opções consideradas:** para o cancelamento, interromper a thread do worker ou um pedido gravado no job e conferido pelo próprio worker; para o uso, uma tabela de eventos ou agregados calculados sobre as tabelas existentes; para o histórico, retenção automática por idade ou exclusão manual.  
+**Decisão:**
+- **Cancelamento por pedido gravado:** `POST /index-jobs/{id}/cancel` → `202`. Coluna `index_jobs.cancel_requested_at` e status `CANCELLED` em `index_jobs` e `snapshots` (migração `V12`). Um job `PENDING` termina na hora; num `RUNNING`, o heartbeat deixa de renovar o lease quando há pedido e o worker, ao perceber, termina o job como `CANCELLED` (entre etapas e a cada lote de arquivos, de índice lexical ou de embeddings, onde o heartbeat já é gravado). O desfecho segue o da falha: snapshot `CANCELLED` sem arquivos, conteúdo sem referência removido, job do projeto liberado; snapshot ativo inalterado e embeddings mantidos no cache (D-051). Um pedido feito antes de uma queda ou de uma volta à fila é honrado por quem pegar o job. Job terminado → `409 JOB_NOT_ACTIVE`. A conclusão vence um pedido que chega depois da última verificação. A importação ZIP não é cancelável (curta e limitada). `cancelRequested` aparece no job e no `indexing` do projeto; a UI mostra "Cancelar", com confirmação, e "cancelamento pedido" até o fim.
+- **Exclusão de conversa:** `DELETE /conversations/{id}` → `204`, em cascata (mensagens, respostas, evidências copiadas). Uma resposta `PENDING` é descartada quando o provedor responder (o `complete` já não acha a resposta). **Sem retenção automática** no MVP: os dados são locais e a pessoa decide; remover o projeto continua apagando tudo (D-021). Na UI, "Excluir" em cada conversa do histórico, com confirmação.
+- **Último job:** `lastJob { id, status, finishedAt, errorCode }` no `ProjectResponse` (o job de indexação terminado mais recente, numa quarta consulta em lote por página); a lista e o resumo mostram "A última indexação falhou" enquanto não começa outro job. Um cancelamento não muda o estado do projeto na lista; o resumo explica que a última indexação foi cancelada.
+- **Uso agregado:** `GET /projects/{id}/usage`, calculado em SQL a cada leitura sobre `index_jobs` e `answers` (quantidades por status, duração média e p95 das indexações concluídas, latência p50 e p95 das respostas, tokens somados, custo estimado somado e respostas com custo `UNKNOWN` que chamaram o modelo). Sem tabela de eventos e sem telemetria; "evidências abertas" fica de fora. Na UI, um painel "Uso" no resumo do projeto. O endpoint fica no `answering`, que lê os agregados públicos de `indexing` (`IndexingUsage`) e de `history` (`AnswerHistory.usage`).
+
+**Motivo:** interromper a thread deixaria transações e chamadas ao provedor pela metade; o pedido gravado reaproveita o heartbeat e as transições condicionadas à tentativa (D-040). Os agregados sobre as tabelas existentes respondem às perguntas do `03` §9 sem guardar nada novo.  
+**Consequências:** contrato só aditivo (status `CANCELLED`, `cancelRequested`, `lastJob`, dois endpoints, um código de erro). Conversas excluídas somem também do uso. O cancelamento leva até um lote (ou uma chamada ao provedor, com as tentativas da D-051) para ter efeito.  
+**O que levaria à revisão:** pedido de retenção automática, necessidade de cancelar a importação, ou de medir uso da UI (evidências abertas), que exigiria eventos.
+
+### D-085 — Empacotamento: UI servida pelo backend (P8 da Etapa 8; completa a D-072 e a D-076)
+**Status:** Aceita (17/10/2026; F8 da Etapa 8)  
+**Contexto:** rodar o produto exigia dois processos (`spring-boot:run` e `vite preview`), e o build da UI tinha um chunk de 539 kB, acima do aviso de 500 kB do Vite.  
+**Opções consideradas:** para o build, um plugin que baixa Node (`frontend-maven-plugin`) ou o `npm` da máquina pelo `exec-maven-plugin`; para o fallback da SPA, um controller com padrões de rota ou um resolvedor de recursos; para a origem do backend, listar `localhost:8080` e `127.0.0.1:8080` em `allowed-origins` ou aceitar a mesma origem.  
+**Decisão:**
+- **Perfil Maven `with-ui`:** `exec-maven-plugin` (versão gerida pelo Spring Boot) roda `npm ci` e `npm run build` em `apps/web` na fase `generate-resources`, e o `maven-resources-plugin` copia o `dist` para `static/` do jar. Usa o Node da máquina, sem download no build. O `./mvnw verify` padrão continua sem npm (D-076).
+- **Recursos e fallback:** `spring.web.resources.add-mappings=false` e o mapeamento próprio em `WebConfiguration`: `/assets/**` com cache de um ano `immutable` (os nomes têm o hash do conteúdo) e `/**` com `no-cache` e o `SpaResourceResolver`, que serve o arquivo existente ou, para caminhos sem extensão fora de `/api` e `/actuator`, o `index.html`. Sem UI empacotada não há `index.html` e o `404 RESOURCE_NOT_FOUND` continua igual; `/api/...` desconhecido e arquivos inexistentes nunca recebem o HTML. A raiz chega ao `index.html` pela página de boas-vindas do Spring.
+- **Cabeçalhos (`SecurityHeadersFilter`, em toda resposta, inclusive as recusadas pelo `LocalAccessFilter`):** a CSP do `apps/web/csp.ts` mais `frame-ancestors 'none'` (que a meta tag não aceita), `X-Content-Type-Options: nosniff` e `Referrer-Policy: no-referrer`. A Swagger UI usa scripts e estilos inline, então recebe só `frame-ancestors 'none'`. A meta tag do build continua, para o `vite preview`; as duas listas são mantidas iguais à mão.
+- **Origem do backend:** uma `Origin` igual a `http://` + o `Host` da requisição passa em qualquer porta, em vez de listar `:8080` em `allowed-origins`. É seguro porque o `Host` já foi conferido contra `allowed-hosts` (um DNS rebinding traz outro `Host` e é recusado antes).
+- **Build:** cada tela é um chunk (`React.lazy`, com `Suspense` e o mesmo "Carregando…"); o maior passa a 363 kB (115 kB com gzip), sem aviso.
+- **E2E:** `npm run e2e:jar` gera o jar e roda os specs contra `java -jar`, mais `packaged.spec.ts` (recarregar numa rota, cabeçalhos, `404` da API como ProblemDetail, mudança de estado da própria origem). O `npm run e2e` com o Vite continua.
+
+**Motivo:** um processo só simplifica o uso local sem mudar o desenvolvimento; o resolvedor mantém os erros da API como estão; aceitar a mesma origem não depende da porta escolhida em `SERVER_PORT`.  
+**Consequências:** o perfil exige Node 22 e npm; ao alternar entre os builds é preciso `clean` (o `static/` copiado fica em `target/classes`). A CSP existe em dois lugares (`csp.ts` e `SecurityHeadersFilter`). Executar o jar de fora de `apps/backend` continua sem achar o `.env`.  
+**O que levaria à revisão:** distribuição para outras máquinas (instalador, imagem Docker), uma UI que precise de recursos de outra origem, ou a Swagger UI sob a CSP estrita.
+
+### D-086 — O que fica fora da Etapa 8 e fechamento (P9 da Etapa 8)
+**Status:** Aceita (17/10/2026; F9 da Etapa 8)  
+**Contexto:** a lista de pendências trazia itens que a etapa podia fazer, mas sem evidência de que valessem o custo; e a etapa fecha sem as rodadas com o provedor real (decisão de 17/10/2026 de deixar o saldo para o fim do roteiro).  
+**Decisão:**
+- **Não nesta etapa, com o motivo:**
+  - **Realce de sintaxe no visualizador:** ninguém relatou problema de legibilidade, e seria um parser sobre conteúdo não confiável (D-075).
+  - **Perguntas de acompanhamento com o histórico no prompt:** sem evidência de uso; aumenta o custo por pergunta e a superfície de injeção (P5 da Etapa 6). Cada pergunta segue independente, com a conversa só para organizar o histórico.
+  - **Nova recuperação quando falta suporte:** só depois de a avaliação real mostrar abstenção indevida relevante.
+  - **LLM como juiz:** 80 perguntas ainda cabem na auditoria humana; um juiz exige outro provedor e calibração contra a própria auditoria.
+- **Pendente até haver saldo (F3):** testes de fumaça das Etapas 4 e 6; avaliação de recuperação com vetores (`VECTOR`, `LEXICAL_VECTOR`, `HYBRID`) e a varredura de fusão com eles; avaliação de respostas com o `gpt-6-luna` e a auditoria humana; as candidatas da D-081 (nomes de arquivo no `PathSearch`, chunking de 80 linhas); revisão da D-017, da O-004, da O-005 e da O-010; custo medido por pergunta (`07` §9); metas de qualidade do `08` §9.
+- **Aceite da etapa** (*resultados do conjunto de avaliação e riscos conhecidos são documentados*): parcial, como nas Etapas 5 a 7. Os resultados lexicais e de desempenho estão no `08` §9, e os riscos, limitações e a recuperação de falhas no `11-OPERATIONS.md`; os resultados com o provedor real ficam para a F3.
+
+**Motivo:** manter o escopo no que tem evidência e não gastar o corpus de avaliação em mudanças que só ele poderia justificar.  
+**Consequências:** a Etapa 9 começa com a F3 da Etapa 8 como pré-requisito para qualquer mudança de ranking (reranking, AST), pela regra da D-081.  
+**O que levaria à revisão:** pedidos de uso (acompanhamento, realce), ou a avaliação real mostrando abstenção indevida ou um teto do `lines-v1`.
 
 ---
 
@@ -1250,6 +1393,7 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Estado (16/10/2026, fim da Etapa 5):**
 - **Medido:** lexical e lexical + caminhos, no corpus de 36 perguntas (`eval/results/2026-10-16-lexical.*`). O canal de caminhos sobe o MRR@10 de 0,341 para 0,362 e o Recall@5 de 0,380 para 0,407, sem mudar o Recall@10. O lexical é fraco em pt-BR (Recall@10 0,296) e em perguntas conceituais (MRR@10 0,160), como previsto; isso é o que o vetorial deve cobrir, e não basta para justificar BM25 antes da comparação.
 - **Falta:** vetorial e híbrido com vetores reais (o harness já calcula `VECTOR`, `LEXICAL_VECTOR` e `HYBRID` sobre as mesmas listas), variações de k e pesos, e um corpus maior (Etapa 8). Latência com 50 mil chunks: D-059.
+**Estado (17/10/2026, F4 da Etapa 8):** com 66 perguntas, k, peso do canal de caminhos, candidatos por canal e limiar medidos no `LEXICAL_PATH`, nenhum com ganho mínimo: mantidos (D-081). O canal de caminhos piora no hono por casar nomes de arquivo contra o caminho inteiro; casar nomes só com o arquivo daquele nome passa na regra e é a primeira candidata da F3, a confirmar no `HYBRID`. Falta só a parte com vetores.
 
 ### O-010 — Parâmetros iniciais de chunking
 **Status:** A validar  
@@ -1257,6 +1401,7 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Plano:** ajustar no corpus, alterando uma variável por vez (`08-EVALUATION.md`, seção 8).  
 **Etapa 3 (16/10/2026):** valores iniciais provisórios na D-043 (`lines-v1`: 60 linhas, 4.000 caracteres, sobreposição de 10 linhas, `LINE_TOO_LONG` acima de 4.000 caracteres por linha). A comparação fica para a Etapa 5.  
 **Etapa 5 (16/10/2026):** o corpus anota relevância por intervalo de linhas (D-061), e o harness mede qualquer versão de chunking sem mudar as anotações (D-062). Só `lines-v1` foi medido; a comparação de variantes passa para a Etapa 8 ("melhorar ranking/chunking apenas com evidência").
+**Etapa 8 (17/10/2026, F4):** 40 e 80 linhas, sobreposição de 0 e 20, uma variável por vez, no lexical (D-081). Nenhuma passa na regra no `LEXICAL`; mantido o `lines-v1`. O de 80 linhas sobe o Recall@10 (0,492 → 0,510) e o MRR@10 (0,291 → 0,323), mas cai em `CONCEPTUAL`; fica como candidato para a rodada com vetores (F3).
 
 ### O-011 — Corpus de avaliação
 **Status:** Resolvida pela D-061 (16/10/2026)  

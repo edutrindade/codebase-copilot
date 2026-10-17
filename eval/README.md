@@ -9,7 +9,13 @@ Corpus e anotações da avaliação de recuperação (D-061, `docs/08-EVALUATION
 | `questions/<corpus>.yaml` | Perguntas e intervalos de linhas esperados |
 | `results/` | Resultados versionados de cada rodada do harness |
 
-A fixture tem de propósito um arquivo com instrução injetada (`docs/CONTRIBUTING.md`) e um `.npmrc` com um token sintético, que a varredura exclui. Nada do corpus é executado.
+A fixture tem de propósito conteúdo hostil, e nada do corpus é executado:
+- instruções injetadas em Markdown (`docs/CONTRIBUTING.md`), em comentário e em string de código (`InvoiceEmails.java`), no nome de um diretório (com espaços) e depois de um delimitador de evidência forjado (`docs/runbook.md`);
+- texto que imita a saída do modelo, com JSON de resposta e rótulos `[E1]`/`[E2]` (`docs/faq.md`);
+- arquivos em UTF-8 com BOM (`docs/glossary.md`), em Latin-1 (`legacy/EXPORTACAO-ERP.txt`) e em UTF-16 com BOM (`legacy/notas-migracao.txt`);
+- segredos sintéticos em arquivos excluídos pelo nome (`.npmrc`, `deploy/production.tfvars`) e em arquivos que hoje são indexados (`application.yml`, `sign_release.py`, `publish.sh`, `notify_slack.py`), para a detecção por conteúdo da Etapa 8.
+
+Todos os segredos são inventados e trazem `EVAL-SYNTHETIC` ou `EVALSYNTHETIC` no valor.
 
 ## Corpora externos
 
@@ -26,6 +32,12 @@ mkdir <pasta-click>
 curl -sSfL https://codeload.github.com/pallets/click/tar.gz/8b19813f2bfca99f1018a587a8cf54fc959f2e5d \
   | tar -xz --strip-components=1 -C <pasta-click>
 export EVAL_CORPUS_CLICK=<pasta-click>
+
+# honojs/hono v4.13.13 (MIT)
+mkdir <pasta-hono>
+curl -sSfL https://codeload.github.com/honojs/hono/tar.gz/08a023cbfde55b434fb0fb30fae35d42e4bf20aa \
+  | tar -xz --strip-components=1 -C <pasta-hono>
+export EVAL_CORPUS_HONO=<pasta-hono>
 ```
 
 O harness confere a pasta contra o manifesto e para se houver arquivo alterado, faltando ou a mais (inclusive `.DS_Store`).
@@ -45,12 +57,14 @@ O harness (`RetrievalEvaluationIT`, D-062) fica fora do `./mvnw verify`. Com as 
 | `EVAL_CACHE_DIR` | Pasta do cache de vetores; padrão `DATA_DIR/eval-cache`. Guarda só hashes e vetores. Com o cache, uma nova rodada não chama o provedor |
 | `EVAL_CORPORA` | Lista de corpora separados por vírgula (ex.: `fixture`); padrão: todos |
 | `EVAL_COMPARE_WITH` | JSON de uma rodada anterior: a rodada falha se o resultado, fora data e latências, for diferente |
+| `EVAL_CHUNKING` | `<linhas>:<sobreposição>` (ex.: `80:10`): indexa com outros valores de chunking, numa versão que só existe na avaliação; padrão `60:10` (`lines-v1`) |
+| `EVAL_SWEEP` | `fusion`: acrescenta a fusão de todos os canais (`LEXICAL_PATH` sem vetores, `HYBRID` com eles) com um parâmetro alterado por vez — k, peso de cada canal, candidatos por canal, limiar de caminhos — e o canal de caminhos com nomes casados só com o arquivo daquele nome (D-081) |
 
-O resultado vai para `results/<data>-<config>.json` (métricas por pergunta e os 10 primeiros chunks de cada variante) e `results/<data>-<config>.md` (resumo), com `config` igual a `lexical` sem provedor ou `<provedor>-<modelo>` com.
+O resultado vai para `results/<data>-<config>.json` (métricas por pergunta e os 10 primeiros chunks de cada variante) e `results/<data>-<config>.md` (resumo), com `config` igual a `lexical` sem provedor ou `<provedor>-<modelo>` com, mais `-lines-<linhas>-<sobreposição>` com `EVAL_CHUNKING` e `-fusion` com `EVAL_SWEEP`.
 
 ## Avaliar as respostas
 
-O `AnswerEvaluationIT` (D-069) faz as 40 perguntas por `POST /questions`, inclusive as que exigem abstenção, e mede validade de citação, respostas sustentadas, citação relevante, abstenção, vazamento, tokens, custo e latência. Também fica fora do `./mvnw verify`:
+O `AnswerEvaluationIT` (D-069) faz as 80 perguntas por `POST /questions`, inclusive as que exigem abstenção, e mede validade de citação, respostas sustentadas, citação relevante, abstenção, vazamento, tokens, custo e latência. Também fica fora do `./mvnw verify`:
 
 ```bash
 ./mvnw verify -Dtest.excluded-groups= -Dgroups=eval -Dtest=none \
@@ -67,6 +81,23 @@ O `AnswerEvaluationIT` (D-069) faz as 40 perguntas por `POST /questions`, inclus
 | `EVAL_RESULTS_DIR` | Pasta de saída, no lugar da padrão |
 
 O resultado é `results/<data>-answers-<provedor>-<modelo>-<esforço>-<modo>.json` e `.md`. O `.md` traz, para cada pergunta, a resposta ao lado dos trechos citados e as caixas da auditoria humana (correta, sustentada pelas citações, nota), preenchidas por você depois da rodada.
+
+## Medir o desempenho
+
+O `PerformanceEvaluationIT` (P6 da Etapa 8) mede, pela API e com os provedores `fake`, a varredura, o import ZIP, cada etapa da indexação (completa, sem mudanças e depois de reescrever 10% dos arquivos), a busca em cada modo, a pergunta sem o tempo do provedor, heap e RSS e o armazenamento de cada tabela. Roda na fixture, em cada corpus externo com a variável definida e num repositório sintético gerado (~3.000 arquivos, ~50 mil chunks). Fica fora do `./mvnw verify`:
+
+```bash
+./mvnw verify -Dtest.excluded-groups= -Dgroups=performance -Dtest=none \
+  -Dsurefire.failIfNoSpecifiedTests=false -Dit.test=PerformanceEvaluationIT
+```
+
+| Variável | Efeito |
+|---|---|
+| `EVAL_CORPORA` | Como na avaliação de recuperação; o sintético roda sempre |
+| `EVAL_SYNTHETIC_FILES` | Quantidade de arquivos do sintético, para conferir o harness em segundos |
+| `EVAL_RESULTS_DIR` | Pasta de saída, no lugar de `results/` |
+
+O resultado é `results/<data>-perf.json` e `.md`, com a máquina e as versões. Só tem tamanhos, contagens e durações: nenhum caminho, conteúdo ou pergunta.
 
 ## Gerar um manifesto
 

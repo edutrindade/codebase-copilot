@@ -116,6 +116,8 @@
 
 ## Etapa 8 — Qualidade e hardening
 
+**Status:** concluída em 17/10/2026, com o aceite parcial (plano, testes e desvios em `docs/plans/etapa-8.md`; decisões D-079 a D-086). Corpus ampliado para 80 perguntas, baseline lexical, medições de desempenho com as metas atendidas, suíte de segurança, segredos por conteúdo, cancelamento, exclusão de conversa, uso agregado, UI empacotada no jar, e limitações e recuperação de falhas em `11-OPERATIONS.md`. As rodadas com o provedor real (F3) ficam para depois de todas as etapas, quando houver saldo.
+
 - Ampliar corpus de avaliação.
 - Testar prompt injection e importações maliciosas.
 - Medir latência, custo e memória.
@@ -127,6 +129,7 @@
 ## Etapa 9 — Recursos posteriores ao MVP
 
 Priorizar após validar o núcleo:
+
 - adaptadores AST para linguagens prioritárias;
 - comparação entre snapshots;
 - exportação de mapa arquitetural;
@@ -137,7 +140,8 @@ Priorizar após validar o núcleo:
 
 ## Fora do roadmap inicial
 
-Não implementar inicialmente:
+Não iremos implementar inicialmente:
+
 - execução de comandos no repositório;
 - agentes autônomos;
 - edição automática de código;

@@ -141,7 +141,8 @@ class SnapshotController {
     record SnapshotResponse(
             UUID id,
             UUID projectId,
-            @Schema(allowableValues = {"BUILDING", "READY", "PARTIAL", "FAILED"}) String status,
+            @Schema(allowableValues = {"BUILDING", "READY", "PARTIAL", "FAILED", "CANCELLED"})
+                    String status,
             boolean active,
             int settingsVersion,
             String chunkingVersion,
@@ -209,10 +210,14 @@ class SnapshotController {
             @Schema(allowableValues = {"INDEXED", "UNSUPPORTED", "FAILED"}) String status,
             @Schema(
                             nullable = true,
+                            description =
+                                    "SENSITIVE_CONTENT: arquivo excluído por conter um possível"
+                                            + " segredo; a detecção não é garantia.",
                             allowableValues = {
                                 "BINARY",
                                 "INVALID_ENCODING",
                                 "LINE_TOO_LONG",
+                                "SENSITIVE_CONTENT",
                                 "READ_ERROR",
                                 "CHANGED_DURING_READ"
                             })

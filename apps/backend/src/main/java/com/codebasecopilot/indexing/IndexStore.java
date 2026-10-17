@@ -26,11 +26,17 @@ class IndexStore {
     private final JdbcClient jdbc;
     private final NamedParameterJdbcTemplate batch;
     private final IdGenerator idGenerator;
+    private final LineChunker.Parameters chunking;
 
-    IndexStore(JdbcClient jdbc, NamedParameterJdbcTemplate batch, IdGenerator idGenerator) {
+    IndexStore(
+            JdbcClient jdbc,
+            NamedParameterJdbcTemplate batch,
+            IdGenerator idGenerator,
+            LineChunker.Parameters chunking) {
         this.jdbc = jdbc;
         this.batch = batch;
         this.idGenerator = idGenerator;
+        this.chunking = chunking;
     }
 
     record NewContent(
@@ -96,7 +102,7 @@ class IndexStore {
                                 .addValue("id", idGenerator.newId())
                                 .addValue("projectId", projectId)
                                 .addValue("hash", content.contentHash())
-                                .addValue("version", LineChunker.VERSION)
+                                .addValue("version", chunking.version())
                                 .addValue("ordinal", chunk.ordinal())
                                 .addValue("startLine", chunk.startLine())
                                 .addValue("endLine", chunk.endLine())

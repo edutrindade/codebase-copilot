@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import com.codebasecopilot.shared.fs.Directories;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -16,6 +17,8 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Stream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -73,7 +76,10 @@ class ZipExtractorTest {
                 "C:\\evil.txt",
                 "a\\..\\..\\evil.txt",
                 "a\u0007evil.txt",
-                "a\u0000evil.txt"
+                "a\u0000evil.txt",
+                "invoice\u202Etxt.exe",
+                "src/\u2066Main\u2069.java",
+                "a\u200Fb.txt"
             })
     void rejectsUnsafePaths(String name) {
         assertRejected(raw().file(name, "evil").build(), ImportErrorCode.ZIP_UNSAFE_PATH);
@@ -104,6 +110,57 @@ class ZipExtractorTest {
         assertRejected(
                 raw().file("a", "x").file("a/b.txt", "x").build(),
                 ImportErrorCode.ZIP_DUPLICATE_ENTRY);
+    }
+
+    @Test
+    void extractsNamesInNfc() throws Exception {
+        extract(raw().file("cafe\u0301/notas.txt", "x").build());
+
+        assertThat(target.resolve("caf\u00e9/notas.txt")).hasContent("x");
+        try (Stream<Path> children = Files.list(target)) {
+            assertThat(children.map(p -> p.getFileName().toString())).containsExactly("caf\u00e9");
+        }
+    }
+
+    @Test
+    void rejectsNfdAndNfcSpellingsOfTheSameName() {
+        assertRejected(
+                raw().file("caf\u00e9.txt", "nfc").file("cafe\u0301.txt", "nfd").build(),
+                ImportErrorCode.ZIP_DUPLICATE_ENTRY);
+    }
+
+    @Test
+    void extractsANestedArchiveAsAFileWithoutOpeningIt() throws Exception {
+        byte[] inner = zip("evil/../../escape.txt", "x");
+
+        extract(raw().file("vendor/inner.zip", inner).build());
+
+        assertThat(target.resolve("vendor/inner.zip")).isRegularFile();
+        assertThat(target.resolve("vendor/evil")).doesNotExist();
+        assertThat(tempDir.resolve("escape.txt")).doesNotExist();
+    }
+
+    @Test
+    void ignoresAMaximalCommentAndExtraField() throws Exception {
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        try (ZipOutputStream out = new ZipOutputStream(bytes)) {
+            out.setComment("c".repeat(65_535));
+            ZipEntry entry = new ZipEntry("a.txt");
+            byte[] extra = new byte[32_000];
+            // The name, extra field and comment of an entry share 64 KB in the central directory.
+            extra[0] = (byte) 0xFE;
+            extra[1] = (byte) 0xCA;
+            extra[2] = (byte) ((extra.length - 4) & 0xFF);
+            extra[3] = (byte) ((extra.length - 4) >> 8);
+            entry.setExtra(extra);
+            entry.setComment("e".repeat(32_000));
+            out.putNextEntry(entry);
+            out.write("a".getBytes(StandardCharsets.UTF_8));
+            out.closeEntry();
+        }
+
+        assertThat(extract(bytes.toByteArray())).isEqualTo(new ZipExtractor.Result(1, 1));
+        assertThat(target.resolve("a.txt")).hasContent("a");
     }
 
     @Test

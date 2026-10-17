@@ -222,6 +222,10 @@ h2 {
   border-color: var(--color-warning);
 }
 
+.status--failed {
+  border-color: var(--color-danger);
+}
+
 .pagination {
   display: flex;
   align-items: center;

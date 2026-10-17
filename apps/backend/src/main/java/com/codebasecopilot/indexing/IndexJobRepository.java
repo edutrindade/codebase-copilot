@@ -21,7 +21,8 @@ class IndexJobRepository {
     private static final String COLUMNS =
             """
             id, project_id, snapshot_id, status, stage, progress_total, progress_completed,
-            attempt_count, error_code, created_at, started_at, completed_at
+            attempt_count, error_code, cancel_requested_at IS NOT NULL AS cancel_requested, created_at,
+            started_at, completed_at
             """;
 
     private final JdbcClient jdbc;
@@ -83,6 +84,57 @@ class IndexJobRepository {
                 .list();
     }
 
+    List<IndexJob> findLastEndedByProjects(Collection<UUID> projectIds) {
+        if (projectIds.isEmpty()) {
+            return List.of();
+        }
+        return jdbc.sql(
+                        "SELECT DISTINCT ON (project_id) "
+                                + COLUMNS
+                                + """
+                                FROM index_jobs
+                                WHERE project_id IN (:ids)
+                                  AND status IN ('COMPLETED', 'FAILED', 'CANCELLED')
+                                ORDER BY project_id, created_at DESC, id DESC
+                                """)
+                .param("ids", projectIds)
+                .query(IndexJobRepository::map)
+                .list();
+    }
+
+    IndexUsage usage(UUID projectId) {
+        return jdbc.sql(
+                        """
+                        WITH jobs AS (
+                            SELECT status,
+                                   extract(epoch FROM completed_at - started_at) * 1000
+                                       AS duration_ms
+                            FROM index_jobs
+                            WHERE project_id = :projectId
+                        )
+                        SELECT count(*) AS jobs,
+                               count(*) FILTER (WHERE status = 'COMPLETED') AS completed,
+                               count(*) FILTER (WHERE status = 'FAILED') AS failed,
+                               count(*) FILTER (WHERE status = 'CANCELLED') AS cancelled,
+                               round(avg(duration_ms) FILTER (WHERE status = 'COMPLETED'))::bigint
+                                   AS average_ms,
+                               round(percentile_cont(0.95) WITHIN GROUP (ORDER BY duration_ms)
+                                         FILTER (WHERE status = 'COMPLETED'))::bigint AS p95_ms
+                        FROM jobs
+                        """)
+                .param("projectId", projectId)
+                .query(
+                        (rs, rowNum) ->
+                                new IndexUsage(
+                                        rs.getLong("jobs"),
+                                        rs.getLong("completed"),
+                                        rs.getLong("failed"),
+                                        rs.getLong("cancelled"),
+                                        rs.getObject("average_ms", Long.class),
+                                        rs.getObject("p95_ms", Long.class)))
+                .single();
+    }
+
     long countByProject(UUID projectId) {
         return jdbc.sql("SELECT count(*) FROM index_jobs WHERE project_id = :projectId")
                 .param("projectId", projectId)
@@ -91,10 +143,11 @@ class IndexJobRepository {
     }
 
     // Must run in a transaction: the row stays locked until the claim commits.
-    Optional<Claim> lockNext(Instant staleBefore) {
+    Optional<Locked> lockNext(Instant staleBefore) {
         return jdbc.sql(
                         """
-                        SELECT id, project_id, snapshot_id, attempt_count
+                        SELECT id, project_id, snapshot_id, attempt_count,
+                               cancel_requested_at IS NOT NULL AS cancel_requested
                         FROM index_jobs
                         WHERE status = 'PENDING'
                            OR (status = 'RUNNING' AND heartbeat_at < :staleBefore)
@@ -105,13 +158,17 @@ class IndexJobRepository {
                 .param("staleBefore", Timestamps.of(staleBefore))
                 .query(
                         (rs, rowNum) ->
-                                new Claim(
-                                        rs.getObject("id", UUID.class),
-                                        rs.getObject("project_id", UUID.class),
-                                        rs.getObject("snapshot_id", UUID.class),
-                                        rs.getInt("attempt_count")))
+                                new Locked(
+                                        new Claim(
+                                                rs.getObject("id", UUID.class),
+                                                rs.getObject("project_id", UUID.class),
+                                                rs.getObject("snapshot_id", UUID.class),
+                                                rs.getInt("attempt_count")),
+                                        rs.getBoolean("cancel_requested")))
                 .optional();
     }
+
+    record Locked(Claim claim, boolean cancelRequested) {}
 
     boolean start(Claim locked, Instant now) {
         return jdbc.sql(
@@ -142,7 +199,7 @@ class IndexJobRepository {
                                 SET heartbeat_at = :now, stage = :stage,
                                     progress_total = :total, progress_completed = :completed
                                 WHERE id = :id AND attempt_count = :attempt
-                                  AND status = 'RUNNING'
+                                  AND status = 'RUNNING' AND cancel_requested_at IS NULL
                                 """)
                         .param("id", claim.jobId())
                         .param("attempt", claim.attempt())
@@ -185,6 +242,74 @@ class IndexJobRepository {
                 == 1;
     }
 
+    boolean cancelRequested(Claim claim) {
+        return jdbc.sql(
+                        """
+                        SELECT EXISTS (
+                            SELECT 1 FROM index_jobs
+                            WHERE id = :id AND attempt_count = :attempt AND status = 'RUNNING'
+                              AND cancel_requested_at IS NOT NULL)
+                        """)
+                .param("id", claim.jobId())
+                .param("attempt", claim.attempt())
+                .query(Boolean.class)
+                .single();
+    }
+
+    // A running job is only flagged; its worker stops at the next heartbeat. Repeated requests
+    // keep the first time.
+    boolean requestCancel(UUID id, Instant now) {
+        return jdbc.sql(
+                                """
+                                UPDATE index_jobs
+                                SET cancel_requested_at = coalesce(cancel_requested_at, :now)
+                                WHERE id = :id AND status = 'RUNNING'
+                                """)
+                        .param("id", id)
+                        .param("now", Timestamps.of(now))
+                        .update()
+                == 1;
+    }
+
+    // Returns the claim of a job that was still PENDING, now CANCELLED.
+    Optional<Claim> cancelPending(UUID id, Instant now) {
+        return jdbc.sql(
+                        """
+                        UPDATE index_jobs
+                        SET status = 'CANCELLED', completed_at = :now,
+                            cancel_requested_at = coalesce(cancel_requested_at, :now)
+                        WHERE id = :id AND status = 'PENDING'
+                        RETURNING id, project_id, snapshot_id, attempt_count
+                        """)
+                .param("id", id)
+                .param("now", Timestamps.of(now))
+                .query(
+                        (rs, rowNum) ->
+                                new Claim(
+                                        rs.getObject("id", UUID.class),
+                                        rs.getObject("project_id", UUID.class),
+                                        rs.getObject("snapshot_id", UUID.class),
+                                        rs.getInt("attempt_count")))
+                .optional();
+    }
+
+    // Also takes a job that went back to the queue, or whose worker died, after the request.
+    boolean cancel(Claim claim, Instant now) {
+        return jdbc.sql(
+                                """
+                                UPDATE index_jobs
+                                SET status = 'CANCELLED', completed_at = :now
+                                WHERE id = :id AND attempt_count = :attempt
+                                  AND status IN ('PENDING', 'RUNNING')
+                                  AND cancel_requested_at IS NOT NULL
+                                """)
+                        .param("id", claim.jobId())
+                        .param("attempt", claim.attempt())
+                        .param("now", Timestamps.of(now))
+                        .update()
+                == 1;
+    }
+
     // Back to the queue right away, keeping the attempt count.
     boolean requeue(Claim claim) {
         return jdbc.sql(
@@ -213,6 +338,7 @@ class IndexJobRepository {
                 rs.getObject("progress_completed", Integer.class),
                 rs.getInt("attempt_count"),
                 errorCode == null ? null : IndexErrorCode.valueOf(errorCode),
+                rs.getBoolean("cancel_requested"),
                 Objects.requireNonNull(Timestamps.read(rs, "created_at")),
                 Timestamps.read(rs, "started_at"),
                 Timestamps.read(rs, "completed_at"));
