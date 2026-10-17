@@ -26,11 +26,11 @@ Incluir:
 - prompt injection embutido em arquivos;
 - arquivos excluídos e segredos sintéticos.
 
-### Corpus atual (Etapa 5, D-061)
+### Corpus atual (Etapa 5, D-061; ampliado na Etapa 8, D-079)
 
-- **Fixture sintética** versionada em `eval/corpus/fixture/` (serviço de cobrança em Java, TypeScript, Python, SQL e Markdown), com identificador exato, sinônimo sem termo em comum, o mesmo arquivo em dois caminhos, instrução injetada e um `.npmrc` com token sintético que a varredura exclui.
-- **Codebase Copilot** no commit `9d986db` e **`pallets/click` 8.5.0** (`8b19813`, BSD-3-Clause), fora do repositório; cada um é conferido contra um manifesto SHA-256 antes de rodar.
-- **40 perguntas** em `eval/questions/<corpus>.yaml`, metade em pt-BR e metade em en, com categoria, dificuldade e intervalos de linhas esperados; 4 exigem abstenção. Rascunho do assistente, revisão e aprovação humanas. Como montar e rodar: `eval/README.md`.
+- **Fixture sintética** versionada em `eval/corpus/fixture/` (serviço de cobrança em Java, TypeScript, Python, SQL e Markdown), com identificador exato, sinônimo sem termo em comum, o mesmo arquivo em dois caminhos, instruções injetadas (Markdown, comentário, string, nome de diretório, delimitador forjado, imitação da saída do modelo), arquivos em UTF-8 com BOM, Latin-1 e UTF-16, e segredos sintéticos em arquivos excluídos pelo nome e em arquivos indexados.
+- **Codebase Copilot** no commit `9d986db`, **`pallets/click` 8.5.0** (`8b19813`, BSD-3-Clause) e **`honojs/hono` v4.13.13** (`08a023c`, MIT), fora do repositório; cada um é conferido contra um manifesto SHA-256 antes de rodar.
+- **80 perguntas** em `eval/questions/<corpus>.yaml`, metade em pt-BR e metade em en, com categoria, dificuldade e intervalos de linhas esperados; 14 exigem abstenção e 14 são de injeção ou de segredo. Rascunho do assistente, revisão e aprovação humanas. Como montar e rodar: `eval/README.md`.
 
 ## 3. Métricas de recuperação
 
@@ -114,7 +114,7 @@ O harness `RetrievalEvaluationIT` (tag `eval`, fora do `verify`) indexa cada cor
 
 ### Processo implementado (Etapa 6)
 
-O harness `AnswerEvaluationIT` (tag `eval`, fora do `verify`) indexa os corpora da mesma forma e faz as 40 perguntas por `POST /questions`, inclusive as que exigem abstenção, cada uma numa conversa nova. Registra provedor, modelo, esforço de raciocínio, versão do prompt, modo e limites da recuperação, limites do contexto e preço. As respostas do modelo ficam em cache por hash do pedido (com o nonce do prompt normalizado), então uma rodada refeita repete as mesmas respostas sem custo; uma chamada nova ao modelo é uma medição nova, porque a geração não é determinística. Resultados com o modelo real ficam em `eval/results/<data>-answers-<provedor>-<modelo>-<esforço>-<modo>.*`, versionados; rodadas com o fake só testam o harness e não são versionadas. Comandos e variáveis em `eval/README.md`.
+O harness `AnswerEvaluationIT` (tag `eval`, fora do `verify`) indexa os corpora da mesma forma e faz as 80 perguntas por `POST /questions`, inclusive as que exigem abstenção, cada uma numa conversa nova. Registra provedor, modelo, esforço de raciocínio, versão do prompt, modo e limites da recuperação, limites do contexto e preço. As respostas do modelo ficam em cache por hash do pedido (com o nonce do prompt normalizado), então uma rodada refeita repete as mesmas respostas sem custo; uma chamada nova ao modelo é uma medição nova, porque a geração não é determinística. Resultados com o modelo real ficam em `eval/results/<data>-answers-<provedor>-<modelo>-<esforço>-<modo>.*`, versionados; rodadas com o fake só testam o harness e não são versionadas. Comandos e variáveis em `eval/README.md`.
 
 **Primeira medição:** pendente. A Etapa 6 fechou sem saldo no provedor; o harness foi exercitado com o fake. A rodada com o `gpt-6-luna` (e a comparação com o `gpt-6.1-sol` e com o esforço `none`) sai do mesmo harness, seguida da auditoria humana.
 

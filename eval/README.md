@@ -9,7 +9,13 @@ Corpus e anotações da avaliação de recuperação (D-061, `docs/08-EVALUATION
 | `questions/<corpus>.yaml` | Perguntas e intervalos de linhas esperados |
 | `results/` | Resultados versionados de cada rodada do harness |
 
-A fixture tem de propósito um arquivo com instrução injetada (`docs/CONTRIBUTING.md`) e um `.npmrc` com um token sintético, que a varredura exclui. Nada do corpus é executado.
+A fixture tem de propósito conteúdo hostil, e nada do corpus é executado:
+- instruções injetadas em Markdown (`docs/CONTRIBUTING.md`), em comentário e em string de código (`InvoiceEmails.java`), no nome de um diretório (com espaços) e depois de um delimitador de evidência forjado (`docs/runbook.md`);
+- texto que imita a saída do modelo, com JSON de resposta e rótulos `[E1]`/`[E2]` (`docs/faq.md`);
+- arquivos em UTF-8 com BOM (`docs/glossary.md`), em Latin-1 (`legacy/EXPORTACAO-ERP.txt`) e em UTF-16 com BOM (`legacy/notas-migracao.txt`);
+- segredos sintéticos em arquivos excluídos pelo nome (`.npmrc`, `deploy/production.tfvars`) e em arquivos que hoje são indexados (`application.yml`, `sign_release.py`, `publish.sh`, `notify_slack.py`), para a detecção por conteúdo da Etapa 8.
+
+Todos os segredos são inventados e trazem `EVAL-SYNTHETIC` ou `EVALSYNTHETIC` no valor.
 
 ## Corpora externos
 
@@ -26,6 +32,12 @@ mkdir <pasta-click>
 curl -sSfL https://codeload.github.com/pallets/click/tar.gz/8b19813f2bfca99f1018a587a8cf54fc959f2e5d \
   | tar -xz --strip-components=1 -C <pasta-click>
 export EVAL_CORPUS_CLICK=<pasta-click>
+
+# honojs/hono v4.13.13 (MIT)
+mkdir <pasta-hono>
+curl -sSfL https://codeload.github.com/honojs/hono/tar.gz/08a023cbfde55b434fb0fb30fae35d42e4bf20aa \
+  | tar -xz --strip-components=1 -C <pasta-hono>
+export EVAL_CORPUS_HONO=<pasta-hono>
 ```
 
 O harness confere a pasta contra o manifesto e para se houver arquivo alterado, faltando ou a mais (inclusive `.DS_Store`).
@@ -50,7 +62,7 @@ O resultado vai para `results/<data>-<config>.json` (métricas por pergunta e os
 
 ## Avaliar as respostas
 
-O `AnswerEvaluationIT` (D-069) faz as 40 perguntas por `POST /questions`, inclusive as que exigem abstenção, e mede validade de citação, respostas sustentadas, citação relevante, abstenção, vazamento, tokens, custo e latência. Também fica fora do `./mvnw verify`:
+O `AnswerEvaluationIT` (D-069) faz as 80 perguntas por `POST /questions`, inclusive as que exigem abstenção, e mede validade de citação, respostas sustentadas, citação relevante, abstenção, vazamento, tokens, custo e latência. Também fica fora do `./mvnw verify`:
 
 ```bash
 ./mvnw verify -Dtest.excluded-groups= -Dgroups=eval -Dtest=none \

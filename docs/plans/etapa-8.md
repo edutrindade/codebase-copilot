@@ -257,6 +257,11 @@ O Spring Boot 4.1.1 é o último 4.1.x publicado no Maven Central, então não h
 - Corpus TypeScript (`hono` v4.13.13) com manifesto; fixture ampliada; ~40 perguntas novas, revisadas e aprovadas por você.
 - Baseline lexical refeito (`eval/results/<data>-lexical.*`).
 
+**Resultado (17/10/2026)** — perguntas novas revisadas e aprovadas
+- Tomcat 11.0.27, Jackson 3.1.7 e 2.21.7 sobrescritos no `pom.xml`; `./mvnw verify` verde.
+- Hono com manifesto (585 arquivos), fixture com 12 arquivos novos, 40 perguntas novas (16 na fixture, 24 no hono): 80 no total, 40 em cada idioma, 14 de abstenção, 14 de injeção ou segredo. Registro na D-079.
+- Baseline lexical em `eval/results/2026-10-17-lexical.*`: click e Copilot iguais aos de 16/10; no hono, o canal de caminhos piora o Recall@10 (0,432 para 0,295), entrada para a F4.
+
 ### F2 — Medições
 - `PerformanceEvaluationIT` e o repositório sintético (P6); primeira rodada versionada.
 - Revisão dos limites com os números; metas confirmadas com você; D-0xx.

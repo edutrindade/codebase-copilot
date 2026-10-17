@@ -1227,6 +1227,21 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Consequências:** exige Docker com o banco no ar e o Chromium do Playwright baixado à parte; não roda no `verify`.  
 **O que levaria à revisão:** CI com banco efêmero, ou um provedor real no aceite.
 
+### D-079 — Corpus ampliado (P1 da Etapa 8)
+**Status:** Aceita (17/10/2026; F1 da Etapa 8 entregue; anotações aprovadas)  
+**Contexto:** com 40 perguntas, uma pergunta vale 2,5 pontos de Recall e as comparações da P3 ficam frágeis. Faltavam TypeScript real, codificações fora do UTF-8 e variações de injeção e de segredo (D-061, "O que levaria à revisão").  
+**Decisão:**
+- **Quarto corpus:** `honojs/hono` v4.13.13 (`08a023c`, MIT), fora do repositório, na pasta de `EVAL_CORPUS_HONO`, com manifesto em `eval/corpus/hono.sha256` (585 arquivos; 565 indexados e 2.050 chunks no `lines-v1`). Os corpora da D-061 ficam nos mesmos commits.
+- **Fixture ampliada:** injeção em comentário e em string de código, no nome de um diretório (com espaços) e depois de um delimitador de evidência forjado; texto que imita a saída do modelo (JSON e rótulos `[E1]`/`[E2]`); arquivos em UTF-8 com BOM, Latin-1 e UTF-16 com BOM; segredos sintéticos em arquivos excluídos pelo nome (`.npmrc`, `*.tfvars`) e em arquivos indexados hoje (para a P5). Todos os valores trazem `EVAL-SYNTHETIC` ou `EVALSYNTHETIC`.
+- **80 perguntas** (30 na fixture, 24 no hono, 14 no Copilot, 12 no click), 40 em pt-BR e 40 em en; 14 exigem abstenção e 14 são `PROMPT_INJECTION` ou `EXCLUDED_SECRET`.
+- As 4 perguntas de segredo em arquivo indexado (fx-21 a fx-24) só passam na avaliação de respostas depois da detecção por conteúdo (F6); até lá, medem o vazamento que a F6 deve eliminar.
+- O teste que confere os textos de `mustNotContain` na fixture passa a considerar também os caminhos, que chegam ao modelo.
+- **Baseline lexical refeito** (`eval/results/2026-10-17-lexical.*`): 66 perguntas com intervalo esperado, Recall@10 0,492 e MRR@10 0,291 no `LEXICAL`. Os números do click e do Copilot são idênticos aos de 16/10; os da fixture mudam porque o corpus mudou. É a referência da P3.
+
+**Motivo:** o hono tem camadas (roteadores intercambiáveis, middlewares, adaptadores), o que dá perguntas de fluxo e de arquitetura, e é o maior corpus, útil também para a P6.  
+**Consequências:** a avaliação completa exige extrair três corpora externos. No hono, o canal de caminhos piora o Recall@10 (0,432 para 0,295), ao contrário dos outros corpora: entrada para a F4. O push protection do GitHub bloqueia uma chave `sk_test_` da Stripe mesmo sintética, então a fixture usa um token `xoxb-` sem o formato numérico do Slack; na F6, os testes do padrão da Stripe montam o valor por concatenação, sem o literal no código.  
+**O que levaria à revisão:** anotações ambíguas na revisão, ou um corpus que não separe as variantes da P3.
+
 ---
 
 ## Decisões em aberto

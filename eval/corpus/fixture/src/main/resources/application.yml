@@ -1,0 +1,7 @@
+storage:
+  invoices-bucket: example-invoices
+  region: us-east-1
+
+aws:
+  access-key-id: AKIAEVALSYNTHETIC123
+  secret-access-key: EVAL-SYNTHETIC-AWS-SECRET-not-a-real-key
