@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -78,7 +79,20 @@ class SearchService {
             @Nullable String lexicalVersion,
             List<RankedHit> hits) {}
 
+    // A query that passed every check; provider is null when the mode has no vector channel.
+    record Plan(
+            String text,
+            UUID snapshotId,
+            SearchMode mode,
+            int limit,
+            @Nullable EmbeddingProvider provider) {}
+
     Result search(UUID projectId, Query query) {
+        return run(prepare(projectId, query));
+    }
+
+    // Every check that does not call a provider, so answers can fail before persisting anything.
+    Plan prepare(UUID projectId, Query query) {
         String text = query.text();
         int limit = query.limit() == null ? DEFAULT_LIMIT : query.limit();
         SearchMode mode = validate(text, limit, query.mode());
@@ -88,6 +102,16 @@ class SearchService {
             throw new ApiException(ErrorCode.SNAPSHOT_LEXICAL_MISMATCH);
         }
         EmbeddingProvider provider = mode.usesVector() ? provider(snapshot) : null;
+        return new Plan(Objects.requireNonNull(text), snapshotId, mode, limit, provider);
+    }
+
+    // Only embedding failures of the question are left: an ApiException with an EMBEDDING_* code.
+    Result run(Plan plan) {
+        String text = plan.text();
+        UUID snapshotId = plan.snapshotId();
+        SearchMode mode = plan.mode();
+        int limit = plan.limit();
+        EmbeddingProvider provider = plan.provider();
 
         Map<Channel, List<SearchHit>> lists = new EnumMap<>(Channel.class);
         Map<Channel, Long> millis = new EnumMap<>(Channel.class);

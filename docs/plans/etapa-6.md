@@ -330,6 +330,16 @@ Somados os embeddings do corpus da Etapa 5 (US$ 0,02 a 0,07, uma vez, depois em 
 - `ContextAssembler`, `PromptBuilder` e `CitationValidator`, puros, em `answering`; fachada `Retrieval`.
 - **Testes:** orçamento de tokens, `maxEvidence`, limite por arquivo, sobreposição pulada, rótulos em ordem; delimitador aleatório e conteúdo que tenta fechar o bloco; validador com rótulo inventado, linhas fora e invertidas, marcador sem citação, citação sem marcador, JSON inválido e fora do schema, status final em cada combinação.
 
+**Como foi entregue (16/10/2026)**
+- Em `retrieval`: fachada pública `Retrieval` (`prepare` e `retrieve`) e `RetrievedChunk`; o `SearchService` foi dividido em `prepare` (checagens, sem provedor) e `run`, e a busca continua igual. O `SearchHit` ganhou `contentHash` e `tokenEstimate`; `SearchMode` ficou público.
+- Em `answering`: `AnsweringProperties` (`app.answering.candidates`, `max-context-tokens`, `max-evidence-per-file`), `ContextAssembler`, `ContextEvidence`, `PromptBuilder` (`prompt-v1`, nonce, schema estrito), `CitationValidator` e `AnswerWarning`. Registrado na D-066.
+- **Testes:** `ContextAssemblerTest` (rótulos em ordem, `maxEvidence`, limite por arquivo, sobreposição pulada, orçamento com pulo e reserva da pergunta, estimativa); `PromptBuilderTest` (nonce, evidências numeradas antes da pergunta, conteúdo com delimitadores falsos não fecha o bloco, `\r\n`, schema estrito); `CitationValidatorTest` (citações válidas, não citadas, rótulo inventado, linhas fora e invertidas, linha nula, várias citações, marcador sem citação, citação sem marcador, status final em cada combinação, 20 saídas inválidas ou fora do schema); `AnsweringPropertiesTest`; `RetrievalIT` (híbrido e lexical sobre o pipeline real, caminhos, hash, estimativa e posições; pré-condição sem chamar provedor).
+- **Desvios:**
+  - A fachada tem duas fases, não uma: a F4 precisa validar tudo antes de persistir (P8, passo 1) e só depois chamar o provedor de embeddings.
+  - O orçamento de tokens é medido no bloco renderizado, não só no `token_count_estimate` do chunk, porque a numeração das linhas e os delimitadores também ocupam contexto; um chunk que não cabe é pulado, e os seguintes ainda são tentados.
+  - O limite por arquivo conta por conteúdo (`content_hash`): caminhos com o mesmo conteúdo são o mesmo trecho (D-039).
+  - Marcadores no texto com rótulos que não aparecem nas citações também contam como citação inválida.
+
 ### F4 — Caso de uso e `POST /questions`
 - `AnswerService`, controller, códigos e mensagens pt-BR, custo, logs, `openapi.json`.
 - **Testes:** resposta completa com o fake e evidências persistidas; abstenção sem evidência sem chamar o provedor; cada falha do provedor vira `FAILED` com a pergunta preservada; ID inventado sinalizado e removido; precedência dos erros de pré-condição; `retrievalMode` `LEXICAL` com `EMBEDDING_PROVIDER=none`; `GENERATION_NOT_AVAILABLE` sem nada persistido; `cost_status` com e sem preço; projeto removido durante a geração; log sem pergunta, resposta nem trecho; a fixture com instrução injetada no contexto (o fake não obedece, mas o teste fixa o delimitador e as instruções no pedido).

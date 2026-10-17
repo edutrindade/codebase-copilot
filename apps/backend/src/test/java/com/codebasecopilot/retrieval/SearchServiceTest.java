@@ -63,7 +63,8 @@ class SearchServiceTest {
     @Test
     void lexicalModeWorksWithoutProvider() {
         snapshot(IdentifierTokenizer.VERSION);
-        SearchHit hit = new SearchHit(UUID.randomUUID(), List.of("a.java"), 1, 2, "alpha", 0.3);
+        SearchHit hit =
+                new SearchHit(UUID.randomUUID(), List.of("a.java"), "h", 1, 2, "alpha", 2, 0.3);
         when(lexical.search(snapshotId, "alpha", 10)).thenReturn(List.of(hit));
 
         SearchService.Result result = service.search(projectId, query("LEXICAL"));

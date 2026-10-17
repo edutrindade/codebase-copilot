@@ -125,7 +125,7 @@ class RrfFusionTest {
 
     @Test
     void singleChannelKeepsItsOrderAndScore() {
-        SearchHit scored = new SearchHit(id(A), List.of("a.java"), 1, 2, "a", 0.75);
+        SearchHit scored = new SearchHit(id(A), List.of("a.java"), "h", 1, 2, "a", 1, 0.75);
 
         List<RankedHit> ranked = RrfFusion.single(Channel.VECTOR, List.of(scored, B));
 
@@ -153,7 +153,8 @@ class RrfFusionTest {
     }
 
     private static SearchHit hit(String id, String path, int startLine) {
-        return new SearchHit(UUID.fromString(id), List.of(path), startLine, startLine, path, 0.5);
+        return new SearchHit(
+                UUID.fromString(id), List.of(path), "h", startLine, startLine, path, 1, 0.5);
     }
 
     private static UUID id(SearchHit hit) {

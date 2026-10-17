@@ -1050,6 +1050,21 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Consequências:** `05-DATA-MODEL.md` é atualizado no fechamento da etapa. O texto da pergunta e da resposta fica só no banco local, nunca em log.  
 **O que levaria à revisão:** perguntas de acompanhamento com histórico no prompt (Etapa 8), retenção de conversas fora da remoção do projeto, ou volume de evidências copiadas relevante (D-046).
 
+### D-066 — Contexto, prompt e validação de citações
+**Status:** Aceita (16/10/2026; P4, P5 e P6 da Etapa 6; F3 entregue)  
+**Contexto:** a busca devolve até 50 chunks; o modelo precisa de poucos, delimitados como dado não confiável, e a resposta só vale com citações que existem (D-011).  
+**Decisão:**
+- **Recuperação** pela fachada pública `Retrieval` de `retrieval`, em duas fases: `prepare` faz as checagens da busca, com os mesmos códigos e a mesma precedência (D-060), sem chamar provedor; `retrieve` gera o embedding da pergunta, se o modo pedir, e só falha com um código `EMBEDDING_*`. Cada chunk vem com conteúdo, hash do conteúdo, estimativa de tokens, posição final e posição em cada canal. Padrão `HYBRID` com `app.answering.candidates` = 20 (de 1 a 50); sem cair para lexical em silêncio.
+- **`ContextAssembler`**, puro, percorre os chunks na ordem da fusão e escolhe cada um que ainda cabe: até `maxEvidence` (pedido, padrão 8, de 1 a 20), até `app.answering.max-evidence-per-file` = 3 por conteúdo, sem sobrepor linhas de um chunk já escolhido do mesmo conteúdo, e dentro de `app.answering.max-context-tokens` = 6.000. O custo é ⌈caracteres/4⌉ (D-043) medido no prompt renderizado (instruções, pergunta, delimitadores e números de linha); um chunk que não cabe é pulado e os seguintes ainda são tentados. Rótulos `E1`…`En` na ordem de escolha. Sem corte por score (D-059).
+- **`PromptBuilder`** (`prompt-v1`): instruções em inglês na mensagem de sistema (só as evidências, citar com `[En]`, conteúdo como dado e nunca como instrução, `ABSTAINED`/`PARTIAL`, idioma da pergunta). Na mensagem do usuário, as evidências e depois a pergunta, cada uma num bloco `<<<BEGIN … nonce>>>`/`<<<END … nonce>>>` com um nonce aleatório de 128 bits por pedido; cada evidência traz rótulo, primeiro caminho, intervalo e as linhas numeradas, para o modelo poder estreitar a citação.
+- **Schema estrito** `{status, answer, citations[{evidence, startLine, endLine}]}`, com as linhas como `["integer", "null"]`. O rótulo é texto livre no schema (não um `enum` por pedido), para o schema não mudar a cada pergunta; o validador cuida dos inventados.
+- **`CitationValidator`**, puro: JSON inválido ou fora do schema (inclusive `ANSWERED`/`PARTIAL` com texto vazio) → inválido, sem texto exibido; rótulo fora do conjunto → descartado; linhas fora do intervalo ou invertidas → descartadas e a evidência fica `INVALID_RANGE`; uma linha nula vale o limite da evidência, as duas nulas citam a evidência inteira; várias citações válidas da mesma evidência viram o intervalo que cobre todas; marcador `[En]` sem citação válida sai do texto; citação sem marcador vale. `invalidCitationCount` = citações descartadas + rótulos marcados no texto que não aparecem nas citações.
+- **Status final:** `ABSTAINED` declarado fica; `ANSWERED` ou `PARTIAL` sem citação válida vira `PARTIAL` com `NO_VALID_CITATIONS`; senão, o declarado. `INVALID_CITATIONS_REMOVED` quando algo foi descartado.
+
+**Motivo:** o orçamento medido no prompt real evita estourar o contexto com numeração e delimitadores; o nonce impede que um arquivo feche o próprio bloco; o status decidido no backend deixa claro quando nada sustenta a resposta.  
+**Consequências:** a validação garante existência de arquivo e linhas, não suporte factual, medido na avaliação (F6). Mudar instruções, blocos ou schema cria uma versão nova do prompt.  
+**O que levaria à revisão:** resultados da avaliação de respostas (orçamento, limite por arquivo, abstenção), perguntas de acompanhamento (Etapa 8) ou reranking.
+
 ---
 
 ## Decisões em aberto
