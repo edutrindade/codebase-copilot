@@ -90,6 +90,14 @@ public class AnswerHistory {
         return answers.failPendingCreatedBefore(cutoff, errorCode, now());
     }
 
+    // Checks a request before anything is persisted; start checks again.
+    @Transactional(readOnly = true)
+    public void requireConversation(UUID projectId, UUID conversationId) {
+        if (!conversations.exists(conversationId, projectId)) {
+            throw new ApiException(ErrorCode.CONVERSATION_NOT_FOUND);
+        }
+    }
+
     @Transactional(readOnly = true)
     public Optional<StoredAnswer> findAnswer(UUID answerId) {
         return answers.findById(answerId);

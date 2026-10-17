@@ -4,6 +4,8 @@ import com.codebasecopilot.providers.ModelInfo;
 import com.codebasecopilot.retrieval.RrfFusion.RankedHit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
@@ -52,15 +54,22 @@ public class Retrieval {
         }
     }
 
+    // candidates: results of each channel before the fusion, by channel name.
+    // embeddingMillis and embeddingTokens refer to the question; null without the vector
+    // channel, and embeddingTokens also when the provider reports none (D-054).
     public record Result(
             UUID snapshotId,
             SearchMode mode,
             @Nullable ModelInfo embeddingModel,
             @Nullable String lexicalVersion,
-            List<RetrievedChunk> chunks) {
+            List<RetrievedChunk> chunks,
+            Map<String, Integer> candidates,
+            @Nullable Long embeddingMillis,
+            @Nullable Long embeddingTokens) {
 
         public Result {
             chunks = List.copyOf(chunks);
+            candidates = Map.copyOf(candidates);
         }
     }
 
@@ -94,11 +103,16 @@ public class Retrieval {
                             ranked.ranks().vector(),
                             ranked.ranks().path()));
         }
+        Map<String, Integer> candidates = new TreeMap<>();
+        result.candidates().forEach((channel, count) -> candidates.put(channel.name(), count));
         return new Result(
                 result.snapshotId(),
                 result.mode(),
                 result.model(),
                 result.lexicalVersion(),
-                chunks);
+                chunks,
+                candidates,
+                result.embeddingMillis(),
+                result.embeddingTokens());
     }
 }

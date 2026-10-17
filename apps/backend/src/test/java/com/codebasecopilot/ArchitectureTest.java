@@ -121,4 +121,13 @@ class ArchitectureTest {
                     .dependOnClassesThat()
                     .resideInAnyPackage(
                             "com.codebasecopilot.answering..", "com.codebasecopilot.history..");
+
+    @ArchTest
+    static final ArchRule onlyAnsweringDependsOnAnswering =
+            noClasses()
+                    .that()
+                    .resideOutsideOfPackage("com.codebasecopilot.answering..")
+                    .should()
+                    .dependOnClassesThat()
+                    .resideInAPackage("com.codebasecopilot.answering..");
 }

@@ -45,6 +45,10 @@ app:
   generation:
     provider: ${GENERATION_PROVIDER:none}
     api-key: ${GENERATION_API_KEY:}
+    # USD per million tokens, with no default: without both, the cost is UNKNOWN.
+    pricing:
+      input-per-million: ${GENERATION_PRICE_INPUT_PER_MILLION:}
+      output-per-million: ${GENERATION_PRICE_OUTPUT_PER_MILLION:}
 
 springdoc:
   default-produces-media-type: application/json

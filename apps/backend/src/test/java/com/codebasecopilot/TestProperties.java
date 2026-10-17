@@ -35,6 +35,10 @@ public final class TestProperties {
     public static final String NO_EMBEDDING_API_KEY = "app.embeddings.api-key=";
     public static final String GENERATION_PROVIDER = "app.generation.provider=fake";
     public static final String NO_GENERATION_API_KEY = "app.generation.api-key=";
+    public static final String NO_GENERATION_PRICE_INPUT =
+            "app.generation.pricing.input-per-million=";
+    public static final String NO_GENERATION_PRICE_OUTPUT =
+            "app.generation.pricing.output-per-million=";
 
     private TestProperties() {}
 }

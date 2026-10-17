@@ -344,6 +344,21 @@ Somados os embeddings do corpus da Etapa 5 (US$ 0,02 a 0,07, uma vez, depois em 
 - `AnswerService`, controller, códigos e mensagens pt-BR, custo, logs, `openapi.json`.
 - **Testes:** resposta completa com o fake e evidências persistidas; abstenção sem evidência sem chamar o provedor; cada falha do provedor vira `FAILED` com a pergunta preservada; ID inventado sinalizado e removido; precedência dos erros de pré-condição; `retrievalMode` `LEXICAL` com `EMBEDDING_PROVIDER=none`; `GENERATION_NOT_AVAILABLE` sem nada persistido; `cost_status` com e sem preço; projeto removido durante a geração; log sem pergunta, resposta nem trecho; a fixture com instrução injetada no contexto (o fake não obedece, mas o teste fixa o delimitador e as instruções no pedido).
 
+**Como foi entregue (16/10/2026)**
+- Em `answering`: `AnswerService` (o fluxo da P8), `AnswerController` (`POST /projects/{projectId}/questions`, com `@Tag` "Respostas"), `AnswerErrorCode` completo, `AnswerWarning.NO_EVIDENCE`, `PricingProperties` (`app.generation.pricing.*`) e `CostEstimate`. Registrado na D-067.
+- `GENERATION_NOT_AVAILABLE` (409) no `ErrorCode`; mensagens `answer.error.*`, `answer.warning.*`, `answer.abstained` e `validation.question.*`; `application.yml` e `.env.example` com `GENERATION_PRICE_INPUT_PER_MILLION` e `GENERATION_PRICE_OUTPUT_PER_MILLION`; `openapi.json` regenerado.
+- Em `history`: `AnswerHistory.requireConversation`, para recusar a conversa antes de gravar.
+- Em `retrieval`: o resultado traz os candidatos por canal e a duração e os tokens do embedding da pergunta, que agora é medido fora do canal vetorial (a linha de log da busca separa os dois).
+- ArchUnit: só `answering` depende de `answering`.
+- Testes: `TestProperties` zera o preço nos contextos de teste (o `.env` do desenvolvedor é importado); `IndexedProjects` ficou público para os testes de `answering`.
+- **Testes:** `AnswerApiIT` (resposta completa com evidências citadas e não citadas, mensagens, título e metadados gravados; custo estimado pelos tokens informados e `UNKNOWN` sem eles; conversa continuada e de outro projeto; abstenção sem evidência sem chamar provedor; cada falha da geração e do embedding vira `FAILED` com a pergunta preservada e sem detalhe do provedor; rótulo inventado removido e sinalizado, só citações inválidas → `PARTIAL`; saída fora do schema → `GENERATION_OUTPUT_INVALID` com os tokens; `maxEvidence`; projeto removido durante a geração; precedência de validação, projeto, conversa e snapshot sem nada gravado; a instrução injetada do `CONTRIBUTING.md` da fixture e um delimitador forjado ficam dentro do bloco da evidência, com nonce e instruções conferidos no pedido; log sem pergunta, resposta, trecho nem prompt); `AnswerWithoutEmbeddingsIT` (`LEXICAL` com `EMBEDDING_PROVIDER=none`, custo `UNKNOWN` sem preço; `HYBRID` → `EMBEDDINGS_NOT_AVAILABLE` sem nada gravado); `AnswerWithoutGenerationIT` (`GENERATION_NOT_AVAILABLE` sem nada gravado, depois das checagens do pedido e do snapshot); `CostEstimateTest`, `PricingPropertiesTest`, `AnswerMessagesTest`.
+- **Desvios:**
+  - A resposta ganhou `question`, `invalidCitationCount`, `createdAt`, `completedAt` e o `rank` final de cada evidência; os avisos são `{code, message}`, e a contagem de citações inválidas vai na mensagem e no campo.
+  - O preço fica em `answering` (`PricingProperties`), com o prefixo `app.generation.pricing` da P9: só o cálculo do custo o usa, e o `GenerationProperties` não precisou mudar.
+  - Evidências também são gravadas numa falha da geração ou numa saída inválida, porque foram enviadas ao provedor.
+  - A abstenção sem evidência leva o aviso `NO_EVIDENCE`, e o texto exibido sai de `answer.abstained`.
+  - Projeto removido durante a geração responde `404 PROJECT_NOT_FOUND`.
+
 ### F5 — Leitura do histórico
 - `GET /answers/{answerId}`, `GET /projects/{projectId}/evidence/{evidenceId}`, `GET /projects/{projectId}/conversations`, `GET /conversations/{conversationId}`; `openapi.json`.
 - **Testes:** evidência de snapshot podado devolve a cópia com `PRUNED`; evidência e resposta de outro projeto → `404`; paginação e ordem; conversa com resposta `FAILED` e `PENDING`.

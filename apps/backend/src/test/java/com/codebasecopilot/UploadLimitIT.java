@@ -26,7 +26,9 @@ import org.springframework.test.context.ContextConfiguration;
             TestProperties.EMBEDDING_PROVIDER,
             TestProperties.NO_EMBEDDING_API_KEY,
             TestProperties.GENERATION_PROVIDER,
-            TestProperties.NO_GENERATION_API_KEY
+            TestProperties.NO_GENERATION_API_KEY,
+            TestProperties.NO_GENERATION_PRICE_INPUT,
+            TestProperties.NO_GENERATION_PRICE_OUTPUT
         })
 @ContextConfiguration(initializers = TestFileSystemInitializer.class)
 @Import(TestcontainersConfiguration.class)

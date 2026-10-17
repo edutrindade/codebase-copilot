@@ -48,6 +48,18 @@ class ConversationRepository {
                 == 1;
     }
 
+    boolean exists(UUID id, UUID projectId) {
+        return jdbc.sql(
+                        """
+                        SELECT EXISTS (
+                            SELECT 1 FROM conversations WHERE id = :id AND project_id = :projectId)
+                        """)
+                .param("id", id)
+                .param("projectId", projectId)
+                .query(Boolean.class)
+                .single();
+    }
+
     void insertMessage(UUID id, UUID conversationId, Role role, String content, Instant now) {
         jdbc.sql(
                         """

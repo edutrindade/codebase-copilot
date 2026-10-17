@@ -20,8 +20,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
 
-// Local-folder projects indexed through the API, for the search channels' tests.
-final class IndexedProjects {
+// Local-folder projects indexed through the API, for the search and answer tests.
+public final class IndexedProjects {
 
     private static final Set<String> TERMINAL = Set.of("COMPLETED", "FAILED");
 
@@ -29,12 +29,12 @@ final class IndexedProjects {
     private final UUID workspaceId;
     private final List<Path> trees = new ArrayList<>();
 
-    IndexedProjects(MockMvcTester mvc, UUID workspaceId) {
+    public IndexedProjects(MockMvcTester mvc, UUID workspaceId) {
         this.mvc = mvc;
         this.workspaceId = workspaceId;
     }
 
-    Path tree() throws IOException {
+    public Path tree() throws IOException {
         Path tree =
                 Files.createDirectories(
                         TestFileSystemInitializer.ROOTS_DIR.resolve(
@@ -43,13 +43,13 @@ final class IndexedProjects {
         return tree;
     }
 
-    static void write(Path tree, String name, String content) throws IOException {
+    public static void write(Path tree, String name, String content) throws IOException {
         Path file = tree.resolve(name);
         Files.createDirectories(file.getParent());
         Files.writeString(file, content);
     }
 
-    UUID project(Path tree) {
+    public UUID project(Path tree) {
         MvcTestResult result =
                 mvc.post()
                         .uri("/api/v1/workspaces/{id}/projects", workspaceId)
@@ -66,7 +66,7 @@ final class IndexedProjects {
     }
 
     // Runs one index job to completion and returns its snapshot.
-    UUID index(UUID projectId) {
+    public UUID index(UUID projectId) {
         MvcTestResult created =
                 mvc.post().uri("/api/v1/projects/{id}/index-jobs", projectId).exchange();
         assertThat(created).hasStatus(HttpStatus.ACCEPTED);
@@ -86,7 +86,7 @@ final class IndexedProjects {
     }
 
     // A new project with these files, indexed once.
-    UUID indexedSnapshot(String... namesAndContents) throws IOException {
+    public UUID indexedSnapshot(String... namesAndContents) throws IOException {
         Path tree = tree();
         for (int i = 0; i < namesAndContents.length; i += 2) {
             write(tree, namesAndContents[i], namesAndContents[i + 1]);
@@ -94,7 +94,7 @@ final class IndexedProjects {
         return index(project(tree));
     }
 
-    void removeTrees() throws IOException {
+    public void removeTrees() throws IOException {
         for (Path tree : trees) {
             Directories.deleteRecursively(tree);
         }

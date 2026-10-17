@@ -19,6 +19,9 @@
     "description" : "Exclusões e limites usados na varredura e na indexação.",
     "name" : "Configurações do projeto"
   }, {
+    "description" : "Perguntas sobre o código do projeto, respondidas com evidências citadas.",
+    "name" : "Respostas"
+  }, {
     "description" : "Agrupam os projetos de quem usa a ferramenta.",
     "name" : "Workspaces"
   }, {
@@ -770,6 +773,95 @@
         },
         "summary" : "Calcula o inventário (pré-análise) do projeto",
         "tags" : [ "Inventário" ]
+      }
+    },
+    "/api/v1/projects/{projectId}/questions" : {
+      "post" : {
+        "description" : "Síncrono: responde quando a geração termina. Sem snapshotId, usa o snapshot ativo; sem conversationId, abre uma conversa. A pergunta e os trechos escolhidos como evidência são enviados ao provedor de geração configurado (e a pergunta ao de embeddings, nos modos VECTOR e HYBRID). Depois que a pergunta é registrada, falhas dos provedores não viram erro HTTP: a resposta é criada com status FAILED e error.code, e a pergunta fica no histórico.",
+        "operationId" : "askQuestion",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/QuestionRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AnswerResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: VALIDATION_FAILED, MALFORMED_REQUEST."
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: PROJECT_NOT_FOUND, SNAPSHOT_NOT_FOUND, CONVERSATION_NOT_FOUND."
+          },
+          "409" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: SNAPSHOT_NOT_SEARCHABLE, SNAPSHOT_LEXICAL_MISMATCH, EMBEDDINGS_NOT_AVAILABLE, SNAPSHOT_EMBEDDING_MISMATCH, GENERATION_NOT_AVAILABLE."
+          },
+          "415" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: UNSUPPORTED_MEDIA_TYPE."
+          },
+          "500" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Erro (ProblemDetail). Códigos: INTERNAL_ERROR."
+          }
+        },
+        "summary" : "Responde a uma pergunta com evidências do código",
+        "tags" : [ "Respostas" ]
       }
     },
     "/api/v1/projects/{projectId}/search" : {
@@ -1670,6 +1762,81 @@
         },
         "required" : [ "completedAt", "counts", "id", "status" ]
       },
+      "AnswerResponse" : {
+        "type" : "object",
+        "properties" : {
+          "answer" : {
+            "type" : [ "string", "null" ],
+            "description" : "Texto com marcadores [E1], [E2]… das evidências citadas; null quando FAILED ou PENDING."
+          },
+          "answerId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "completedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "conversationId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "error" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/ErrorResponse"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "evidence" : {
+            "type" : "array",
+            "description" : "Todas as evidências enviadas ao modelo, citadas ou não.",
+            "items" : {
+              "$ref" : "#/components/schemas/EvidenceResponse"
+            }
+          },
+          "invalidCitationCount" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Citações descartadas por apontar evidência ou linhas não enviadas."
+          },
+          "metrics" : {
+            "$ref" : "#/components/schemas/MetricsResponse"
+          },
+          "model" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/ModelResponse"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "question" : {
+            "type" : "string"
+          },
+          "retrieval" : {
+            "$ref" : "#/components/schemas/RetrievalResponse"
+          },
+          "snapshotId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "PENDING", "ANSWERED", "PARTIAL", "ABSTAINED", "FAILED" ]
+          },
+          "warnings" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/WarningResponse"
+            }
+          }
+        },
+        "required" : [ "answer", "answerId", "completedAt", "conversationId", "createdAt", "error", "evidence", "invalidCitationCount", "metrics", "model", "question", "retrieval", "snapshotId", "status", "warnings" ]
+      },
       "ChangesResponse" : {
         "type" : "object",
         "properties" : {
@@ -1897,6 +2064,75 @@
           }
         },
         "required" : [ "dimensions", "model", "provider", "tokens" ]
+      },
+      "ErrorResponse" : {
+        "type" : "object",
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "code", "message" ]
+      },
+      "EvidenceResponse" : {
+        "type" : "object",
+        "properties" : {
+          "citationLabel" : {
+            "type" : "string"
+          },
+          "citedEndLine" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          },
+          "citedStartLine" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32",
+            "description" : "Trecho estreitado pela citação, se houver."
+          },
+          "endLine" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "otherPaths" : {
+            "type" : "array",
+            "description" : "Demais caminhos do snapshot com o mesmo conteúdo.",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "path" : {
+            "type" : "string",
+            "description" : "Primeiro caminho em ordem lexicográfica com este conteúdo."
+          },
+          "rank" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Posição do trecho no resultado da busca, a partir de 1."
+          },
+          "ranks" : {
+            "$ref" : "#/components/schemas/RanksResponse"
+          },
+          "snippet" : {
+            "type" : "string",
+            "description" : "Cópia do trecho enviado ao modelo."
+          },
+          "startLine" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "validationStatus" : {
+            "type" : "string",
+            "enum" : [ "CITED", "NOT_CITED", "INVALID_RANGE" ]
+          }
+        },
+        "required" : [ "citationLabel", "citedEndLine", "citedStartLine", "endLine", "id", "otherPaths", "path", "rank", "ranks", "snippet", "startLine", "validationStatus" ]
       },
       "ExclusionGroup" : {
         "type" : "object",
@@ -2271,6 +2507,43 @@
         },
         "required" : [ "key", "label" ]
       },
+      "MetricsResponse" : {
+        "type" : "object",
+        "description" : "Tokens informados pelo provedor (null quando não informados). O custo é estimado pelo preço configurado, não é a fatura; UNKNOWN sem tokens ou sem preço.",
+        "properties" : {
+          "costCurrency" : {
+            "type" : [ "string", "null" ]
+          },
+          "costStatus" : {
+            "type" : "string",
+            "enum" : [ "ESTIMATED", "UNKNOWN" ]
+          },
+          "estimatedCost" : {
+            "type" : [ "number", "null" ]
+          },
+          "generationMs" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
+          },
+          "inputTokens" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          },
+          "latencyMs" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
+          },
+          "outputTokens" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          },
+          "retrievalMs" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
+          }
+        },
+        "required" : [ "costCurrency", "costStatus", "estimatedCost", "generationMs", "inputTokens", "latencyMs", "outputTokens", "retrievalMs" ]
+      },
       "ModelResponse" : {
         "type" : "object",
         "properties" : {
@@ -2286,6 +2559,25 @@
           }
         },
         "required" : [ "dimensions", "name", "provider" ]
+      },
+      "OptionsRequest" : {
+        "type" : "object",
+        "properties" : {
+          "maxEvidence" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32",
+            "default" : 8,
+            "description" : "Máximo de trechos enviados ao modelo como evidência.",
+            "maximum" : 20,
+            "minimum" : 1
+          },
+          "retrievalMode" : {
+            "type" : [ "string", "null" ],
+            "default" : "HYBRID",
+            "description" : "Busca usada para escolher as evidências. LEXICAL não usa o provedor de embeddings.",
+            "enum" : [ "LEXICAL", "VECTOR", "HYBRID" ]
+          }
+        }
       },
       "PageResponseImportResponse" : {
         "type" : "object",
@@ -2460,7 +2752,7 @@
         "properties" : {
           "code" : {
             "type" : "string",
-            "enum" : [ "VALIDATION_FAILED", "MALFORMED_REQUEST", "RESOURCE_NOT_FOUND", "METHOD_NOT_ALLOWED", "UNSUPPORTED_MEDIA_TYPE", "INTERNAL_ERROR", "WORKSPACE_NOT_FOUND", "WORKSPACE_NOT_EMPTY", "PROJECT_NOT_FOUND", "LOCAL_ROOTS_NOT_CONFIGURED", "ROOT_NOT_FOUND", "PATH_OUTSIDE_ROOT", "PROJECT_ALREADY_EXISTS", "DIRECTORY_NOT_FOUND", "DIRECTORY_NOT_READABLE", "PROJECT_BUSY", "PROJECT_SOURCE_MISMATCH", "UPLOAD_TOO_LARGE", "IMPORT_NOT_FOUND", "SOURCE_ROOT_NOT_CONFIGURED", "SOURCE_DIRECTORY_NOT_FOUND", "SOURCE_IS_SYMLINK", "SOURCE_NOT_READABLE", "SOURCE_NOT_IMPORTED", "INDEX_JOB_NOT_FOUND", "SNAPSHOT_NOT_FOUND", "SNAPSHOT_NOT_SEARCHABLE", "SNAPSHOT_LEXICAL_MISMATCH", "EMBEDDINGS_NOT_AVAILABLE", "SNAPSHOT_EMBEDDING_MISMATCH", "CONVERSATION_NOT_FOUND", "EMBEDDING_PROVIDER_UNAVAILABLE", "EMBEDDING_PROVIDER_UNAUTHORIZED", "EMBEDDING_QUOTA_EXCEEDED", "EMBEDDING_REQUEST_REJECTED", "EMBEDDING_RATE_LIMITED" ]
+            "enum" : [ "VALIDATION_FAILED", "MALFORMED_REQUEST", "RESOURCE_NOT_FOUND", "METHOD_NOT_ALLOWED", "UNSUPPORTED_MEDIA_TYPE", "INTERNAL_ERROR", "WORKSPACE_NOT_FOUND", "WORKSPACE_NOT_EMPTY", "PROJECT_NOT_FOUND", "LOCAL_ROOTS_NOT_CONFIGURED", "ROOT_NOT_FOUND", "PATH_OUTSIDE_ROOT", "PROJECT_ALREADY_EXISTS", "DIRECTORY_NOT_FOUND", "DIRECTORY_NOT_READABLE", "PROJECT_BUSY", "PROJECT_SOURCE_MISMATCH", "UPLOAD_TOO_LARGE", "IMPORT_NOT_FOUND", "SOURCE_ROOT_NOT_CONFIGURED", "SOURCE_DIRECTORY_NOT_FOUND", "SOURCE_IS_SYMLINK", "SOURCE_NOT_READABLE", "SOURCE_NOT_IMPORTED", "INDEX_JOB_NOT_FOUND", "SNAPSHOT_NOT_FOUND", "SNAPSHOT_NOT_SEARCHABLE", "SNAPSHOT_LEXICAL_MISMATCH", "EMBEDDINGS_NOT_AVAILABLE", "SNAPSHOT_EMBEDDING_MISMATCH", "CONVERSATION_NOT_FOUND", "GENERATION_NOT_AVAILABLE", "EMBEDDING_PROVIDER_UNAVAILABLE", "EMBEDDING_PROVIDER_UNAUTHORIZED", "EMBEDDING_QUOTA_EXCEEDED", "EMBEDDING_REQUEST_REJECTED", "EMBEDDING_RATE_LIMITED" ]
           },
           "detail" : {
             "type" : "string"
@@ -2554,6 +2846,30 @@
         },
         "required" : [ "activeSnapshot", "createdAt", "id", "indexing", "name", "outdatedReasons", "source", "workspaceId" ]
       },
+      "QuestionRequest" : {
+        "type" : "object",
+        "properties" : {
+          "conversationId" : {
+            "type" : [ "string", "null" ],
+            "format" : "uuid",
+            "description" : "Ausente: abre uma conversa nova."
+          },
+          "options" : {
+            "type" : "null",
+            "$ref" : "#/components/schemas/OptionsRequest"
+          },
+          "question" : {
+            "type" : "string",
+            "maxLength" : 2000,
+            "minLength" : 1
+          },
+          "snapshotId" : {
+            "type" : [ "string", "null" ],
+            "format" : "uuid",
+            "description" : "Ausente: snapshot ativo do projeto."
+          }
+        }
+      },
       "RanksResponse" : {
         "type" : "object",
         "description" : "Posição do trecho em cada busca, a partir de 1; null quando ela não o trouxe.",
@@ -2612,6 +2928,19 @@
           }
         },
         "required" : [ "chunkId", "content", "endLine", "otherPaths", "path", "ranks", "score", "startLine" ]
+      },
+      "RetrievalResponse" : {
+        "type" : "object",
+        "properties" : {
+          "mode" : {
+            "type" : "string",
+            "enum" : [ "LEXICAL", "VECTOR", "HYBRID" ]
+          },
+          "promptVersion" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "mode", "promptVersion" ]
       },
       "ScanResult" : {
         "type" : "object",
@@ -2969,20 +3298,14 @@
         "type" : "object",
         "properties" : {
           "code" : {
-            "type" : "string"
+            "type" : "string",
+            "enum" : [ "NO_EVIDENCE", "INVALID_CITATIONS_REMOVED", "NO_VALID_CITATIONS" ]
           },
           "message" : {
             "type" : "string"
-          },
-          "relatedProjectIds" : {
-            "type" : "array",
-            "items" : {
-              "type" : "string",
-              "format" : "uuid"
-            }
           }
         },
-        "required" : [ "code", "message", "relatedProjectIds" ]
+        "required" : [ "code", "message" ]
       },
       "WorkspaceResponse" : {
         "type" : "object",

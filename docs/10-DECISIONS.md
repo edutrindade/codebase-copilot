@@ -1065,6 +1065,25 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Consequências:** a validação garante existência de arquivo e linhas, não suporte factual, medido na avaliação (F6). Mudar instruções, blocos ou schema cria uma versão nova do prompt.  
 **O que levaria à revisão:** resultados da avaliação de respostas (orçamento, limite por arquivo, abstenção), perguntas de acompanhamento (Etapa 8) ou reranking.
 
+### D-067 — Caso de uso de perguntas e custo por resposta
+**Status:** Aceita (16/10/2026; P8 e P9 da Etapa 6; F4 entregue)  
+**Contexto:** a pergunta passa por dois provedores e pode levar o tempo da geração; o histórico não pode perder a pergunta quando um provedor falha, e nada pode ficar gravado quando o pedido é recusado.  
+**Decisão:**
+- **`POST /projects/{projectId}/questions`**, síncrono: `{ question, snapshotId, conversationId, options: { maxEvidence, retrievalMode } }`. `question` de 1 a 2.000 caracteres, não em branco; `maxEvidence` de 1 a 20 (padrão 8); `retrievalMode` `LEXICAL`, `VECTOR` ou `HYBRID` (nome exato, padrão `HYBRID`, texto no pedido como na D-060). Resposta `201` com `Location: /api/v1/answers/{answerId}`.
+- **Erros, nesta ordem, sem nada gravado:** `400 VALIDATION_FAILED` (`question`, `options.maxEvidence`, `options.retrievalMode`); `404 PROJECT_NOT_FOUND`; `404 CONVERSATION_NOT_FOUND` (inexistente ou de outro projeto); as checagens do snapshot e dos embeddings da busca, na ordem da D-060 (`SNAPSHOT_NOT_FOUND`, `SNAPSHOT_NOT_SEARCHABLE`, `SNAPSHOT_LEXICAL_MISMATCH`, `EMBEDDINGS_NOT_AVAILABLE`, `SNAPSHOT_EMBEDDING_MISMATCH`); `409 GENERATION_NOT_AVAILABLE`. Os 404 vêm antes dos 409, e a geração por último, por ser a última peça usada.
+- **Fluxo:** checagens; transação curta com conversa, mensagem `USER` e resposta `PENDING`; busca, montagem, geração e validação fora de transação; transação curta com o desfecho. Depois da primeira transação, falhas dos provedores **não viram erro HTTP**: a resposta fica `FAILED` com `error.code` (`GENERATION_*` ou `EMBEDDING_*`) e o pedido responde `201`. Mensagens pt-BR em `answer.error.<CODE>`.
+- **Sem evidência, sem chamada:** busca vazia, ou nada que caiba no contexto, vira `ABSTAINED` com o aviso `NO_EVIDENCE`, sem texto gravado; o texto exibido é a mensagem `answer.abstained`.
+- **Evidências gravadas** sempre que o modelo foi chamado, inclusive numa falha da geração ou numa saída inválida (todas `NOT_CITED`), porque foram enviadas ao provedor; numa falha do embedding da pergunta não há evidência.
+- **Projeto removido durante a geração:** a resposta já não existe para ser concluída, e o pedido responde `404 PROJECT_NOT_FOUND`.
+- **Resposta:** `answerId`, `conversationId`, `snapshotId`, `question`, `status`, `answer` (texto com `[En]`, ou `null`), `warnings` (`{code, message}`), `invalidCitationCount`, `error` (`{code, message}` só em `FAILED`), `evidence` (todas as enviadas ao modelo, com `id`, rótulo, caminhos, linhas, linhas citadas, cópia do trecho, `validationStatus`, `rank` e `ranks` por canal), `model` (`null` quando o modelo não foi chamado), `retrieval` (`mode`, `promptVersion`), `metrics` (`latencyMs`, `retrievalMs`, `generationMs`, tokens, custo) e as datas.
+- **Custo (P9):** preço em `app.generation.pricing.input-per-million` e `output-per-million` (US$), sem padrão no código; o `.env.example` traz os valores do `gpt-6-luna` com a data da consulta. `ESTIMATED` só com os dois tokens informados e os dois preços configurados, arredondado a 6 casas; senão `UNKNOWN`, sem custo nem moeda. Os tokens do embedding da pergunta ficam em `retrieval_metadata`, fora do custo.
+- **`retrieval_metadata`:** modelo de embedding, versão lexical, tokens do embedding da pergunta, candidatos por canal, chunks recuperados, tokens de raciocínio e duração por etapa (`retrieval`, `questionEmbedding`, `generation`, `validation`). Nunca texto.
+- **Log:** uma linha por resposta com resposta, projeto, snapshot, modo, status e código, quantidade de evidências, tokens e durações; nunca pergunta, resposta, prompt ou trecho (D-054). A linha da busca passou a separar a duração do embedding da pergunta.
+
+**Motivo:** o histórico guarda toda pergunta que passou pelas checagens (F-07, "erros de provedor são comunicados sem perder o histórico da pergunta"), e um pedido recusado não deixa conversa vazia.  
+**Consequências:** o cliente espera até o timeout da geração (60 s por padrão); um erro inesperado depois da primeira transação (banco fora do ar, por exemplo) deixa a resposta `PENDING` até a recuperação da próxima inicialização (D-065). O `Location` aponta para `GET /answers/{answerId}`, entregue na F5.  
+**O que levaria à revisão:** streaming na UI (Etapa 7), perguntas de acompanhamento (Etapa 8) ou um provedor que informe o custo.
+
 ---
 
 ## Decisões em aberto
