@@ -2,6 +2,8 @@ import type { RouteObject } from 'react-router';
 import { Layout } from '../components/Layout';
 import { NotFoundPage } from '../features/not-found/NotFoundPage';
 import { PendingPage } from '../features/pending/PendingPage';
+import { WorkspacePage } from '../features/workspaces/WorkspacePage';
+import { WorkspacesPage } from '../features/workspaces/WorkspacesPage';
 import { messages } from '../messages';
 import { RouteError } from './RouteError';
 
@@ -12,11 +14,8 @@ export const routes: RouteObject[] = [
       {
         errorElement: <RouteError />,
         children: [
-          { index: true, element: <PendingPage title={messages.pages.workspaces} /> },
-          {
-            path: 'workspaces/:workspaceId',
-            element: <PendingPage title={messages.pages.workspace} />,
-          },
+          { index: true, element: <WorkspacesPage /> },
+          { path: 'workspaces/:workspaceId', element: <WorkspacePage /> },
           {
             path: 'workspaces/:workspaceId/new',
             element: <PendingPage title={messages.pages.newProject} />,

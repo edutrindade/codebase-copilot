@@ -270,6 +270,34 @@ O Vite recusa `Host: evil.example` com `403` no `dev` e no `preview`, e aceita `
 - Primeiro uso, lista de workspaces, lista de projetos com estado, exclusões com confirmação.
 - Tabela `code` → ação dos estados do `03` §6.
 
+**Como foi entregue (17/10/2026)**
+- `/`: sem workspaces, o primeiro uso (`03` §3 etapa 1: nome opcional, dados locais); com workspaces, a lista paginada (`?page=` na URL, base 1) com a contagem de projetos e o formulário de novo workspace. Criar abre o workspace.
+- `/workspaces/:id`: projetos paginados com origem e estado em texto (não só cor, `03` §8), progresso do job ativo, link para o projeto e para o novo projeto; vazio com a chamada para importar. Com algum job ativo na página, a lista é consultada a cada 1 s (P9).
+- Exclusões com `ConfirmDialog` (Radix `AlertDialog`): o diálogo fica aberto até a resposta e mostra o `409` no lugar (`WORKSPACE_NOT_EMPTY`, `PROJECT_BUSY`), com o aviso antecipado quando o workspace tem projetos ou o projeto tem job.
+- **Tabela `code` → ação** em `src/api/recovery.ts`, um `Record<ErrorCode, Recovery>`: um `code` novo no contrato quebra o `tsc` até receber uma ação. O `ProblemAlert` mostra o texto da ação (em `messages.recovery`), os erros por campo e, só para `retry`, o botão "Tentar de novo" quando a tela oferece. Sem ProblemDetail: rede e `5xx` são `retry`; o resto, `reload`.
+
+| Ação | Códigos | Estado do `03` §6 |
+|---|---|---|
+| `retry` | `INTERNAL_ERROR`, falha de rede, `5xx` sem ProblemDetail | banco indisponível |
+| `reload` | `MALFORMED_REQUEST`, `RESOURCE_NOT_FOUND`, `METHOD_NOT_ALLOWED`, `UNSUPPORTED_MEDIA_TYPE`, `PROJECT_SOURCE_MISMATCH` | — (UI e servidor fora de sincronia) |
+| `fixInput` | `VALIDATION_FAILED`, `PATH_OUTSIDE_ROOT` | — |
+| `goBack` | `*_NOT_FOUND` de recursos (workspace, projeto, import, job, snapshot, conversa, resposta, evidência, arquivo) | — |
+| `removeProjects` | `WORKSPACE_NOT_EMPTY` | — |
+| `waitForJob` | `PROJECT_BUSY` | — |
+| `chooseAnother` | `PROJECT_ALREADY_EXISTS`, `DIRECTORY_NOT_FOUND`, `DIRECTORY_NOT_READABLE`, `UPLOAD_TOO_LARGE`, `FILE_NOT_INDEXED` | arquivo ilegível, acima do limite |
+| `checkSource` | `SOURCE_DIRECTORY_NOT_FOUND`, `SOURCE_IS_SYMLINK`, `SOURCE_NOT_READABLE` | — |
+| `uploadZip` | `SOURCE_NOT_IMPORTED` | — |
+| `reindex` | `SNAPSHOT_NOT_SEARCHABLE`, `SNAPSHOT_LEXICAL_MISMATCH`, `SNAPSHOT_EMBEDDING_MISMATCH` | snapshot desatualizado |
+| `reviewServerConfig` | `LOCAL_ROOTS_NOT_CONFIGURED`, `ROOT_NOT_FOUND`, `SOURCE_ROOT_NOT_CONFIGURED` | — |
+| `configureProvider` | `EMBEDDINGS_NOT_AVAILABLE`, `GENERATION_NOT_AVAILABLE`, `EMBEDDING_PROVIDER_UNAUTHORIZED` | provedor sem credenciais |
+| `providerLimit` | `EMBEDDING_PROVIDER_UNAVAILABLE`, `EMBEDDING_QUOTA_EXCEEDED`, `EMBEDDING_REQUEST_REJECTED`, `EMBEDDING_RATE_LIMITED` | limite ou erro do provedor |
+| `useEvidenceCopy` | `SNAPSHOT_PRUNED` | — |
+| `openLocally` | `FORBIDDEN_HOST`, `FORBIDDEN_ORIGIN` | — |
+
+  Os demais estados do `03` §6 não são erros HTTP e ficam nas telas que os mostram: pasta sem arquivos suportados e todos excluídos (aviso `NO_INCLUDED_FILES` e totais, F4), indexação parcial (`PARTIAL`, F5), snapshot desatualizado (`outdatedReasons`, F5) e nenhuma evidência suficiente (aviso `NO_EVIDENCE`, F6).
+- **Desvio (estado "falhou" na lista):** o `ProjectResponse` não traz o último job, só o ativo, então a lista não distingue um projeto cuja indexação falhou. Os estados derivados são: indexando, aguardando o ZIP, não indexado, desatualizado, pronto com arquivos não indexados e pronto (`projectStatus.ts`). A falha aparece no resumo do projeto (F5, `GET /index-jobs`); buscar o último job de cada projeto da página custaria uma chamada por item, e mudar o contrato fica fora das fatias depois da F1.
+- Testes: 52 (30 novos: tabela de ações, estado do projeto, `ProblemAlert`, as duas telas com carregando, vazio, erro com e sem retry, paginação, criação, exclusão com sucesso e com `409`, e axe nas telas e no diálogo).
+
 ### F4 — Importação e pré-análise
 - Assistente: pasta local (navegação nas raízes, `hasChildren`, `readable`, `truncated`) ou ZIP (upload, estado do import, `REJECTED` com a mensagem).
 - Pré-análise: totais, linguagens, diretórios, exclusões com exemplos, avisos; edição de padrões e regras (`PUT /settings`, erros por campo); aviso de privacidade (P4); indexar.

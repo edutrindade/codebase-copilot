@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
-import { expect, test } from 'vitest';
+import userEvent from '@testing-library/user-event';
+import { expect, test, vi } from 'vitest';
 import { ApiError, type Problem } from '../api/errors';
 import { messages } from '../messages';
 import { axeViolations } from '../test/axe';
@@ -38,4 +39,33 @@ test('falls back to a generic message for anything else', () => {
 
   expect(screen.getByRole('alert')).toHaveTextContent(messages.errors.unexpectedTitle);
   expect(screen.getByRole('alert')).not.toHaveTextContent('boom');
+});
+
+test('suggests the recovery for the code and offers no retry for it', () => {
+  const onRetry = vi.fn();
+  render(<ProblemAlert error={new ApiError(404, projectNotFound)} onRetry={onRetry} />);
+
+  expect(screen.getByRole('alert')).toHaveTextContent(messages.recovery.goBack);
+  expect(screen.queryByRole('button')).not.toBeInTheDocument();
+});
+
+test('offers a retry for a retryable error when the screen supports it', async () => {
+  const onRetry = vi.fn();
+  render(<ProblemAlert error={new ApiError(0, null)} onRetry={onRetry} />);
+
+  await userEvent.click(screen.getByRole('button', { name: messages.errors.retry }));
+
+  expect(onRetry).toHaveBeenCalledOnce();
+});
+
+test('lists the field errors of a validation problem', () => {
+  const invalid: Problem = {
+    ...projectNotFound,
+    status: 400,
+    code: 'VALIDATION_FAILED',
+    errors: [{ field: 'name', message: 'O nome é obrigatório.' }],
+  };
+  render(<ProblemAlert error={new ApiError(400, invalid)} />);
+
+  expect(screen.getByRole('listitem')).toHaveTextContent('O nome é obrigatório.');
 });

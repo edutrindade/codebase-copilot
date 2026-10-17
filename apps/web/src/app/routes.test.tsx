@@ -1,14 +1,19 @@
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, test } from 'vitest';
+import { http, HttpResponse } from 'msw';
+import { beforeEach, describe, expect, test } from 'vitest';
 import { messages } from '../messages';
 import { axeViolations } from '../test/axe';
+import { page } from '../test/fixtures';
 import { renderRoute } from '../test/render';
+import { server } from '../test/server';
 
 describe('routes', () => {
+  beforeEach(() => {
+    server.use(http.get('/api/v1/workspaces', () => HttpResponse.json(page([]))));
+  });
+
   test.each([
-    ['/', messages.pages.workspaces],
-    ['/workspaces/w1', messages.pages.workspace],
     ['/workspaces/w1/new', messages.pages.newProject],
     ['/projects/p1', messages.pages.project],
     ['/projects/p1/ask', messages.pages.ask],
