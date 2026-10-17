@@ -1,0 +1,530 @@
+export const messages = {
+  app: {
+    name: 'Codebase Copilot',
+    skipToContent: 'Pular para o conteúdo',
+  },
+  pages: {
+    workspaces: 'Workspaces',
+    workspace: 'Projetos do workspace',
+    newProject: 'Novo projeto',
+    project: 'Projeto',
+    ask: 'Perguntar',
+    conversation: 'Conversa',
+    history: 'Histórico',
+  },
+  loading: 'Carregando…',
+  notFound: {
+    title: 'Página não encontrada',
+    detail: 'O endereço não corresponde a nenhuma tela.',
+    back: 'Voltar para os workspaces',
+  },
+  errors: {
+    networkTitle: 'Servidor indisponível',
+    networkDetail: 'Não foi possível falar com o servidor. Confira se o backend está em execução.',
+    unexpectedTitle: 'Erro inesperado',
+    unexpectedDetail: 'O servidor respondeu de um jeito inesperado. Tente de novo.',
+    renderTitle: 'Algo deu errado nesta tela',
+    renderDetail: 'Recarregue a página. Se o erro continuar, volte para os workspaces.',
+    requestId: 'Identificador do pedido',
+    retry: 'Tentar de novo',
+  },
+  recovery: {
+    retry:
+      'Tente de novo em instantes. Se o erro continuar, consulte o log do servidor com o identificador do pedido.',
+    reload:
+      'Recarregue a página. Se o erro continuar, a interface e o servidor podem estar em versões diferentes.',
+    fixInput: 'Corrija os campos indicados e envie de novo.',
+    goBack: 'O item pode ter sido removido. Volte para a lista e escolha outro.',
+    removeProjects: 'Remova os projetos deste workspace antes de excluí-lo.',
+    waitForJob: 'Aguarde o fim da importação ou da indexação em andamento e tente de novo.',
+    chooseAnother: 'Escolha outra pasta ou outro arquivo.',
+    checkSource:
+      'Confira se a pasta de origem ainda existe, não é um link simbólico e pode ser lida; depois tente de novo.',
+    uploadZip: 'Envie o ZIP do projeto antes de continuar.',
+    reindex: 'Indexe o projeto de novo para atualizar o snapshot.',
+    reviewServerConfig:
+      'Revise as raízes permitidas na configuração do servidor e reinicie o backend.',
+    configureProvider:
+      'Configure o provedor e a credencial no servidor e reinicie o backend. A busca lexical continua disponível.',
+    providerLimit:
+      'O provedor recusou ou limitou o pedido. Aguarde, confira o saldo da conta e tente de novo.',
+    useEvidenceCopy:
+      'Este snapshot foi substituído; o trecho guardado na evidência continua disponível.',
+    openLocally: 'Abra a interface pelo endereço local (localhost ou 127.0.0.1).',
+    reviewExclusions: 'Revise as exclusões e os limites na pré-análise e indexe de novo.',
+    askAgain:
+      'Faça a pergunta de novo. Se o erro continuar, reformule-a ou reduza o número de evidências nas opções avançadas.',
+  },
+  pagination: {
+    label: 'Paginação',
+    previous: 'Anterior',
+    next: 'Próxima',
+    status: (page: number, totalPages: number) => `Página ${page} de ${totalPages}`,
+  },
+  confirm: {
+    deleteTrigger: 'Excluir',
+    cancel: 'Cancelar',
+    working: 'Excluindo…',
+  },
+  workspaces: {
+    title: 'Workspaces',
+    firstUseTitle: 'Crie seu primeiro workspace',
+    firstUseDetail:
+      'Um workspace agrupa os projetos que você vai importar. Os dados ficam armazenados localmente, no banco desta máquina.',
+    newTitle: 'Novo workspace',
+    nameLabel: 'Nome (opcional)',
+    namePlaceholder: 'Meus projetos',
+    create: 'Criar workspace',
+    creating: 'Criando…',
+    projectCount: (count: number) =>
+      count === 0 ? 'Nenhum projeto' : count === 1 ? '1 projeto' : `${count} projetos`,
+    createdAt: (date: string) => `Criado em ${date}`,
+    delete: (name: string) => `Excluir o workspace ${name}`,
+    deleteTitle: (name: string) => `Excluir o workspace “${name}”?`,
+    deleteDetail: 'Esta ação não pode ser desfeita.',
+    deleteNotEmpty: (count: number) =>
+      `Ele tem ${count === 1 ? '1 projeto' : `${count} projetos`}, que precisam ser removidos antes.`,
+    deleteConfirm: 'Excluir workspace',
+  },
+  projects: {
+    allWorkspaces: 'Todos os workspaces',
+    newProject: 'Novo projeto',
+    emptyTitle: 'Nenhum projeto ainda',
+    emptyDetail: 'Importe uma pasta local ou envie um ZIP. O código é só lido, nunca executado.',
+    sourceLocal: (rootKey: string, relativePath: string) =>
+      `Pasta local: ${rootKey}/${relativePath}`,
+    sourceZip: 'Arquivo ZIP',
+    status: {
+      INDEXING: 'Indexando',
+      AWAITING_UPLOAD: 'Aguardando o ZIP',
+      NOT_INDEXED: 'Não indexado',
+      OUTDATED: 'Desatualizado',
+      PARTIAL: 'Pronto, com arquivos não indexados',
+      READY: 'Pronto',
+    },
+    progress: (completed: number, total: number) => `${completed} de ${total}`,
+    delete: (name: string) => `Excluir o projeto ${name}`,
+    deleteTitle: (name: string) => `Excluir o projeto “${name}”?`,
+    deleteDetail:
+      'Remove imports, índices, snapshots e histórico de conversas do projeto. Esta ação não pode ser desfeita.',
+    deleteBusy: 'Há uma importação ou indexação em andamento; aguarde o fim para excluir.',
+    deleteConfirm: 'Excluir projeto',
+  },
+  newProject: {
+    backToWorkspace: 'Voltar para o workspace',
+    steps: {
+      label: 'Etapas da importação',
+      source: 'Origem',
+      upload: 'Envio do ZIP',
+      review: 'Pré-análise e indexação',
+      current: (step: number, total: number) => `Etapa ${step} de ${total}`,
+    },
+    intro: [
+      'Os arquivos da pasta ou do ZIP são só lidos, nunca executados.',
+      'Antes de indexar, você vê quais arquivos serão incluídos e pode ajustar as exclusões. Dependências, saídas de build, binários e arquivos sensíveis por nome (como .env) já vêm excluídos.',
+      'São indexados arquivos de texto (código, configuração, documentação); binários ficam de fora. Há limites de tamanho por arquivo e por projeto, mostrados e ajustáveis na pré-análise.',
+      'Se um provedor remoto estiver configurado, trechos selecionados podem ser enviados a ele; você é avisado antes.',
+    ],
+    sourceLegend: 'De onde vem o código?',
+    sourceLocal: 'Pasta local',
+    sourceLocalHint: 'Uma pasta dentro das raízes permitidas na configuração do servidor.',
+    sourceZip: 'Arquivo ZIP',
+    sourceZipHint: 'Você envia o arquivo depois de criar o projeto.',
+    noRoots:
+      'Nenhuma raiz de pastas locais está configurada no servidor. Use um arquivo ZIP ou configure as raízes permitidas e reinicie o backend.',
+    nameLabel: 'Nome do projeto',
+    create: 'Criar projeto',
+    creating: 'Criando…',
+    browser: {
+      rootLabel: 'Raiz',
+      location: 'Pasta atual',
+      selected: (path: string) => `Pasta selecionada: ${path}`,
+      empty: 'Esta pasta não tem subpastas. Ela pode ser usada como projeto.',
+      truncated: 'A pasta tem mais subpastas do que é possível listar; só as primeiras aparecem.',
+      unreadable: 'sem permissão de leitura',
+      open: (name: string) => `Abrir ${name}`,
+      backToRoot: 'Voltar para a raiz',
+      subfolders: 'Subpastas',
+    },
+    upload: {
+      title: 'Enviar o ZIP',
+      detail:
+        'O arquivo é extraído no servidor com limites de tamanho, quantidade de entradas e caminhos seguros. Nada dentro dele é executado.',
+      fileLabel: 'Arquivo ZIP',
+      submit: 'Enviar',
+      uploading: 'Enviando…',
+      pending: 'Na fila para extração…',
+      extracting: 'Extraindo o arquivo…',
+      rejectedTitle: 'O ZIP foi recusado',
+      failedTitle: 'A extração falhou',
+      tryAnother: 'Escolha outro arquivo e envie de novo.',
+      chooseFile: 'Escolha um arquivo antes de enviar.',
+    },
+  },
+  preAnalysis: {
+    title: 'Pré-análise',
+    detail: 'O que será lido, calculado agora a partir da origem. Nada foi indexado ainda.',
+    scannedAt: (date: string, version: number) =>
+      `Calculada em ${date} com as configurações versão ${version}.`,
+    refresh: 'Recalcular',
+    truncated: 'A varredura parou no limite de entradas; os números abaixo estão incompletos.',
+    totalsTitle: 'Resumo',
+    totals: {
+      files: 'Arquivos encontrados',
+      includedFiles: 'Serão indexados',
+      includedBytes: 'Tamanho estimado',
+      excludedFiles: 'Excluídos',
+      unsupportedFiles: 'Não suportados (binários)',
+      unreadableFiles: 'Ilegíveis',
+      excludedDirectories: 'Pastas excluídas',
+    },
+    languagesTitle: 'Linguagens',
+    languageColumn: 'Linguagem',
+    filesColumn: 'Arquivos',
+    bytesColumn: 'Tamanho',
+    directoriesTitle: 'Pastas do primeiro nível',
+    directoryColumn: 'Pasta',
+    includedColumn: 'Incluídos',
+    excludedColumn: 'Excluídos',
+    unsupportedColumn: 'Não suportados',
+    unreadableColumn: 'Ilegíveis',
+    rootDirectory: '(arquivos da raiz)',
+    none: 'Nenhum.',
+    exclusionsTitle: 'Exclusões e motivos',
+    exclusionCount: (files: number, directories: number) => {
+      const parts: string[] = [];
+      if (directories > 0) {
+        parts.push(directories === 1 ? '1 pasta' : `${directories} pastas`);
+      }
+      if (files > 0 || directories === 0) {
+        parts.push(files === 1 ? '1 arquivo' : `${files} arquivos`);
+      }
+      return parts.join(' e ');
+    },
+    examples: 'Exemplos',
+    reasons: {
+      DEFAULT_RULE: (ruleId: string) => `Regra padrão “${ruleId}”`,
+      CUSTOM_PATTERN: (pattern: string) => `Padrão do projeto “${pattern}”`,
+      SYMLINK: 'Links simbólicos (nunca são seguidos)',
+      SPECIAL_FILE: 'Arquivos especiais (nunca são abertos)',
+      DEPTH_LIMIT: 'Abaixo da profundidade máxima',
+      TOO_LARGE: 'Acima do tamanho máximo por arquivo',
+      BINARY: 'Binários',
+      UNREADABLE: 'Sem permissão de leitura',
+    },
+    warningsTitle: 'Avisos',
+    relatedProject: 'Abrir o outro projeto',
+    blocking:
+      'Resolva os avisos acima antes de indexar: ajuste as exclusões ou os limites e recalcule.',
+  },
+  settings: {
+    title: 'Exclusões e limites',
+    detail:
+      'Valem para a próxima pré-análise e para a próxima indexação. Regras de arquivos sensíveis, controle de versão e mídia não podem ser desativadas.',
+    rulesLegend: 'Regras padrão',
+    ruleEnabled: (id: string) => `Aplicar a regra ${id}`,
+    ruleRequired: 'obrigatória',
+    categories: {
+      SENSITIVE: 'Sensíveis',
+      VCS: 'Controle de versão',
+      DEPENDENCIES: 'Dependências',
+      BUILD_OUTPUT: 'Saída de build',
+      IDE_CACHE: 'IDE e cache',
+      GENERATED: 'Gerados',
+      MEDIA_BINARY: 'Mídia e binários',
+    },
+    patternsLabel: 'Padrões de exclusão do projeto (um por linha)',
+    patternsHint:
+      'Relativos à raiz, com “/” como separador. “*” não cruza pastas, “**” cruza; sem “/” casa o nome em qualquer pasta; “/” no fim restringe a pastas. Ex.: docs/generated/ ou *.min.js',
+    patternError: (pattern: string, message: string) => `${pattern}: ${message}`,
+    maxFileLabel: 'Tamanho máximo por arquivo (KB)',
+    maxProjectLabel: 'Tamanho máximo do projeto (MB)',
+    limitHint: (effective: string) => `Vazio usa o padrão. Valor em vigor: ${effective}.`,
+    save: 'Salvar e recalcular',
+    saving: 'Salvando…',
+    discard: 'Descartar alterações',
+    saved: 'Configurações salvas. A pré-análise foi recalculada.',
+  },
+  privacy: {
+    title: 'Para onde vão os trechos',
+    localOnly:
+      'Com o provedor de embeddings configurado, a indexação não envia trechos para fora desta máquina.',
+    noEmbeddings:
+      'Nenhum provedor de embeddings está configurado: a indexação é só lexical e a busca vetorial fica indisponível.',
+    remote: (provider: string, model: string | null) =>
+      `Os trechos dos arquivos incluídos serão enviados a ${model ? `${provider} (${model})` : provider}, fora desta máquina, para gerar embeddings.`,
+    review: 'Rever as exclusões',
+    acknowledge: 'Entendi que trechos serão enviados ao provedor',
+  },
+  project: {
+    backToWorkspace: 'Voltar para o workspace',
+    ask: 'Perguntar',
+    history: 'Histórico',
+    awaitingUpload: 'Este projeto ainda não tem um ZIP. Envie o arquivo para fazer a pré-análise.',
+    sendZip: 'Enviar o ZIP',
+    notIndexed: 'Ainda não há snapshot. Revise a pré-análise e indexe para poder fazer perguntas.',
+    reviewPreAnalysis: 'Rever a pré-análise e as exclusões',
+    progress: {
+      title: 'Indexação em andamento',
+      queued: 'Na fila; a indexação começa em instantes.',
+      stagesLabel: 'Etapas da indexação',
+      stages: {
+        SCANNING: 'Inventário e filtragem',
+        PROCESSING_FILES: 'Extração e divisão em trechos',
+        LEXICAL: 'Índice lexical',
+        EMBEDDING: 'Embeddings',
+        FINALIZING: 'Persistência e verificação',
+      },
+      state: { done: 'concluída', current: 'em andamento', pending: 'pendente' },
+      files: (completed: number, total: number) => `${completed} de ${total} arquivos`,
+      chunks: (completed: number, total: number) => `${completed} de ${total} trechos`,
+      attempt: (attempt: number) => `Tentativa ${attempt}`,
+    },
+    failure: {
+      title: 'A última indexação falhou',
+      previousInUse: 'O snapshot anterior continua em uso nas perguntas.',
+      at: (date: string) => `Falhou em ${date}.`,
+    },
+    snapshot: {
+      title: 'Snapshot ativo',
+      status: {
+        READY: 'Pronto',
+        PARTIAL: 'Parcial: alguns arquivos não foram indexados',
+      },
+      completedAt: (date: string) => `Concluído em ${date}.`,
+      counts: {
+        files: 'Arquivos',
+        indexedFiles: 'Indexados',
+        unsupportedFiles: 'Não suportados',
+        failedFiles: 'Com falha',
+        chunks: 'Trechos',
+        bytes: 'Tamanho',
+      },
+      embedding: (provider: string, model: string, dimensions: number) =>
+        `Embeddings: ${provider}, ${model} (${dimensions} dimensões).`,
+      noEmbedding: 'Sem embeddings: só a busca lexical está disponível neste snapshot.',
+      languagesTitle: 'Linguagens dos arquivos incluídos',
+    },
+    outdated: {
+      title: 'O snapshot pode estar desatualizado',
+      reasons: {
+        SETTINGS_CHANGED: 'As exclusões ou os limites mudaram depois deste snapshot.',
+        SOURCE_REIMPORTED: 'Um novo ZIP foi enviado depois deste snapshot.',
+        CHUNKING_CHANGED: 'A forma de dividir os arquivos em trechos mudou.',
+        EMBEDDING_MODEL_CHANGED: 'O provedor ou o modelo de embeddings configurado mudou.',
+        EMBEDDINGS_MISSING:
+          'O snapshot foi indexado sem embeddings e agora há um provedor configurado.',
+        LEXICAL_INDEX_MISSING: 'O snapshot não tem índice lexical.',
+        LEXICAL_INDEX_CHANGED: 'O índice lexical é de uma versão anterior.',
+      },
+      action: 'Indexe de novo para atualizar. Só o conteúdo novo ou alterado é processado.',
+    },
+    diskChanges:
+      'Mudanças nos arquivos da pasta não são detectadas automaticamente; indexe de novo para incluí-las.',
+    reindexTitle: 'Indexar de novo',
+    indexTitle: 'Indexar',
+    unindexed: {
+      title: 'Arquivos não indexados',
+      detail:
+        'Ficaram fora das buscas e das respostas. Arquivos com falha são tentados de novo na próxima indexação.',
+      filterLegend: 'Mostrar',
+      FAILED: (count: number) => `Com falha (${count})`,
+      UNSUPPORTED: (count: number) => `Não suportados (${count})`,
+      pathColumn: 'Arquivo',
+      reasonColumn: 'Motivo',
+      sizeColumn: 'Tamanho',
+      empty: 'Nenhum arquivo nesta situação.',
+      reasons: {
+        BINARY: 'Binário',
+        INVALID_ENCODING: 'Codificação de texto não suportada',
+        LINE_TOO_LONG: 'Linha acima do tamanho máximo',
+        READ_ERROR: 'Erro de leitura',
+        CHANGED_DURING_READ: 'Mudou durante a leitura',
+      },
+    },
+    snapshots: {
+      title: 'Snapshots',
+      empty: 'Nenhum snapshot ainda.',
+      createdColumn: 'Criado em',
+      statusColumn: 'Estado',
+      changesColumn: 'Mudanças em relação ao anterior',
+      filesColumn: 'Arquivos indexados',
+      chunksColumn: 'Trechos',
+      active: 'ativo',
+      pruned: 'arquivos removidos pela limpeza',
+      status: {
+        BUILDING: 'Em construção',
+        READY: 'Pronto',
+        PARTIAL: 'Parcial',
+        FAILED: 'Falhou',
+      },
+      changes: (added: number, modified: number, removed: number, unchanged: number) =>
+        `${added} novos, ${modified} alterados, ${removed} removidos, ${unchanged} iguais`,
+      noChanges: '—',
+    },
+  },
+  ask: {
+    backToProject: 'Voltar para o projeto',
+    history: 'Histórico de conversas',
+    newConversation: 'Nova conversa',
+    snapshot: (date: string) => `Respostas a partir do snapshot de ${date}.`,
+    outdated: 'O snapshot pode estar desatualizado.',
+    outdatedLink: 'Ver os motivos e indexar de novo',
+    noSnapshot: 'Este projeto ainda não tem um snapshot pronto. Indexe-o para poder perguntar.',
+    openProject: 'Abrir o projeto',
+    indexing: 'Há uma indexação em andamento; as perguntas usam o snapshot ativo até ela terminar.',
+    noGeneration:
+      'Nenhum provedor de geração está configurado no servidor, então não é possível perguntar. Configure o provedor e reinicie o backend.',
+    tabs: {
+      label: 'Áreas da tela de pergunta',
+      conversation: 'Conversa',
+      evidence: 'Evidências',
+      code: 'Código',
+    },
+    conversationTitle: 'Conversa',
+    empty:
+      'Faça uma pergunta sobre o código. A resposta cita os arquivos e as linhas usados como evidência.',
+    suggestionsTitle: 'Sugestões para começar',
+    suggestions: [
+      'Resuma a arquitetura deste projeto.',
+      'Quais são os pontos de entrada?',
+      'Como a aplicação configura o banco de dados?',
+      'Quais integrações externas aparecem no código?',
+    ],
+    form: {
+      label: 'Sua pergunta',
+      hint: (length: number, max: number) =>
+        `${length} de ${max} caracteres. Ctrl+Enter ou ⌘+Enter envia.`,
+      submit: 'Perguntar',
+      submitting: 'Gerando…',
+      empty: 'Escreva uma pergunta antes de enviar.',
+      advanced: 'Opções avançadas',
+      modeLegend: 'Busca das evidências',
+      modes: {
+        HYBRID: 'Híbrida (lexical e vetorial)',
+        LEXICAL: 'Lexical (palavras e identificadores)',
+        VECTOR: 'Vetorial (semelhança de significado)',
+      },
+      vectorUnavailable:
+        'As buscas vetorial e híbrida estão indisponíveis: não há provedor de embeddings configurado ou o snapshot ativo não tem embeddings do modelo configurado.',
+      maxEvidenceLabel: 'Máximo de evidências (1 a 20)',
+    },
+    privacy: {
+      remote: (provider: string, model: string | null) =>
+        `A pergunta e os trechos escolhidos como evidência serão enviados a ${model ? `${provider} (${model})` : provider}, fora desta máquina, para gerar a resposta.`,
+      remoteEmbeddings: (provider: string) =>
+        `Nas buscas vetorial e híbrida, a pergunta também é enviada a ${provider} para gerar o embedding.`,
+      acknowledge: 'Entendi que a pergunta e os trechos serão enviados ao provedor',
+      reminder: (provider: string) => `Perguntas e evidências são enviadas a ${provider}.`,
+    },
+    waiting: {
+      status: 'Buscando evidências e gerando a resposta…',
+      elapsed: (seconds: number) => `${seconds} s`,
+      limit: 'A resposta chega de uma vez, quando estiver pronta; o limite é de 60 segundos.',
+    },
+    question: 'Pergunta',
+    answer: 'Resposta',
+    status: {
+      PENDING: 'Em geração',
+      ANSWERED: 'Respondida',
+      PARTIAL: 'Resposta parcial',
+      ABSTAINED: 'Sem resposta: evidência insuficiente',
+      FAILED: 'Falhou',
+    },
+    pending: 'A resposta ainda está sendo gerada; esta tela se atualiza quando ela ficar pronta.',
+    failed: 'Não foi possível gerar a resposta.',
+    warningHints: {
+      NO_EVIDENCE:
+        'Nada do código pareceu relacionado à pergunta. Reformule-a com nomes de classes, funções ou arquivos, ou tente outra busca nas opções avançadas.',
+      INVALID_CITATIONS_REMOVED: '',
+      NO_VALID_CITATIONS:
+        'Confira as evidências enviadas antes de confiar na resposta: nenhuma foi citada de forma válida.',
+    },
+    citation: (label: string, path: string, lines: string) =>
+      `Abrir a evidência ${label}: ${path}, ${lines}`,
+    showEvidence: 'Ver as evidências desta resposta',
+    olderSnapshot: 'Respondida com um snapshot anterior ao ativo.',
+    lines: (start: number, end: number) =>
+      start === end ? `linha ${start}` : `linhas ${start}–${end}`,
+    metrics: {
+      title: 'Detalhes da resposta',
+      duration: 'Duração total',
+      retrieval: 'Busca',
+      generation: 'Geração',
+      evidence: 'Evidências',
+      evidenceCount: (sent: number, cited: number) =>
+        `${sent} ${sent === 1 ? 'enviada' : 'enviadas'}, ${cited} ${cited === 1 ? 'citada' : 'citadas'}`,
+      tokens: 'Tokens (informados pelo provedor)',
+      tokensValue: (input: string, output: string) => `${input} de entrada, ${output} de saída`,
+      cost: 'Custo',
+      costEstimated: (value: string) => `${value} (estimado pelos tokens e pelo preço configurado)`,
+      costUnknown:
+        'Indisponível: o provedor não informou os tokens ou o preço do modelo não está configurado.',
+      model: 'Modelo',
+      noModel: 'Não consultado',
+      mode: 'Busca usada',
+      unavailable: 'Não medido',
+    },
+    evidence: {
+      title: 'Evidências',
+      empty: 'Escolha uma resposta para ver as evidências enviadas ao modelo.',
+      none: 'Nenhuma evidência foi enviada ao modelo nesta resposta.',
+      forAnswer: (question: string) => `Da pergunta “${question}”`,
+      status: {
+        CITED: 'Citada',
+        INVALID_RANGE: 'Citada com linhas fora do trecho; a citação foi removida da resposta',
+        NOT_CITED: 'Enviada ao modelo, mas não citada',
+      },
+      otherPaths: (count: number) =>
+        count === 1
+          ? 'Mesmo conteúdo em mais 1 caminho:'
+          : `Mesmo conteúdo em mais ${count} caminhos:`,
+      ranks: 'Posição nas buscas',
+      rankLexical: (rank: number) => `lexical ${rank}ª`,
+      rankVector: (rank: number) => `vetorial ${rank}ª`,
+      rankPath: (rank: number) => `caminho ${rank}ª`,
+      open: (label: string) => `Abrir ${label} no visualizador`,
+      selected: 'aberta no visualizador',
+    },
+    viewer: {
+      title: 'Código',
+      empty: 'Escolha uma evidência para ver o arquivo com as linhas destacadas.',
+      highlighted: (lines: string) => `Destacadas: ${lines}.`,
+      citedMarker: 'citada',
+      pruned:
+        'O snapshot desta resposta foi substituído e os arquivos dele foram removidos pela limpeza. Abaixo, o trecho guardado com a evidência.',
+      snippetTitle: 'Trecho enviado ao modelo',
+      fileUnavailable:
+        'Não foi possível abrir o arquivo inteiro. Abaixo, o trecho guardado com a evidência.',
+      activeVersion: {
+        SAME: '',
+        CHANGED: 'Este arquivo mudou desde a resposta: o snapshot ativo tem outra versão.',
+        REMOVED: 'Este arquivo não existe mais no snapshot ativo.',
+        NO_ACTIVE_SNAPSHOT: '',
+      },
+      showCurrent: 'Ver a versão atual',
+      showAnswered: 'Ver a versão da resposta',
+      currentVersion: 'Versão do snapshot ativo; as linhas da evidência podem não corresponder.',
+      answeredVersion: 'Versão do snapshot usado na resposta.',
+      fileInfo: (language: string, lines: number, size: string) =>
+        `${language}, ${lines === 1 ? '1 linha' : `${lines} linhas`}, ${size}`,
+      codeLabel: (path: string) => `Conteúdo de ${path}`,
+    },
+  },
+  history: {
+    detail: 'Conversas deste projeto, da pergunta mais recente para a mais antiga.',
+    emptyTitle: 'Nenhuma conversa ainda',
+    emptyDetail:
+      'As perguntas feitas sobre este projeto ficam guardadas aqui, com as respostas e as evidências.',
+    ask: 'Fazer uma pergunta',
+    questionCount: (count: number) => (count === 1 ? '1 pergunta' : `${count} perguntas`),
+    updatedAt: (date: string) => `Última pergunta em ${date}`,
+    createdAt: (date: string) => `Iniciada em ${date}`,
+  },
+  indexing: {
+    start: 'Indexar',
+    starting: 'Iniciando…',
+    dirty: 'Salve ou descarte as alterações nas exclusões antes de indexar.',
+    noIncluded: 'Nenhum arquivo será indexado com as configurações atuais.',
+  },
+} as const;

@@ -2,12 +2,13 @@
 
 Ferramenta local-first que responde perguntas sobre um repositório com evidências verificáveis (arquivo + linhas). A documentação do produto e da arquitetura está em [`docs/`](docs/README.md), e as decisões técnicas em [`docs/10-DECISIONS.md`](docs/10-DECISIONS.md).
 
-> Estado atual: Etapa 6 do [roadmap](docs/09-IMPLEMENTATION-ROADMAP.md) concluída (respostas com evidências). Só o backend existe; o frontend (`apps/web`) entra na Etapa 7.
+> Estado atual: Etapa 7 do [roadmap](docs/09-IMPLEMENTATION-ROADMAP.md) concluída (UX completa do MVP). Pela UI em `apps/web` dá para criar workspaces, importar uma pasta local ou um ZIP, revisar a pré-análise, indexar, perguntar, abrir as evidências no visualizador e rever as conversas. Próxima: Etapa 8 (qualidade e hardening).
 
 ## Pré-requisitos
 
 - **JDK 25** no `PATH` (`java -version` deve mostrar 25).
 - **Docker** com Docker Compose (para o PostgreSQL 17 + pgvector e para os testes de integração com Testcontainers).
+- **Node.js 22.22.2 ou mais novo** e npm, para o frontend (`apps/web`, D-070).
 
 O Maven não precisa ser instalado: use o wrapper `./mvnw`.
 
@@ -33,6 +34,7 @@ cp .env.example .env
 | `GENERATION_PROVIDER` | Opcional. Provedor das respostas: `none` (padrão; nada é enviado e não há respostas), `fake` (testes e demonstração) ou `openai` (D-063). |
 | `GENERATION_API_KEY` | Chave da API do provedor de respostas; obrigatória com `openai`. Pode ter o mesmo valor de `EMBEDDING_API_KEY`, mas é configurada à parte. |
 | `GENERATION_PRICE_INPUT_PER_MILLION` / `GENERATION_PRICE_OUTPUT_PER_MILLION` | Opcionais. Preço do modelo em US$ por 1M de tokens, para estimar o custo de cada resposta. Sem os dois, o custo fica `UNKNOWN`. |
+| `SERVER_ADDRESS` | Opcional. Endereço em que o backend escuta. Padrão: `127.0.0.1`, só a própria máquina, porque a API não tem autenticação (D-072). |
 
 A porta do banco é definida uma única vez, em `DB_PORT` no `.env`, e usada em dois lugares: o Compose publica o container em `127.0.0.1:${DB_PORT}`, e o backend se conecta em `localhost:${DB_PORT}` (`application.yml`). Se a porta 5432 já estiver ocupada, altere apenas `DB_PORT`.
 
@@ -235,3 +237,42 @@ Com o backend no ar:
 - Health check: <http://localhost:8080/actuator/health>
 - Contrato OpenAPI: <http://localhost:8080/v3/api-docs>
 - Swagger UI: <http://localhost:8080/swagger-ui.html>
+
+O backend só atende a própria máquina (D-072): escuta em `127.0.0.1` e recusa com `403` requisições endereçadas a outro nome que não `localhost`/`127.0.0.1`/`[::1]` (`FORBIDDEN_HOST`) e mudanças de estado vindas de páginas fora das origens da UI (`FORBIDDEN_ORIGIN`). As listas ficam em `app.http.allowed-hosts` e `app.http.allowed-origins` (padrão: o Vite em `localhost`/`127.0.0.1`, portas 5173 e 4173); curl e scripts, que não enviam `Origin`, passam.
+
+## Executar o frontend
+
+O frontend (`apps/web`, React + Vite + TypeScript) fala com o backend por um proxy do Vite: o browser só vê a origem da UI, e `/api` é repassado para `http://127.0.0.1:8080` (sem CORS, D-072). Com o backend no ar, em outro terminal:
+
+```bash
+cd apps/web
+npm ci
+npm run dev
+```
+
+A UI fica em <http://localhost:5173>. Para usar o build de produção: `npm run build && npm run preview` (<http://localhost:4173>). As duas portas são fixas, porque são as origens que o backend aceita em `app.http.allowed-origins`. Se o backend estiver em outra porta, defina `BACKEND_URL` (por exemplo, `BACKEND_URL=http://127.0.0.1:8081 npm run dev`).
+
+O `.npmrc` desliga os scripts de instalação dos pacotes (`ignore-scripts`) e grava versões exatas (`save-exact`); o `package-lock.json` é versionado.
+
+### Verificação do frontend
+
+```bash
+cd apps/web
+npm run check
+```
+
+É o equivalente ao `./mvnw verify`: tipos (`tsc`), lint (ESLint, que recusa `dangerouslySetInnerHTML` e `console`), formatação (Prettier; para corrigir, `npm run format`), testes (Vitest + Testing Library + MSW, com `axe-core` para acessibilidade) e build. O build injeta uma Content Security Policy sem scripts inline no `index.html`; o servidor de desenvolvimento não a usa, porque o React Refresh depende de um script inline.
+
+Os tipos da API (`src/api/schema.d.ts`) são gerados do `apps/backend/openapi.json` e versionados; um teste falha se estiverem defasados. Depois de regenerar o contrato no backend, rode `npm run api:types` e commite os dois arquivos juntos.
+
+### Teste de aceite (E2E)
+
+Com o banco do Compose no ar:
+
+```bash
+cd apps/web
+npx playwright install chromium   # uma vez, baixa o browser do Playwright
+npm run e2e
+```
+
+Fica fora do `npm run check`, como os harnesses do backend. O Playwright faz o build da UI, sobe o backend real na porta 8089 (provedores `fake`, raiz local em `apps/web/e2e/fixtures`, dados em um diretório temporário) e o `vite preview` na 4173, e percorre o fluxo do MVP: cria um workspace, importa o repositório de exemplo `sample-shop`, revisa a pré-análise, indexa, pergunta pelo teclado, abre a evidência no visualizador e reabre a conversa pelo histórico. Cada tela principal passa pelo axe (WCAG 2.1 A e AA, inclusive contraste) e o teste falha com qualquer erro de console. O workspace criado é removido no fim. A porta do backend muda com `E2E_BACKEND_PORT`; a 4173 precisa estar livre, porque é uma das origens aceitas pelo backend.

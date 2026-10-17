@@ -123,4 +123,24 @@ public class Retrieval {
     public boolean snapshotAvailable(UUID snapshotId) {
         return snapshots.find(snapshotId).map(state -> !state.pruned()).orElse(false);
     }
+
+    public enum ActiveVersion {
+        SAME,
+        CHANGED,
+        REMOVED,
+        NO_ACTIVE_SNAPSHOT
+    }
+
+    // How the file of an evidence compares with the project's active snapshot (F-06).
+    public ActiveVersion activeVersion(UUID projectId, String relativePath, String contentHash) {
+        SearchSnapshots.ActiveFile file =
+                snapshots.findActiveFile(projectId, relativePath).orElse(null);
+        if (file == null || file.activeSnapshotId() == null) {
+            return ActiveVersion.NO_ACTIVE_SNAPSHOT;
+        }
+        if (!file.present()) {
+            return ActiveVersion.REMOVED;
+        }
+        return contentHash.equals(file.contentHash()) ? ActiveVersion.SAME : ActiveVersion.CHANGED;
+    }
 }

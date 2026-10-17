@@ -20,6 +20,8 @@ import com.codebasecopilot.providers.GenerationProvider;
 import com.codebasecopilot.retrieval.IndexedProjects;
 import com.jayway.jsonpath.DocumentContext;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -104,6 +106,30 @@ class HistoryReadApiIT {
         assertThat((String) json.read("$.validationStatus")).isEqualTo("CITED");
         assertThat((Integer) json.read("$.rank")).isEqualTo(1);
         assertThat((Integer) json.read("$.ranks.lexical")).isEqualTo(1);
+        assertThat((String) json.read("$.activeVersion")).isEqualTo("SAME");
+    }
+
+    @Test
+    void comparesTheEvidenceWithTheActiveSnapshot() throws IOException {
+        Path tree = projects.tree();
+        IndexedProjects.write(tree, "src/RefundService.java", SERVICE);
+        IndexedProjects.write(tree, "README.md", "project notes\n");
+        UUID projectId = projects.project(tree);
+        projects.index(projectId);
+        String evidenceId = json(ask(mvc, projectId, QUESTION)).read("$.evidence[0].id");
+
+        IndexedProjects.write(tree, "src/RefundService.java", SERVICE + "// changed\n");
+        projects.index(projectId);
+        assertThat(activeVersion(projectId, evidenceId)).isEqualTo("CHANGED");
+
+        Files.delete(tree.resolve("src/RefundService.java"));
+        projects.index(projectId);
+        assertThat(activeVersion(projectId, evidenceId)).isEqualTo("REMOVED");
+
+        jdbc.sql("UPDATE projects SET active_snapshot_id = NULL WHERE id = :id")
+                .param("id", projectId)
+                .update();
+        assertThat(activeVersion(projectId, evidenceId)).isEqualTo("NO_ACTIVE_SNAPSHOT");
     }
 
     @Test
@@ -241,6 +267,10 @@ class HistoryReadApiIT {
 
     private UUID indexedProject() throws IOException {
         return projectOf(jdbc, projects.indexedSnapshot("src/RefundService.java", SERVICE));
+    }
+
+    private String activeVersion(UUID projectId, String evidenceId) {
+        return json(evidence(projectId, evidenceId)).read("$.activeVersion");
     }
 
     private MvcTestResult evidence(UUID projectId, String evidenceId) {

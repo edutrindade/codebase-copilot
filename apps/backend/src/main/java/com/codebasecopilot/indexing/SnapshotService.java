@@ -57,6 +57,43 @@ class SnapshotService {
                 snapshots.countFiles(id, status, prefix));
     }
 
+    record ContentView(
+            UUID snapshotId,
+            String path,
+            String language,
+            String contentHash,
+            long sizeBytes,
+            int lineCount,
+            String content) {}
+
+    // Only INDEXED files have content; nothing is read from disk (D-039).
+    @Transactional(readOnly = true)
+    ContentView content(UUID id, String rawPath) {
+        String path = filePath(rawPath);
+        Snapshot snapshot = find(id);
+        if (snapshot.prunedAt() != null) {
+            throw new ApiException(ErrorCode.SNAPSHOT_PRUNED);
+        }
+        SnapshotRepository.FileContent file =
+                snapshots
+                        .findFileContent(id, path)
+                        .orElseThrow(() -> new ApiException(ErrorCode.FILE_NOT_FOUND));
+        if (file.status() != FileStatus.INDEXED
+                || file.contentHash() == null
+                || file.lineCount() == null
+                || file.content() == null) {
+            throw new ApiException(ErrorCode.FILE_NOT_INDEXED);
+        }
+        return new ContentView(
+                id,
+                path,
+                file.language(),
+                file.contentHash(),
+                file.sizeBytes(),
+                file.lineCount(),
+                file.content());
+    }
+
     private Snapshot find(UUID id) {
         return snapshots
                 .findById(id)
@@ -65,6 +102,23 @@ class SnapshotService {
 
     private @Nullable UUID activeSnapshotId(UUID projectId) {
         return projects.get(projectId).project().activeSnapshotId();
+    }
+
+    private static String filePath(String raw) {
+        String path = "";
+        try {
+            if (!RelativePaths.hasForbiddenCharacters(raw)) {
+                path = RelativePaths.normalize(raw);
+            }
+        } catch (ApiException e) {
+            // A leading "/" or a ".." segment.
+        }
+        if (path.isEmpty()) {
+            throw new ApiException(
+                    ErrorCode.VALIDATION_FAILED,
+                    List.of(new FieldViolation("path", "validation.snapshot.path")));
+        }
+        return path;
     }
 
     private static String prefix(@Nullable String raw) {

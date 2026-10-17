@@ -19,6 +19,7 @@ import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
+import org.jspecify.annotations.Nullable;
 import org.springdoc.core.customizers.OpenApiCustomizer;
 import org.springdoc.core.customizers.OperationCustomizer;
 import org.springframework.context.annotation.Bean;
@@ -50,6 +51,11 @@ class OpenApiConfiguration {
     }
 
     @Bean
+    NullableRecordComponents nullableRecordComponents() {
+        return new NullableRecordComponents();
+    }
+
+    @Bean
     OpenApiCustomizer apiInfo() {
         return openApi ->
                 openApi.info(
@@ -69,16 +75,52 @@ class OpenApiConfiguration {
             Components components = openApi.getComponents();
             components.addSchemas(FIELD_ERROR, fieldErrorSchema());
             components.addSchemas(PROBLEM, problemSchema());
-            // Jackson always writes every response property (null included), so all are required.
-            components
-                    .getSchemas()
-                    .forEach(
-                            (name, schema) -> {
-                                if (name.endsWith("Response")) {
-                                    requireAllProperties(schema);
-                                }
-                            });
+            // Jackson always writes every response property (null included), so all are required,
+            // also in the schemas a response embeds without a *Response name (the inventory).
+            Map<String, Schema> schemas = components.getSchemas();
+            responseSchemas(schemas).forEach(name -> requireAllProperties(schemas.get(name)));
         };
+    }
+
+    private static Set<String> responseSchemas(Map<String, Schema> schemas) {
+        Set<String> found = new TreeSet<>();
+        List<String> pending =
+                new ArrayList<>(
+                        schemas.keySet().stream()
+                                .filter(name -> name.endsWith("Response"))
+                                .toList());
+        while (!pending.isEmpty()) {
+            String name = pending.removeLast();
+            Schema schema = schemas.get(name);
+            if (schema != null && found.add(name)) {
+                Set<String> refs = new TreeSet<>();
+                collectRefs(schema, refs);
+                pending.addAll(refs);
+            }
+        }
+        return found;
+    }
+
+    private static void collectRefs(@Nullable Schema schema, Set<String> refs) {
+        if (schema == null) {
+            return;
+        }
+        if (schema.get$ref() != null) {
+            refs.add(schema.get$ref().substring(schema.get$ref().lastIndexOf('/') + 1));
+        }
+        if (schema.getProperties() != null) {
+            schema.getProperties().values().forEach(p -> collectRefs((Schema) p, refs));
+        }
+        collectRefs(schema.getItems(), refs);
+        if (schema.getAdditionalProperties() instanceof Schema additional) {
+            collectRefs(additional, refs);
+        }
+        for (List<Schema> group :
+                Arrays.asList(schema.getAllOf(), schema.getOneOf(), schema.getAnyOf())) {
+            if (group != null) {
+                group.forEach(s -> collectRefs(s, refs));
+            }
+        }
     }
 
     // Subtypes of a polymorphic response declare their own fields inside allOf.

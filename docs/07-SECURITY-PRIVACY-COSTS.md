@@ -148,6 +148,21 @@ O provedor de chat é escolhido por `GENERATION_PROVIDER` (`app.generation.provi
 - A pergunta, a resposta e a cópia das evidências ficam só no banco local (histórico), apagadas com o projeto (D-021). Logs trazem ids, status, quantidades, tokens e durações; nunca pergunta, resposta, prompt ou trecho (D-054, D-067). O log do SDK fica desligado.
 - Para não enviar nada: `GENERATION_PROVIDER=none` (e `EMBEDDING_PROVIDER=none` para a pergunta também não sair na busca vetorial).
 
+### O que a interface mostra (Etapa 7)
+
+`GET /system/providers` diz, para embeddings e geração, o provedor (`none`, `fake`, `openai`), o modelo e se os dados saem da máquina (`remote`: `openai` com `base-url` fora de `localhost`/`127.0.0.1`). Nunca devolve a chave, a `base-url` nem os preços (D-073). A UI usa isso para o aviso antes de indexar ou perguntar com um provedor remoto (`03` §7).
+
+### Acesso ao backend local (Etapa 7)
+
+A API não tem autenticação: quem alcança a porta lê o código indexado e pode apagar projetos. Com a UI no browser, uma página qualquer também pode tentar chamar `localhost`. Mitigações (D-072):
+- o backend escuta só em `127.0.0.1` (`SERVER_ADDRESS`; trocar por `0.0.0.0` expõe a API à rede e exige ajustar `app.http.allowed-hosts`);
+- requisições com `Host` fora de `app.http.allowed-hosts` (padrão `localhost`, `127.0.0.1`, `[::1]`, em qualquer porta) respondem `403 FORBIDDEN_HOST`, o que barra o DNS rebinding;
+- `POST`, `PUT`, `PATCH` e `DELETE` com cabeçalho `Origin` fora de `app.http.allowed-origins` (padrão: os servidores do Vite em `localhost`/`127.0.0.1`, portas 5173 e 4173) respondem `403 FORBIDDEN_ORIGIN`, o que barra o CSRF, inclusive o upload `multipart`, que o browser envia sem preflight. Sem `Origin` (curl, scripts), passa;
+- nenhuma origem cruzada é liberada por CORS: o browser continua impedindo outras páginas de ler as respostas;
+- o proxy do Vite repassa a `Origin` do browser sem reescrever, para que um CSRF que passe por ele também seja recusado; o próprio Vite recusa `Host` desconhecido.
+
+**Limitação conhecida:** outro processo local, ou uma página servida numa origem permitida, continua tendo acesso; o modelo de ameaça é a rede e páginas de terceiros, não a própria máquina.
+
 ## 8. Segredos de configuração
 
 - Usar variáveis de ambiente ou mecanismo de secrets local.
@@ -208,5 +223,6 @@ Desde a Etapa 3, o conteúdo dos arquivos indexados fica no PostgreSQL (`file_co
 - [ ] Prompt injection é coberto por testes.
 - [ ] Citações são validadas no backend.
 - [ ] Usuário é informado sobre envio a provedores remotos.
+- [ ] Backend só aceita conexões e requisições locais (D-072).
 - [ ] Exclusão de projeto remove os dados esperados.
 - [ ] Dependências e configurações têm revisão de segurança.

@@ -5,6 +5,7 @@ import com.codebasecopilot.history.AnswerMetrics;
 import com.codebasecopilot.history.AnswerStatus;
 import com.codebasecopilot.history.StoredAnswer;
 import com.codebasecopilot.history.StoredEvidence;
+import com.codebasecopilot.retrieval.Retrieval;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -70,7 +71,10 @@ class AnswerResponses {
                 answer.completedAt());
     }
 
-    static EvidenceDetailResponse evidenceDetail(StoredEvidence stored, boolean snapshotAvailable) {
+    static EvidenceDetailResponse evidenceDetail(
+            StoredEvidence stored,
+            boolean snapshotAvailable,
+            Retrieval.ActiveVersion activeVersion) {
         AnswerEvidence evidence = stored.evidence();
         return new EvidenceDetailResponse(
                 stored.id(),
@@ -88,7 +92,8 @@ class AnswerResponses {
                 evidence.snippet(),
                 evidence.validation().name(),
                 evidence.finalRank(),
-                ranks(evidence));
+                ranks(evidence),
+                activeVersion.name());
     }
 
     private WarningResponse warning(String code, int invalidCitations) {
@@ -226,7 +231,13 @@ class AnswerResponses {
                     String validationStatus,
             @Schema(description = "Posição do trecho no resultado da busca, a partir de 1.")
                     int rank,
-            RanksResponse ranks) {}
+            RanksResponse ranks,
+            @Schema(
+                            allowableValues = {"SAME", "CHANGED", "REMOVED", "NO_ACTIVE_SNAPSHOT"},
+                            description =
+                                    "O arquivo no snapshot ativo do projeto: com o mesmo conteúdo,"
+                                            + " alterado, ausente, ou sem snapshot ativo.")
+                    String activeVersion) {}
 
     @Schema(
             description =

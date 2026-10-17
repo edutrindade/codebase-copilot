@@ -397,6 +397,39 @@ class SnapshotRepository {
                 .list();
     }
 
+    record FileContent(
+            FileStatus status,
+            String language,
+            long sizeBytes,
+            @Nullable String contentHash,
+            @Nullable Integer lineCount,
+            @Nullable String content) {}
+
+    Optional<FileContent> findFileContent(UUID snapshotId, String relativePath) {
+        return jdbc.sql(
+                        """
+                        SELECT f.status, f.language, f.size_bytes, f.content_hash,
+                               fc.line_count, fc.content
+                        FROM snapshot_files f
+                        LEFT JOIN file_contents fc
+                               ON fc.project_id = f.project_id
+                              AND fc.content_hash = f.content_hash
+                        WHERE f.snapshot_id = :id AND f.relative_path = :path
+                        """)
+                .param("id", snapshotId)
+                .param("path", relativePath)
+                .query(
+                        (rs, rowNum) ->
+                                new FileContent(
+                                        FileStatus.valueOf(rs.getString("status")),
+                                        rs.getString("language"),
+                                        rs.getLong("size_bytes"),
+                                        rs.getString("content_hash"),
+                                        rs.getObject("line_count", Integer.class),
+                                        rs.getString("content")))
+                .optional();
+    }
+
     long countFiles(UUID snapshotId, @Nullable FileStatus status, String pathPrefix) {
         return jdbc.sql(
                         "SELECT count(*) FROM snapshot_files f WHERE f.snapshot_id = :id"

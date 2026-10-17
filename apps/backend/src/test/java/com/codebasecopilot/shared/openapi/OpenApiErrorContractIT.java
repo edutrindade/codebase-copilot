@@ -112,6 +112,34 @@ class OpenApiErrorContractIT {
                                         Map.of("type", "null"))));
     }
 
+    @Test
+    void nullableRecordComponentsArePublishedAsNullable() {
+        MvcTestResult docs = docs();
+
+        assertThat(docs)
+                .bodyJson()
+                .extractingPath("$.components.schemas.SnapshotResponse.properties.prunedAt.type")
+                .isEqualTo(List.of("string", "null"));
+        assertThat(docs)
+                .bodyJson()
+                .extractingPath("$.components.schemas.SnapshotResponse.properties.id.type")
+                .isEqualTo("string");
+        assertThat(docs)
+                .bodyJson()
+                .extractingPath("$.components.schemas.ExclusionGroup.properties.ruleId.type")
+                .isEqualTo(List.of("string", "null"));
+    }
+
+    @Test
+    void schemasEmbeddedInResponsesAreRequiredToo() {
+        assertThat(docs())
+                .bodyJson()
+                .extractingPath("$.components.schemas.ScanResult.required")
+                .asInstanceOf(InstanceOfAssertFactories.list(String.class))
+                .containsExactlyInAnyOrder(
+                        "truncated", "totals", "byLanguage", "byDirectory", "exclusions");
+    }
+
     private MvcTestResult docs() {
         return mvc.get().uri("/v3/api-docs").exchange();
     }

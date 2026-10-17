@@ -37,6 +37,11 @@ public enum ErrorCode {
     ANSWER_NOT_FOUND(HttpStatus.NOT_FOUND),
     EVIDENCE_NOT_FOUND(HttpStatus.NOT_FOUND),
     GENERATION_NOT_AVAILABLE(HttpStatus.CONFLICT),
+    SNAPSHOT_PRUNED(HttpStatus.CONFLICT),
+    FILE_NOT_FOUND(HttpStatus.NOT_FOUND),
+    FILE_NOT_INDEXED(HttpStatus.CONFLICT),
+    FORBIDDEN_HOST(HttpStatus.FORBIDDEN),
+    FORBIDDEN_ORIGIN(HttpStatus.FORBIDDEN),
     // Provider failures (D-051): the account or the provider is at fault, not the API client.
     EMBEDDING_PROVIDER_UNAVAILABLE(HttpStatus.BAD_GATEWAY),
     EMBEDDING_PROVIDER_UNAUTHORIZED(HttpStatus.BAD_GATEWAY),

@@ -3,6 +3,7 @@ package com.codebasecopilot.importjob.scan;
 import com.codebasecopilot.shared.error.ErrorCode;
 import com.codebasecopilot.shared.openapi.ApiErrors;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.Instant;
 import java.util.List;
@@ -88,7 +89,7 @@ class InventoryController {
                 inventory.warnings().stream()
                         .map(
                                 w ->
-                                        new WarningResponse(
+                                        new InventoryWarningResponse(
                                                 w.code().name(),
                                                 messages.getMessage(
                                                         "inventory.warning." + w.code().name(),
@@ -107,7 +108,7 @@ class InventoryController {
             List<LanguageCountResponse> byLanguage,
             List<DirectoryCountResponse> byDirectory,
             List<ExclusionGroupResponse> exclusions,
-            List<WarningResponse> warnings) {}
+            List<InventoryWarningResponse> warnings) {}
 
     record InventoryTotalsResponse(
             long files,
@@ -135,5 +136,15 @@ class InventoryController {
             long directories,
             List<String> examples) {}
 
-    record WarningResponse(String code, String message, List<UUID> relatedProjectIds) {}
+    record InventoryWarningResponse(
+            @Schema(
+                            allowableValues = {
+                                "CASE_VARIANT_PROJECT",
+                                "SCAN_LIMIT_REACHED",
+                                "PROJECT_SIZE_LIMIT_EXCEEDED",
+                                "NO_INCLUDED_FILES"
+                            })
+                    String code,
+            String message,
+            List<UUID> relatedProjectIds) {}
 }

@@ -40,4 +40,6 @@ Leia nesta ordem:
 
 ## Status
 
+Implementação: Etapa 7 concluída em 17/10/2026; o MVP é usável pela UI (`apps/web`). O andamento de cada etapa está no [roadmap](09-IMPLEMENTATION-ROADMAP.md), e os planos com testes e desvios em [`plans/`](plans/).
+
 Este pacote é a base documental para orientar as decisões e a implementação. Itens marcados como **a validar** devem ser decididos por meio de protótipos, benchmarks ou testes, e não tratados como fatos já comprovados.
