@@ -4,13 +4,16 @@ import com.codebasecopilot.importjob.scan.ProjectSources;
 import com.codebasecopilot.importjob.scan.ScanResult;
 import com.codebasecopilot.indexing.content.ContentHash;
 import com.codebasecopilot.indexing.content.LineChunker;
+import com.codebasecopilot.indexing.content.SecretDetector;
 import com.codebasecopilot.indexing.content.TextClassifier;
+import com.codebasecopilot.indexing.content.UnsupportedReason;
 import com.codebasecopilot.shared.error.ApiException;
 import java.time.Clock;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -146,11 +149,18 @@ class IndexRunner {
         }
     }
 
+    // Possible secrets are checked on every read, before the already-chunked shortcut, so a
+    // content indexed before the detection existed is excluded by the next job (D-083).
     private void store(Claim claim, List<Read> batch, Heartbeat heartbeat, int completed) {
         Map<ProjectSources.SourceFile, String> hashes = new HashMap<>();
+        Set<ProjectSources.SourceFile> sensitive = new HashSet<>();
         for (Read read : batch) {
             if (read.result() instanceof SourceFileReader.Bytes bytes) {
-                hashes.put(read.file(), ContentHash.of(bytes.bytes()));
+                if (SecretDetector.containsPossibleSecret(bytes.bytes())) {
+                    sensitive.add(read.file());
+                } else {
+                    hashes.put(read.file(), ContentHash.of(bytes.bytes()));
+                }
             }
         }
         Set<String> chunked =
@@ -162,6 +172,15 @@ class IndexRunner {
             ProjectSources.SourceFile file = read.file();
             if (read.result() instanceof SourceFileReader.Failed failed) {
                 rows.add(row(file, FileStatus.FAILED, failed.reason().name(), null));
+                continue;
+            }
+            if (sensitive.contains(file)) {
+                rows.add(
+                        row(
+                                file,
+                                FileStatus.UNSUPPORTED,
+                                UnsupportedReason.SENSITIVE_CONTENT.name(),
+                                null));
                 continue;
             }
             byte[] bytes = ((SourceFileReader.Bytes) read.result()).bytes();

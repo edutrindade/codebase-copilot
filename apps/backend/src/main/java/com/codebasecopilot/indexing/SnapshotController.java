@@ -209,10 +209,14 @@ class SnapshotController {
             @Schema(allowableValues = {"INDEXED", "UNSUPPORTED", "FAILED"}) String status,
             @Schema(
                             nullable = true,
+                            description =
+                                    "SENSITIVE_CONTENT: arquivo excluído por conter um possível"
+                                            + " segredo; a detecção não é garantia.",
                             allowableValues = {
                                 "BINARY",
                                 "INVALID_ENCODING",
                                 "LINE_TOO_LONG",
+                                "SENSITIVE_CONTENT",
                                 "READ_ERROR",
                                 "CHANGED_DURING_READ"
                             })

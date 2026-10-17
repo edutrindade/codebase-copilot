@@ -1128,8 +1128,11 @@ export interface components {
             language: string;
             /** Format: int32 */
             lineCount: number | null;
-            /** @enum {string|null} */
-            reason: "BINARY" | "INVALID_ENCODING" | "LINE_TOO_LONG" | "READ_ERROR" | "CHANGED_DURING_READ" | null;
+            /**
+             * @description SENSITIVE_CONTENT: arquivo excluído por conter um possível segredo; a detecção não é garantia.
+             * @enum {string|null}
+             */
+            reason: "BINARY" | "INVALID_ENCODING" | "LINE_TOO_LONG" | "SENSITIVE_CONTENT" | "READ_ERROR" | "CHANGED_DURING_READ" | null;
             relativePath: string;
             /** Format: int64 */
             sizeBytes: number;

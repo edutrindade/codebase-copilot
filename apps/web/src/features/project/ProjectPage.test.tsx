@@ -81,29 +81,43 @@ describe('ProjectPage', () => {
         const status = new URL(request.url).searchParams.get('status') ?? '';
         statuses.push(status);
         return HttpResponse.json(
-          page([
+          page(
             status === 'FAILED'
-              ? {
-                  relativePath: 'src/Broken.java',
-                  status: 'FAILED',
-                  reason: 'READ_ERROR',
-                  language: 'java',
-                  sizeBytes: 100,
-                  lineCount: null,
-                  contentHash: null,
-                  chunkCount: 0,
-                }
-              : {
-                  relativePath: 'data/dump.sql',
-                  status: 'UNSUPPORTED',
-                  reason: 'LINE_TOO_LONG',
-                  language: 'sql',
-                  sizeBytes: 524288,
-                  lineCount: null,
-                  contentHash: null,
-                  chunkCount: 0,
-                },
-          ]),
+              ? [
+                  {
+                    relativePath: 'src/Broken.java',
+                    status: 'FAILED',
+                    reason: 'READ_ERROR',
+                    language: 'java',
+                    sizeBytes: 100,
+                    lineCount: null,
+                    contentHash: null,
+                    chunkCount: 0,
+                  },
+                ]
+              : [
+                  {
+                    relativePath: 'data/dump.sql',
+                    status: 'UNSUPPORTED',
+                    reason: 'LINE_TOO_LONG',
+                    language: 'sql',
+                    sizeBytes: 524288,
+                    lineCount: null,
+                    contentHash: null,
+                    chunkCount: 0,
+                  },
+                  {
+                    relativePath: 'scripts/publish.sh',
+                    status: 'UNSUPPORTED',
+                    reason: 'SENSITIVE_CONTENT',
+                    language: 'shell',
+                    sizeBytes: 120,
+                    lineCount: null,
+                    contentHash: null,
+                    chunkCount: 0,
+                  },
+                ],
+          ),
         );
       }),
       ...handlers(() => current),
@@ -134,6 +148,9 @@ describe('ProjectPage', () => {
     );
     expect(await within(unindexed).findByText('data/dump.sql')).toBeInTheDocument();
     expect(unindexed).toHaveTextContent(messages.project.unindexed.reasons.LINE_TOO_LONG);
+    expect(within(unindexed).getByRole('row', { name: /scripts\/publish\.sh/ })).toHaveTextContent(
+      messages.project.unindexed.reasons.SENSITIVE_CONTENT,
+    );
     expect(statuses).toEqual(['FAILED', 'UNSUPPORTED']);
 
     const history = screen.getByRole('region', { name: messages.project.snapshots.title });

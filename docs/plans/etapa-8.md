@@ -306,6 +306,14 @@ O Spring Boot 4.1.1 é o último 4.1.x publicado no Maven Central, então não h
 ### F6 — Segredos por conteúdo
 - Detector (P5), motivo `SENSITIVE_CONTENT`, testes com os segredos sintéticos da fixture (inclusive conferindo que nada vai ao provedor fake), UI e mensagens.
 
+**Resultado (17/10/2026)**
+- `SecretDetector` com os formatos da F0, rodando no `IndexRunner` sobre os bytes lidos, antes do atalho de conteúdo já chunkado; motivo `SENSITIVE_CONTENT` com a migração `V11`.
+- Testes: `SecretDetectorTest` (cada formato e imitações que não casam), `SensitiveContentIT` (arquivos listados sem conteúdo, chunks nem índice; conteúdo chunkado antes da detecção excluído na próxima indexação) e `ExcludedContentIT` estendido aos segredos por conteúdo da fixture: nada chega aos provedores fake nem aos logs.
+- Contrato: `openapi.json` e `schema.d.ts` regenerados (valor novo no `reason`, aditivo); UI com "Excluído por conter um possível segredo".
+- Falsos positivos: nenhum no click e no hono. Avaliação lexical com a detecção em `eval/results/2026-10-17-lexical-sensitive-content.*`: métricas iguais, arquivos com segredo fora do top 10 das perguntas de segredo.
+- Registro na D-083; `05`, `06` e `07` §5 atualizados.
+- **Desvio:** snapshots anteriores à F6 não ganham aviso de reindexação em `outdatedReasons` (exigiria versão da detecção por snapshot); fica documentado na D-083 e vai para o `11-OPERATIONS.md` na F9.
+
 ### F7 — Operação
 - Cancelamento, exclusão de conversa, `lastJob`, `GET /usage` (P7), backend e UI, com testes.
 

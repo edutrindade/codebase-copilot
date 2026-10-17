@@ -338,6 +338,7 @@ export const messages = {
         BINARY: 'Binário',
         INVALID_ENCODING: 'Codificação de texto não suportada',
         LINE_TOO_LONG: 'Linha acima do tamanho máximo',
+        SENSITIVE_CONTENT: 'Excluído por conter um possível segredo',
         READ_ERROR: 'Erro de leitura',
         CHANGED_DURING_READ: 'Mudou durante a leitura',
       },

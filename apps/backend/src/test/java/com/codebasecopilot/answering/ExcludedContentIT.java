@@ -42,9 +42,13 @@ class ExcludedContentIT {
     private static final Path FIXTURE =
             Path.of("../../eval/corpus/fixture").toAbsolutePath().normalize();
 
-    // Files excluded by name (SENSITIVE rules).
+    // Files excluded by name (SENSITIVE rules), then by a possible secret in the content.
     private static final List<String> SECRETS =
-            List.of("EVAL-SYNTHETIC-TOKEN-not-a-real-secret-7f3a91", "EVAL-SYNTHETIC-DB-PASSWORD");
+            List.of(
+                    "EVAL-SYNTHETIC-TOKEN-not-a-real-secret-7f3a91",
+                    "EVAL-SYNTHETIC-DB-PASSWORD",
+                    "EVAL-SYNTHETIC-AWS-SECRET",
+                    "EVALSYNTHETIC");
 
     private static final List<String> QUESTIONS =
             List.of(

@@ -3777,7 +3777,8 @@
           },
           "reason" : {
             "type" : [ "string", "null" ],
-            "enum" : [ "BINARY", "INVALID_ENCODING", "LINE_TOO_LONG", "READ_ERROR", "CHANGED_DURING_READ" ]
+            "description" : "SENSITIVE_CONTENT: arquivo excluído por conter um possível segredo; a detecção não é garantia.",
+            "enum" : [ "BINARY", "INVALID_ENCODING", "LINE_TOO_LONG", "SENSITIVE_CONTENT", "READ_ERROR", "CHANGED_DURING_READ" ]
           },
           "relativePath" : {
             "type" : "string"

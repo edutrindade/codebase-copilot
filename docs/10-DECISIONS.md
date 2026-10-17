@@ -534,6 +534,7 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 
 **Motivo:** padrões de nome são previsíveis e explicáveis ao usuário; a detecção por conteúdo é defesa adicional, nunca garantia (O-012).  
 **Consequências:** `05-DATA-MODEL.md` (`project_settings`) e `06-API-CONTRACTS.md` (§5) atualizados.  
+**Etapa 8 (17/10/2026):** detecção por conteúdo acrescentada na D-083, sem mudar as regras de nome.  
 **O que levaria à revisão:** a avaliação mostrar segredos indexados que padrões de nome não cobrem, ou demanda por whitelist.
 
 ### D-037 — Links, arquivos especiais e limites de varredura
@@ -1304,6 +1305,22 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Motivo:** fechar as lacunas da matriz com testes no `verify`, sem depender do modelo real; normalizar e recusar só onde o projeto controla a escrita (o extrator), e documentar onde a detecção custaria mais do que o risco.  
 **Consequências:** um ZIP que antes era aceito com nomes bidirecionais ou com duas grafias Unicode do mesmo nome agora é recusado. As limitações da pasta local entram no `11-OPERATIONS.md` (F9).  
 **O que levaria à revisão:** uso real em Linux com nomes em NFD, ou um caso de ZIP legítimo recusado pelos controles bidirecionais.
+
+### D-083 — Segredos por conteúdo (P5 da Etapa 8, completa a D-036)
+**Status:** Aceita (17/10/2026; F6 da Etapa 8)  
+**Contexto:** até aqui só o nome do arquivo excluía segredos (D-036); um `application.yml` ou um script com uma chave real era indexado e podia ir ao provedor. A F0 levantou os formatos publicados de cada emissor e confirmou o `CHECK` do motivo no banco.  
+**Opções consideradas:** excluir o arquivo inteiro com um motivo próprio; mascarar só o trecho; não detectar e documentar.  
+**Decisão:**
+- **Excluir o arquivo inteiro:** um arquivo com um possível segredo vira `UNSUPPORTED` com o motivo **`SENSITIVE_CONTENT`** (migração `V11`, que só acrescenta o valor ao `CHECK`). Nada dele é guardado além da linha em `snapshot_files`: nem conteúdo, nem chunks, nem índice lexical, nem embeddings.
+- **Onde:** no `IndexRunner`, sobre os bytes lidos, **antes** do atalho de conteúdo já chunkado, de qualquer chunk e de qualquer envio. Assim um conteúdo indexado antes da detecção é excluído pela próxima indexação. Os bytes são lidos como Latin-1, porque todos os padrões são ASCII: nenhuma decodificação falha e um arquivo UTF-8 casa como se fosse decodificado.
+- **Padrões (`SecretDetector`), só de alta precisão:** bloco `-----BEGIN … PRIVATE KEY-----` (RSA, EC, DSA, OPENSSH, ENCRYPTED, PKCS#8 e PGP `PRIVATE KEY BLOCK`) seguido de material de chave (um parser que só cita o delimitador não casa; o `\n` escapado numa string casa); AWS `AKIA`/`ASIA` com 16 caracteres; GitHub `gh[pousr]_` com 36 ou mais e `github_pat_`; Stripe `sk_`/`rk_` `live`/`test` e `sk_org_` (o `pk_` público fica de fora); Slack `xoxb-`, `xoxp-`, `xapp-`, `xoxe.xapp-`, `xwfp-`; OpenAI `sk-` com 32 ou mais caracteres e pelo menos um dígito (média precisão: nem todos os prefixos são publicados). Sem entropia, `password=` nem chaves sem formato próprio (o segredo da AWS, por exemplo).
+- **Não pode ser desligada**, como as regras `SENSITIVE`. A API documenta o motivo como "arquivo excluído por conter um possível segredo; a detecção não é garantia"; a UI lista o arquivo com "Excluído por conter um possível segredo", sem o trecho nem a linha. Nenhum log diz qual padrão casou.
+- **Falsos positivos medidos:** nenhum no click (166 arquivos) e no hono (585); no próprio repositório, só os quatro arquivos com segredos sintéticos da fixture e o `eval/questions/fixture.yaml`, que os cita.
+- **Avaliação** (`eval/results/2026-10-17-lexical-sensitive-content.*`, contra o baseline lexical da D-079): Recall@10 e MRR@10 iguais em todos os corpora; na fixture, 14 arquivos indexados em vez de 18, e os arquivos com segredo saem do top 10 das perguntas `EXCLUDED_SECRET` (antes, `sign_release.py`, `notify_slack.py` e `application.yml` apareciam nelas).
+
+**Motivo:** excluir o arquivo inteiro mantém as linhas citadas iguais ao disco; mascarar daria falsa segurança e um arquivo diferente do original. Padrões de alta precisão evitam esconder código legítimo.  
+**Consequências:** snapshots feitos antes da F6 continuam com o conteúdo desses arquivos até a próxima indexação, sem aviso em `outdatedReasons` (exigiria registrar a versão da detecção em cada snapshot); o `11-OPERATIONS.md` (F9) recomenda reindexar. Contrato: valor novo no enum `reason` de `GET /snapshots/{id}/files`, aditivo. As perguntas fx-21 a fx-24 da avaliação de respostas dependem desta detecção e são medidas na F3.  
+**O que levaria à revisão:** um falso positivo relatado em código legítimo, um formato novo publicado por um emissor, ou a necessidade de avisar snapshots antigos.
 
 ---
 

@@ -618,7 +618,7 @@ Lista os arquivos incluídos pela varredura do snapshot (substitui `GET /project
 ```
 
 - `status`: `INDEXED`, `UNSUPPORTED` ou `FAILED`, com `reason` (D-042):
-  - `UNSUPPORTED`: `BINARY`, `INVALID_ENCODING` ou `LINE_TOO_LONG`;
+  - `UNSUPPORTED`: `BINARY`, `INVALID_ENCODING`, `LINE_TOO_LONG` ou `SENSITIVE_CONTENT` (arquivo excluído por conter um possível segredo, D-083; a resposta não diz qual nem onde);
   - `FAILED`: `READ_ERROR` ou `CHANGED_DURING_READ`.
 - Filtros: `status` (ex.: `FAILED` ou `UNSUPPORTED`, para listar os arquivos não indexados, D-044) e `pathPrefix` (prefixo de diretório, na mesma normalização de `relativePath`).
 - Snapshot podado: lista vazia (`prunedAt` no snapshot).

@@ -85,7 +85,7 @@ Padrões padrão devem considerar, entre outros:
 
 Os padrões precisam ser configuráveis e exibidos ao usuário. A detecção de segredos é defesa adicional, não garantia perfeita. Nunca prometer que todos os segredos serão detectados.
 
-No MVP, segredos são excluídos apenas por padrões de nome, em regras que o usuário não pode desativar (`SENSITIVE`, D-036). A detecção por conteúdo fica para a Etapa 8.
+Segredos são excluídos por padrões de nome, em regras que o usuário não pode desativar (`SENSITIVE`, D-036), e, desde a Etapa 8, também por conteúdo: um arquivo com bloco de chave privada ou com uma chave de formato publicado (AWS, GitHub, Stripe, Slack, OpenAI) vira `UNSUPPORTED` com o motivo `SENSITIVE_CONTENT`, antes de chunks, embeddings e qualquer envio, sem que a detecção possa ser desligada (D-083). Só padrões de alta precisão: senhas, chaves sem formato próprio e segredos de alta entropia continuam passando. A UI e a API dizem "excluído por conter um possível segredo", nunca "segredo detectado", e não mostram o trecho nem a linha.
 
 ## 6. Prompt injection
 
