@@ -11,7 +11,7 @@ interface ProblemAlertProps {
 
 export function ProblemAlert({ error, onRetry, showFieldErrors = true }: ProblemAlertProps) {
   const problem = error instanceof ApiError ? error.problem : null;
-  const network = error instanceof ApiError && error.isNetworkError;
+  const network = error instanceof ApiError && error.isServerUnreachable;
   const title =
     problem?.title ?? (network ? messages.errors.networkTitle : messages.errors.unexpectedTitle);
   const detail =

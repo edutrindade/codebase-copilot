@@ -34,6 +34,24 @@ test('explains a network failure without a request id', () => {
   expect(alert).not.toHaveTextContent(messages.errors.requestId);
 });
 
+test.each([502, 503, 504])(
+  'explains a proxy %i without a ProblemDetail as an unavailable server',
+  (status) => {
+    render(<ProblemAlert error={new ApiError(status, null)} onRetry={vi.fn()} />);
+
+    const alert = screen.getByRole('alert');
+    expect(alert).toHaveTextContent(messages.errors.networkTitle);
+    expect(alert).toHaveTextContent(messages.errors.networkDetail);
+    expect(screen.getByRole('button', { name: messages.errors.retry })).toBeInTheDocument();
+  },
+);
+
+test('keeps the generic message for a 500 without a ProblemDetail', () => {
+  render(<ProblemAlert error={new ApiError(500, null)} />);
+
+  expect(screen.getByRole('alert')).toHaveTextContent(messages.errors.unexpectedTitle);
+});
+
 test('falls back to a generic message for anything else', () => {
   render(<ProblemAlert error={new TypeError('boom')} />);
 

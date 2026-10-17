@@ -4,6 +4,8 @@ export type Problem = components['schemas']['Problem'];
 export type ErrorCode = Problem['code'];
 export type FieldError = components['schemas']['FieldError'];
 
+const GATEWAY_STATUSES = new Set([502, 503, 504]);
+
 export class ApiError extends Error {
   readonly status: number;
   readonly problem: Problem | null;
@@ -21,6 +23,11 @@ export class ApiError extends Error {
 
   get isNetworkError(): boolean {
     return this.status === 0;
+  }
+
+  // The backend always answers with a ProblemDetail; a bare 502-504 comes from the proxy in front of it.
+  get isServerUnreachable(): boolean {
+    return this.isNetworkError || (this.problem === null && GATEWAY_STATUSES.has(this.status));
   }
 }
 

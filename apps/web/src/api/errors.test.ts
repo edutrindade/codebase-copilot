@@ -42,6 +42,7 @@ describe('unwrap', () => {
     expect(error.status).toBe(502);
     expect(error.problem).toBeNull();
     expect(error.isNetworkError).toBe(false);
+    expect(error.isServerUnreachable).toBe(true);
   });
 
   test('reports a failed connection as a network error', async () => {
@@ -52,6 +53,7 @@ describe('unwrap', () => {
     )) as ApiError;
 
     expect(error.isNetworkError).toBe(true);
+    expect(error.isServerUnreachable).toBe(true);
     expect(error.code).toBeNull();
   });
 
