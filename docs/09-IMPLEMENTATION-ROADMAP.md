@@ -78,6 +78,8 @@
 
 ## Etapa 5 — Busca lexical e recuperação híbrida
 
+**Status:** concluída em 16/10/2026, com o aceite parcial (plano, testes e desvios em `docs/plans/etapa-5.md`; decisões D-055 a D-062). Resultados reprodutíveis e baseline lexical medidos; a comparação do híbrido com o vetorial ficou pendente por falta de saldo no provedor e roda no mesmo harness, sem código novo.
+
 - Implementar busca lexical.
 - Preservar identificadores e caminhos.
 - Combinar rankings.

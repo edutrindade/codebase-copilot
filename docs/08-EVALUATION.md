@@ -26,6 +26,12 @@ Incluir:
 - prompt injection embutido em arquivos;
 - arquivos excluídos e segredos sintéticos.
 
+### Corpus atual (Etapa 5, D-061)
+
+- **Fixture sintética** versionada em `eval/corpus/fixture/` (serviço de cobrança em Java, TypeScript, Python, SQL e Markdown), com identificador exato, sinônimo sem termo em comum, o mesmo arquivo em dois caminhos, instrução injetada e um `.npmrc` com token sintético que a varredura exclui.
+- **Codebase Copilot** no commit `9d986db` e **`pallets/click` 8.5.0** (`8b19813`, BSD-3-Clause), fora do repositório; cada um é conferido contra um manifesto SHA-256 antes de rodar.
+- **40 perguntas** em `eval/questions/<corpus>.yaml`, metade em pt-BR e metade em en, com categoria, dificuldade e intervalos de linhas esperados; 4 exigem abstenção. Rascunho do assistente, revisão e aprovação humanas. Como montar e rodar: `eval/README.md`.
+
 ## 3. Métricas de recuperação
 
 - **Recall@k:** proporção das evidências relevantes encontradas entre os primeiros k resultados.
@@ -34,6 +40,8 @@ Incluir:
 - **Cobertura de fontes:** capacidade de recuperar arquivos distintos quando a pergunta exige fluxo entre módulos.
 
 Definir relevância em nível de chunk e, quando útil, de arquivo.
+
+**Como são calculadas (D-062):** um chunk é relevante quando um dos seus caminhos é o do intervalo esperado (ou um dos `otherPaths`) e as linhas se sobrepõem. Recall@5/10/20 conta intervalos esperados encontrados; MRR@10 usa o primeiro chunk relevante; Precision@10 divide os relevantes por 10; a cobertura de arquivos@10 só vale para perguntas `CROSS_FILE_FLOW` e conta arquivos esperados com algum chunk entre os 10 primeiros. Perguntas que exigem abstenção ficam fora dessas métricas.
 
 ## 4. Métricas de resposta
 
@@ -88,6 +96,12 @@ Não assumir que a opção mais sofisticada vence; medir qualidade, latência e 
 5. Alterar uma variável por vez quando possível.
 6. Comparar qualidade, latência e custo.
 7. Não promover mudança que degrade segurança ou validade de citação sem decisão explícita.
+
+### Processo implementado (Etapa 5)
+
+O harness `RetrievalEvaluationIT` (tag `eval`, fora do `verify`) indexa cada corpus pelo pipeline real, consulta cada canal uma vez por pergunta e calcula as variantes `LEXICAL`, `VECTOR`, `LEXICAL_PATH`, `LEXICAL_VECTOR` e `HYBRID` sobre as mesmas listas. Resultados e configuração (corpus, manifesto, versões de chunking e lexical, modelo, parâmetros da fusão) ficam em `eval/results/`, versionados. Os vetores ficam em cache por hash e modelo, e duas rodadas iguais produzem o mesmo resultado, fora a latência (verificado com `EVAL_COMPARE_WITH`).
+
+**Primeira medição (16/10/2026):** só o baseline lexical, porque o provedor estava sem saldo. Ver `eval/results/2026-10-16-lexical.md` e a O-005.
 
 ## 9. Metas
 

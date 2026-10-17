@@ -75,13 +75,23 @@ Spring AI pode fornecer a integração com o provedor, mas a aplicação deve pe
 ### Canal lexical
 Busca por termos, identificadores, nomes de classe/função, caminhos e palavras específicas. A busca lexical é importante para nomes exatos e símbolos.
 
+**Implementado na Etapa 5:**
+- Tokenizador de identificadores na aplicação (`IdentifierTokenizer`, versão `ident-v1`), igual na indexação e na consulta: `getUserById` → `getuserbyid get user by id`, `snake_case` só pelas partes, e as partes de tokens colados por símbolos (`src/foo/Bar.java` → `src foo bar java`), que o parser do PostgreSQL guardaria como um lexema só (D-055).
+- Índice `chunk_lexical` por chunk e versão do tokenizador, com `tsv` = termos de identificador com peso A + conteúdo com peso B (configuração `simple`), preenchido pela etapa `LEXICAL` do job de indexação, sem chamada externa (D-056).
+- Consulta: os termos da pergunta, sem stopwords pt-BR/en, unidos por OR em `to_tsquery('simple', …)`, sempre como parâmetro; ordem por `ts_rank_cd` e desempate por caminho, linha e id (D-057).
+- **Canal de caminhos:** termos da pergunta com cara de caminho ou nome de arquivo do snapshot buscam arquivos por `strict_word_similarity` (`pg_trgm`, limiar 0,8) e devolvem os chunks deles em ordem de linhas (D-058).
+
 ### Canal vetorial
 Busca por similaridade semântica em embeddings.
 
-Na Etapa 4, a busca é **exata** (distância de cosseno sobre todos os chunks do snapshot, sem índice aproximado), filtrada por snapshot, provedor, modelo e dimensão, e exposta em `POST /projects/{projectId}/search` (D-049, D-053). Com 50 mil chunks de 1.536 dimensões, a medição ficou em 213 ms de média e 313 ms de p95. Índice HNSW parcial por modelo com varredura iterativa fica para a comparação da Etapa 5 ou 8.
+Na Etapa 4, a busca é **exata** (distância de cosseno sobre todos os chunks do snapshot, sem índice aproximado), filtrada por snapshot, provedor, modelo e dimensão, e exposta em `POST /projects/{projectId}/search` (D-049, D-053). Com 50 mil chunks de 1.536 dimensões, a medição ficou em 213 ms de média e 313 ms de p95. Índice HNSW parcial por modelo com varredura iterativa fica para a Etapa 8, se a latência justificar.
 
 ### Fusão
 Combinar rankings dos canais. O baseline é Reciprocal Rank Fusion com k=60 (D-017), a ser comparado com alternativas no conjunto de avaliação (O-005).
+
+**Implementado na Etapa 5:** `RrfFusion` pura sobre os canais lexical, vetorial e de caminhos (`score = Σ peso / (k + rank)`, k=60, pesos 1), com 50 candidatos por canal e desempate determinístico (D-059). O endpoint de busca aceita `mode` `LEXICAL`, `VECTOR` ou `HYBRID` (padrão), e cada resultado traz o rank em cada canal (D-060). Com 50 mil chunks, o híbrido sem a chamada ao provedor mediu 854 ms de média e 1,2 s de p95, dominado pelo lexical quando a pergunta tem um termo comum (D-059).
+
+**Avaliação (Etapa 5):** só o baseline lexical foi medido, porque o provedor estava sem saldo: Recall@10 0,472 e MRR@10 0,341 em 36 perguntas, e Recall@10 0,296 em pt-BR. O canal de caminhos melhorou só o topo do ranking (MRR@10 0,362). A comparação com o vetorial e o híbrido roda no mesmo harness quando houver saldo (`08-EVALUATION.md`, D-062).
 
 ### Filtros
 Sempre restringir por projeto e snapshot, respeitando permissões e exclusões. Considerar filtros por linguagem e caminho quando forem úteis.

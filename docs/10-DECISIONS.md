@@ -161,6 +161,7 @@ Este documento registra decisões aceitas e itens que ainda precisam de validaç
 
 **Motivo:** não exige serviço externo na primeira versão; é simples de observar e comparar.  
 **Limitação conhecida:** o full-text do PostgreSQL não implementa BM25.  
+**Estado (16/10/2026, fim da Etapa 5):** implementada como descrito: tokenizador (D-055), índice `chunk_lexical` (D-056), consulta com OR (D-057), caminhos por `pg_trgm` (D-058) e RRF k=60 (D-059). Baseline lexical medido no corpus (D-061, D-062): Recall@10 0,472 e MRR@10 0,341 em 36 perguntas, com queda forte em pt-BR (0,296 contra 0,648 em en). **Continua provisória:** a comparação com o vetorial e o híbrido depende de vetores reais, e a etapa fechou sem saldo no provedor.  
 **O que levaria à revisão:** o baseline lexical ou a fusão perderem para alternativas no corpus de avaliação (ver O-005 abaixo, que permanece aberto para a comparação).
 
 ### D-018 — Seleção de pasta local (resolve O-006)
@@ -689,7 +690,7 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **O que levaria à revisão:** volume de evidências copiadas relevante frente ao conteúdo indexado.
 
 ### D-047 — Provedor inicial de embeddings (O-004, provisória)
-**Status:** Aceita (provisória, 16/10/2026; bake-off na Etapa 5)  
+**Status:** Aceita (provisória, 16/10/2026; bake-off adiado na Etapa 5, P8; manter o `spring-ai-openai` é decidido na Etapa 6, P9)  
 **Contexto:** a O-004 pede um provedor de embeddings antes de concluir a Etapa 4, mas a comparação de qualidade depende do corpus da Etapa 5 (O-011).  
 **Opções consideradas:**
 1. OpenAI `text-embedding-3-small`, pelo módulo OpenAI do Spring AI.
@@ -721,7 +722,13 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 
 **Motivo:** integração mais madura no Spring AI 2.0 (D-014) e API "compatível com OpenAI" oferecida por outros provedores e servidores locais, o que facilita a Etapa 9 (D-019).  
 **Consequências:** o texto dos chunks indexados e as perguntas de busca saem da máquina quando `provider=openai` (D-054). Preço e política devem ser reconferidos antes de alterar esta decisão.  
-**O que levaria à revisão:** resultado do bake-off da Etapa 5, mudança de preço ou de política de dados, ou integração da Voyage no Spring AI.
+**Atualização (Etapa 5, 16/10/2026):**
+- **Bake-off adiado** (P8 do plano da Etapa 5): o corpus inicial é pequeno para separar dois bons modelos, e o harness (D-062) roda o bake-off depois sem mudança de código, com um adaptador novo. A Voyage não foi verificada.
+- **`spring-ai-openai` mantido** (P9): a escolha entre ele e o SDK sozinho passa para a Etapa 6, junto com a porta de geração, onde o `ChatClient` do Spring AI pode (ou não) se pagar.
+- A guarda dos testes passou a liberar também a tag `eval`, do harness de avaliação (D-062).
+- O teste de fumaça com a chave real continua pendente por falta de saldo.
+
+**O que levaria à revisão:** resultado do bake-off, mudança de preço ou de política de dados, ou integração da Voyage no Spring AI.
 
 ### D-048 — Armazenamento dos vetores (revisa a restrição da O-004)
 **Status:** Aceita (16/10/2026; F2 entregue)  
@@ -972,7 +979,7 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 - **Reprodutibilidade:** ordem determinística em todos os canais (D-057 a D-059) e vetores em cache. `EVAL_COMPARE_WITH=<json>` faz a rodada falhar se o resultado, fora data e latências, diferir de um anterior.
 
 **Motivo:** buscar as listas uma vez e fundir em memória permite variar k, pesos e canais sem consultar o banco de novo; o cache torna o baseline pago reprodutível e barato de repetir.  
-**Consequências:** o baseline lexical (sem custo) está em `eval/results/2026-10-16-lexical.*`; o vetorial e o híbrido saem do mesmo harness com `EVAL_PROVIDER=openai`, quando houver saldo, junto com o teste de fumaça da Etapa 4. A comparação e as decisões que dependem dela (D-017, O-005) ficam para a F7.  
+**Consequências:** o baseline lexical (sem custo) está em `eval/results/2026-10-16-lexical.*`; o vetorial e o híbrido saem do mesmo harness com `EVAL_PROVIDER=openai`, quando houver saldo, junto com o teste de fumaça da Etapa 4. A Etapa 5 fechou sem saldo: a comparação e as decisões que dependem dela (D-017, O-005, saída do canal de caminhos da D-058) esperam essa rodada.  
 **O que levaria à revisão:** corpus maior, bake-off de embeddings (O-004) ou variantes novas da fusão.
 
 ---
@@ -987,22 +994,26 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 - Provedor de embeddings e de chat podem ser diferentes (a Anthropic, por exemplo, não oferece modelo de embeddings próprio), o que justifica as duas portas separadas.
 
 **Critérios de comparação:** recall@k e MRR no corpus, qualidade em código, custo por 1M de tokens, latência, limites de taxa e política de retenção de dados do provedor.  
-**Estado (16/10/2026):** embeddings decididos provisoriamente na Etapa 4: OpenAI `text-embedding-3-small`, 1.536 dimensões (D-047), com armazenamento que não exige migração para trocar de modelo (D-048). A escolha definitiva de embeddings, com a Voyage `voyage-code-3` como candidata, sai do bake-off da Etapa 5, com o corpus de avaliação. O provedor de chat é decidido na Etapa 6.
+**Estado (16/10/2026, fim da Etapa 5):** embeddings decididos provisoriamente na Etapa 4: OpenAI `text-embedding-3-small`, 1.536 dimensões (D-047), com armazenamento que não exige migração para trocar de modelo (D-048). O bake-off com a Voyage `voyage-code-3` foi adiado (D-047, atualização da Etapa 5): o corpus de avaliação (D-061) e o harness (D-062) estão prontos para ele, mas nem o baseline com a OpenAI rodou ainda, por falta de saldo. O provedor de chat é decidido na Etapa 6.
 
 ### O-005 — Comparação final de estratégia lexical e fusão
 **Status:** A validar  
 **Contexto:** D-017 define o ponto de partida. Falta compará-lo com alternativas.  
 **A comparar:** lexical puro, vetorial puro, híbrido com RRF e variações (valor de k, pesos), tratamento de identificadores, e, apenas se o lexical se mostrar fraco, índice auxiliar com BM25.  
-**Evidência para decidir:** resultados no corpus da Etapa 5 (recall@k, MRR, latência).
+**Evidência para decidir:** resultados no corpus da Etapa 5 (recall@k, MRR, latência).  
+**Estado (16/10/2026, fim da Etapa 5):**
+- **Medido:** lexical e lexical + caminhos, no corpus de 36 perguntas (`eval/results/2026-10-16-lexical.*`). O canal de caminhos sobe o MRR@10 de 0,341 para 0,362 e o Recall@5 de 0,380 para 0,407, sem mudar o Recall@10. O lexical é fraco em pt-BR (Recall@10 0,296) e em perguntas conceituais (MRR@10 0,160), como previsto; isso é o que o vetorial deve cobrir, e não basta para justificar BM25 antes da comparação.
+- **Falta:** vetorial e híbrido com vetores reais (o harness já calcula `VECTOR`, `LEXICAL_VECTOR` e `HYBRID` sobre as mesmas listas), variações de k e pesos, e um corpus maior (Etapa 8). Latência com 50 mil chunks: D-059.
 
 ### O-010 — Parâmetros iniciais de chunking
 **Status:** A validar  
 **Contexto:** tamanho, sobreposição e limites de linhas são hipóteses.  
 **Plano:** ajustar no corpus, alterando uma variável por vez (`08-EVALUATION.md`, seção 8).  
-**Etapa 3 (16/10/2026):** valores iniciais provisórios na D-043 (`lines-v1`: 60 linhas, 4.000 caracteres, sobreposição de 10 linhas, `LINE_TOO_LONG` acima de 4.000 caracteres por linha). A comparação fica para a Etapa 5.
+**Etapa 3 (16/10/2026):** valores iniciais provisórios na D-043 (`lines-v1`: 60 linhas, 4.000 caracteres, sobreposição de 10 linhas, `LINE_TOO_LONG` acima de 4.000 caracteres por linha). A comparação fica para a Etapa 5.  
+**Etapa 5 (16/10/2026):** o corpus anota relevância por intervalo de linhas (D-061), e o harness mede qualquer versão de chunking sem mudar as anotações (D-062). Só `lines-v1` foi medido; a comparação de variantes passa para a Etapa 8 ("melhorar ranking/chunking apenas com evidência").
 
 ### O-011 — Corpus de avaliação
-**Status:** A decidir antes da Etapa 5  
+**Status:** Resolvida pela D-061 (16/10/2026)  
 **Questões:** quais repositórios (licença permissiva, tamanhos e linguagens variados), quem anota arquivos/linhas esperados e perguntas sem resposta, e como versionar o corpus.  
 **Sugestão:** projetos próprios mais um ou dois repositórios open source conhecidos.
 

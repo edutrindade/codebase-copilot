@@ -1,6 +1,6 @@
 # Plano — Etapa 5: Busca lexical e recuperação híbrida
 
-**Status:** aprovado em 16/10/2026, com os ajustes da F0 em P1, P3 e P4. As propostas P1 a P9 viram D-055 em diante, registradas em `10-DECISIONS.md` na fatia indicada em cada uma.
+**Status:** concluída em 16/10/2026, com o aceite parcial (comparação com vetores reais pendente de saldo; ver "Resultado e desvios"). Plano aprovado em 16/10/2026, com os ajustes da F0 em P1, P3 e P4. As propostas P1 a P9 viram D-055 em diante, registradas em `10-DECISIONS.md` na fatia indicada em cada uma.
 **Referências:** `09-IMPLEMENTATION-ROADMAP.md` (Etapa 5), `docs/plans/etapa-4.md` (pendências), `04-RAG-PIPELINE.md` §6 e §13, `05-DATA-MODEL.md` §4, `08-EVALUATION.md`, D-016, D-017, D-039, D-043, D-047, D-049, D-050, D-053, O-004, O-005, O-010, O-011.
 
 ## Escopo
@@ -331,6 +331,40 @@ Consequências para a P1:
 - Decisões: D-017 confirmada ou revista com os números; O-005 atualizada (o que foi medido, o que falta); O-011 resolvida; O-010 e O-004 com o novo estado; D-047 (P9), D-053 (P6).
 - Docs: `04` §6, `05` (`chunk_lexical`, `snapshots`, §4), `06` (busca), `08` (corpus e processo reais), `09` (status), README (harness, como montar o corpus, custo).
 - Seção "Resultado e desvios" neste arquivo.
+
+**Como foi entregue (16/10/2026)**
+- Fechada **sem saldo no provedor**, por decisão sua: sem rodada com `EVAL_PROVIDER=openai`, sem o teste de fumaça da Etapa 4 e sem bake-off (adiado na P8).
+- Decisões: D-017 com o estado da implementação e o baseline lexical, ainda provisória; O-005 com o que foi medido e o que falta; O-011 resolvida pela D-061; O-010 e O-004 com o novo estado; D-047 com o bake-off adiado e a P9 (Spring AI na Etapa 6); D-062 com a pendência. A D-053 já estava marcada como revista pela D-060 (F4).
+- Docs: `04` §6 (canais, fusão, avaliação), `05` (`chunk_lexical`, `snapshots.lexical_version`, etapa `LEXICAL`, índice trigram, §4), `06` (busca com `mode` e `ranks`, `lexical` no snapshot, etapa `LEXICAL`, `outdatedReasons`), `08` (corpus, cálculo das métricas e processo reais), `09` (status) e README (harness, corpus, custo).
+
+## Resultado e desvios
+
+**Aceite:** *resultados são reprodutíveis e o baseline híbrido é comparado com os baselines individuais.*
+- **Reprodutíveis: sim.** Duas rodadas lexicais idênticas (verificado com `EVAL_COMPARE_WITH`); com o provedor `fake`, a segunda rodada veio toda do cache (1.648 acertos, nenhuma chamada) e deu o mesmo resultado. Ordem determinística em todos os canais.
+- **Híbrido comparado: pendente.** Só o baseline lexical (`LEXICAL` e `LEXICAL_PATH`) foi medido com dados válidos. O harness já calcula `VECTOR`, `LEXICAL_VECTOR` e `HYBRID`, mas com o fake o "vetorial" é uma busca lexical disfarçada (D-047), e esses números não valem como baseline. Basta uma rodada com `EVAL_PROVIDER=openai` quando houver saldo, a mesma ocasião do teste de fumaça da Etapa 4, para completar o aceite sem mudar código. Depois dela: D-017 confirmada ou revista, O-005 atualizada, e a decisão sobre manter o canal de caminhos (P4).
+
+**Números do baseline lexical** (36 perguntas, `eval/results/2026-10-16-lexical.md`):
+- `LEXICAL`: Recall@10 0,472, MRR@10 0,341; `LEXICAL_PATH`: Recall@10 0,472, MRR@10 0,362.
+- Fraco em pt-BR (Recall@10 0,296 contra 0,648 em en) e em perguntas conceituais (MRR@10 0,160); bom em identificador exato (Recall@10 0,750).
+- Latência no corpus real, por pergunta: lexical de 0,3 a 7,6 ms de média; caminhos até 2,7 ms. Com 50 mil chunks sintéticos, ver F4.
+
+**Desvios em relação ao plano:**
+- F1: "colada" vale para qualquer símbolo sem espaço; palavras entre `<` e `>` sempre entram; os termos guardam a grafia original (D-055).
+- F3: nos volumes testados, o planejador parte do snapshot pela PK, sem usar o GIN; o limiar de caminhos 0,8 deixa passar arquivos vizinhos com diretórios em comum (D-057, D-058).
+- F4: `mode` é texto no pedido; no `HYBRID`, cada canal busca `max(candidates, limit)`; o canal de caminhos só roda no `HYBRID` (D-060).
+- F5: o manifesto guarda a quantidade de linhas, e o `verify` valida as anotações dos três corpora (D-061).
+- F6: harness num contexto próprio, porque o `@IntegrationTest` limita o tamanho de arquivo do inventário; `TestProperties` e `TestcontainersConfiguration` ficaram públicas (D-062).
+- F7: fechamento sem a rodada paga (acima).
+
+**Pendências que saem da etapa:**
+
+| Pendência | Para onde |
+|---|---|
+| Baseline vetorial e híbrido com a OpenAI, teste de fumaça da Etapa 4 | quando houver saldo, antes ou no início da Etapa 6 |
+| Revisão da D-017 e da O-005, saída ou não do canal de caminhos | logo depois da rodada paga |
+| Bake-off de embeddings (O-004) | quando o corpus crescer (Etapa 8) ou houver motivo para trocar de modelo |
+| `spring-ai-openai` ou só o SDK (P9) | Etapa 6 |
+| Custo do lexical com termos comuns (sem IDF), HNSW, variantes de chunking (O-010), corpus maior | Etapa 8 |
 
 ## Migração
 
