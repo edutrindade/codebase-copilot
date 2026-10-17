@@ -17,6 +17,8 @@
 - **Histórico:** perguntas anteriores e respostas associadas.
 - **Configurações:** provedor, privacidade, exclusões, limites e estimativas.
 
+No MVP (Etapa 7), exclusões e limites ficam na pré-análise, que também serve a projetos já indexados; provedor e preços continuam na configuração do servidor (`.env`), e a UI só mostra o que está configurado e para onde vão os trechos (D-073).
+
 ## 3. Fluxo de primeiro uso
 
 ### Etapa 1 — Criar workspace
@@ -59,6 +61,8 @@ Quando a indexação terminar, sugerir perguntas baseadas no inventário, como:
 
 Essas sugestões devem ser geradas apenas quando houver evidência no inventário; não afirmar que um arquivo existe sem verificar.
 
+No MVP, as sugestões são as quatro acima, genéricas e sem citar arquivo, mostradas só com snapshot ativo e com a conversa vazia; escolher uma preenche o campo, sem enviar (D-077).
+
 ## 4. Layout da tela de pergunta
 
 Layout conceitual:
@@ -68,6 +72,8 @@ Layout conceitual:
 - **Cabeçalho do projeto:** snapshot ativo, estado da indexação e opção de atualizar.
 
 Em telas menores, os painéis podem virar abas.
+
+No MVP, a partir de 64rem a conversa fica à esquerda e as evidências e o visualizador à direita; abaixo disso, as três áreas viram abas, e abrir uma citação leva à aba do código. O cabeçalho mostra o snapshot ativo, a indexação em andamento e o aviso de desatualizado, com link para o resumo do projeto, onde fica "indexar de novo" (D-075).
 
 ## 5. Formato de resposta
 

@@ -1192,6 +1192,41 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Consequências:** a espera é de até 60 s sem texto parcial; arquivos sem realce.  
 **O que levaria à revisão:** latência medida ruim (Etapa 8), legibilidade pedir realce, ou respostas com formatação rica.
 
+### D-076 — Como a UI chega ao backend e como `apps/web` se organiza (P2 e P11 da Etapa 7)
+**Status:** Aceita (17/10/2026; F1, F2 e fechamento da Etapa 7)  
+**Contexto:** UI e API em portas diferentes exigem CORS ou um proxy, e faltava dizer como a pessoa roda o produto e onde cada parte do frontend mora.  
+**Opções consideradas:**
+1. Proxy do Vite para `/api` no `dev` e no `preview`.
+2. O backend serve o build da UI num processo só.
+3. CORS liberado para a origem do Vite.
+
+**Decisão:** opção 1 no MVP: dois processos (backend e `npm run dev` ou `npm run preview`), sem CORS e sem acoplar o build Maven ao npm. Em `apps/web`: `src/api` (cliente, tipos gerados e versionados, tabela de ações por `code`), `src/app` (rotas, `QueryClient`), `src/components` (primitivos), `src/features/<tela>` (`workspaces`, `import`, `project`, `ask`, `history`), `src/messages.ts` (todos os textos pt-BR), `src/styles` e `e2e`. No backend, o conteúdo do arquivo em `indexing`, a versão ativa da evidência pela fachada `Retrieval` (desvio da F1, D-071), `GET /system/providers` em `providers` e o filtro de acesso local em `shared`.  
+**Motivo:** a mesma origem para o browser simplifica a D-072; a estrutura por tela casa com a do backend por módulo.  
+**Consequências:** o README traz dois comandos para subir o produto; as portas 5173 e 4173 são fixas, porque são as origens aceitas.  
+**O que levaria à revisão:** empacotamento num único executável (opção 2, Etapa 8).
+
+### D-077 — Navegação, estados e erros da UI (P9 da Etapa 7)
+**Status:** Aceita (17/10/2026; F3 a F7 da Etapa 7)  
+**Contexto:** as telas do `03` precisavam de rotas, de uma forma de acompanhar jobs e de um tratamento de erros que não dependesse do texto das mensagens.  
+**Decisão:**
+- Rotas: `/` (workspaces ou primeiro uso), `/workspaces/:id`, `/workspaces/:id/new` (assistente de importação e pré-análise, que serve também a projetos existentes), `/projects/:id` (resumo), `/projects/:id/ask` e `/projects/:id/conversations/:cid` (pergunta), `/projects/:id/history`. Paginação na URL (`?page=`, base 1).
+- Polling pelo TanStack Query: 1 s com job ou import ativo, 2 s com resposta `PENDING`, parado no resto. Sem SSE.
+- Erros: a UI mostra `title`, `detail` e `requestId` do ProblemDetail e escolhe a ação pelo `code` num `Record<ErrorCode, Recovery>`, que obriga a decidir a ação de cada código novo do contrato. Códigos dos jobs e das respostas, que são `string` no contrato, têm tabelas próprias com uma ação padrão.
+- Estados em texto, não só cor (`03` §8); exclusões com confirmação e os `409` explicados no diálogo.
+- Perguntas sugeridas: as quatro genéricas do `03`, só com snapshot ativo; preenchem o campo, não enviam.
+
+**Motivo:** decidir pelo `code` mantém a UI correta quando as mensagens mudam; a tabela exaustiva transforma um código esquecido em erro de compilação.  
+**Consequências:** o estado "falhou" não aparece na lista de projetos (o `ProjectResponse` traz só o job ativo, desvio da F3); aparece no resumo do projeto.  
+**O que levaria à revisão:** jobs longos o bastante para o polling pesar, ou o último job no `ProjectResponse`.
+
+### D-078 — Aceite de ponta a ponta da UI (P10 da Etapa 7)
+**Status:** Aceita (17/10/2026; F8 da Etapa 7)  
+**Contexto:** o aceite da Etapa 7 é de uso ("importar, indexar, perguntar e abrir evidências sem ferramentas internas"), e os testes de componente simulam a API.  
+**Decisão:** um teste Playwright (`npm run e2e`, fora do `npm run check`, como os harnesses da D-062) contra o backend real com o banco do Compose e os provedores `fake`, na porta 8089, e o `vite preview` na 4173. Percorre o fluxo inteiro com um repositório de exemplo versionado (`apps/web/e2e/fixtures/sample-shop`), passa o axe (WCAG 2.1 A e AA, com contraste) em cada tela principal, falha com erro de console e remove o que criou.  
+**Motivo:** cobre a integração UI, proxy, filtro de acesso local e backend que nenhum teste isolado cobre, sem custo de provedor.  
+**Consequências:** exige Docker com o banco no ar e o Chromium do Playwright baixado à parte; não roda no `verify`.  
+**O que levaria à revisão:** CI com banco efêmero, ou um provedor real no aceite.
+
 ---
 
 ## Decisões em aberto

@@ -375,4 +375,32 @@ O Vite recusa `Host: evil.example` com `403` no `dev` e no `preview`, e aceita `
 
 ## Resultado e desvios
 
-A preencher no fechamento.
+**Aceite:** *usuário consegue importar, indexar, perguntar e abrir evidências sem usar ferramentas internas.*
+- **Sim, de ponta a ponta, com o backend real.** O teste de aceite da F8 (`npm run e2e`) faz tudo pela UI, contra o backend real com o banco do Compose: cria o workspace, importa a pasta local `sample-shop`, revisa a pré-análise, indexa até o snapshot `READY`, pergunta, abre a evidência no visualizador com as linhas destacadas e reabre a conversa pelo histórico. Também passa o axe (WCAG 2.1 A e AA) em oito telas e não tem erro de console. A importação por ZIP, o progresso, as falhas e os snapshots foram verificados à mão em cada fatia (F4 a F7), atrás do `vite preview`.
+- **Com os provedores fake.** Com o provedor real, o fluxo não muda (`remote: true` só acrescenta o aviso e a confirmação, testados com MSW), mas não rodou, pela mesma falta de saldo das Etapas 4 a 6.
+- **Passada manual por teclado: pendente.** O teste automatizado cobre a pergunta, a citação e o "Pular para o conteúdo". A passada manual completa (P10) fica com você e é registrada aqui quando feita.
+
+**O que a etapa entregou:** `apps/web` (React 19, Vite 8, TypeScript 5.9, TanStack Query, React Router, Radix) com todas as telas da P9; tipos gerados do contrato e conferidos por teste; tabela `code` → ação; CSP no build; proxy do Vite sem CORS. No backend: conteúdo do arquivo do snapshot, versão ativa da evidência, `GET /system/providers`, escuta só em `127.0.0.1` com o filtro de `Host`/`Origin`, e nulos e obrigatórios corretos no contrato. Decisões D-070 a D-078. `npm run check` com 110 testes; `npm run e2e` com o aceite.
+
+**Desvios em relação ao plano** (detalhes no "Como foi entregue" de cada fatia):
+- F0: TypeScript 5.9.3 em vez do 7; ESLint 10 sem `jsx-a11y`, com o axe no lugar; a P5 passou a usar uma lista de origens permitidas (o proxy mantém a `Origin` do browser); visualizador sempre virtualizado.
+- F1: a versão ativa da evidência pela fachada `Retrieval`, não por uma porta de `indexing`; `GET /system/providers` sem `pricingConfigured`; correção geral dos nulos no contrato (D-074), além dos obrigatórios do inventário.
+- F2: CSP numa `<meta>` injetada só no build, porque o servidor de desenvolvimento usa um script inline.
+- F3: a lista de projetos não mostra "falhou" (o `ProjectResponse` traz só o job ativo); a falha aparece no resumo.
+- F4: schemas homônimos com formatos diferentes no `openapi.json` (`WarningResponse`, `ModelResponse`) renomeados, com teste contra novas colisões. Foi a única mudança de contrato depois da F1, e o JSON das respostas não mudou.
+- F6: a conversa já reabre por `/conversations/:cid`, adiantado da F7.
+- F7: a tela provisória saiu.
+- F8: o teste roda o backend na 8089, para conviver com o backend de desenvolvimento na 8080.
+- Fechamento: P2, P9, P10 e P11 registradas como D-076 a D-078.
+
+**Pendências que saem da etapa:**
+
+| Pendência | Para onde |
+|---|---|
+| Passada manual por teclado (P10) | você, antes do PR da etapa |
+| Uso com o provedor real (aviso remoto, custo medido), avaliação de respostas, testes de fumaça e baselines das Etapas 4 a 6 | quando houver saldo |
+| Build acima de 500 kB (divisão em chunks) e backend servindo a UI num processo só (P2) | Etapa 8, com o empacotamento |
+| Eventos de produto, latência e custo agregados, cancelamento de jobs, retenção de conversas | Etapa 8 |
+| Realce de sintaxe no visualizador | Etapa 8, se a legibilidade pedir (P7) |
+| Último job no `ProjectResponse`, para a lista mostrar "falhou" | quando o contrato mudar de novo |
+| Comparação entre snapshots, mapa arquitetural | Etapa 9 (D-027) |

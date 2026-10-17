@@ -102,6 +102,8 @@
 
 ## Etapa 7 — UX completa do MVP
 
+**Status:** concluída em 17/10/2026 (plano, testes e desvios em `docs/plans/etapa-7.md`; decisões D-070 a D-078). O aceite foi demonstrado por um teste de ponta a ponta com o backend real e os provedores fake; a passada manual por teclado e o uso com o provedor real ficaram para depois (o segundo, por falta de saldo).
+
 - Workspace e lista de projetos.
 - Fluxo de importação com pré-análise.
 - Progresso e erros da indexação.

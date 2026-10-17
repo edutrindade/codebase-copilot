@@ -33,8 +33,9 @@ Embedding / Chat provider (remote initially)
 - React
 - Vite
 - TypeScript
-- Biblioteca de componentes e gerenciamento de estado decididos na Etapa 7, junto com o scaffold de `apps/web` (D-026).
-- Cliente HTTP gerado ou tipado a partir do OpenAPI, se isso reduzir divergência.
+- TanStack Query para o estado do servidor, React Router, primitivos do Radix UI com CSS próprio e `@tanstack/react-virtual` no visualizador (D-070).
+- Tipos gerados do `openapi.json` com `openapi-typescript` e cliente `openapi-fetch`; um teste falha se os tipos estiverem defasados (D-070).
+- Em desenvolvimento e no `preview`, o Vite faz proxy de `/api` para o backend, sem CORS (D-076).
 
 ### Backend
 - Java 25 e Spring Boot 4.1.x (D-014).
@@ -98,7 +99,13 @@ Persiste perguntas, respostas, evidências, latência, tokens e custo estimado.
 ```text
 codebase-copilot/
   apps/
-    web/            (Etapa 7, D-026)
+    web/            (React + Vite + TypeScript, D-070 e D-076)
+      src/api/        cliente, tipos gerados e ações por código de erro
+      src/app/        rotas e QueryClient
+      src/components/ primitivos (diálogo, paginação, alertas)
+      src/features/   uma pasta por tela: workspaces, import, project, ask, history
+      src/messages.ts textos da UI em pt-BR
+      e2e/            teste de aceite (Playwright) e repositório de exemplo
     backend/
       openapi.json  (contrato versionado, D-023)
   docs/
@@ -170,4 +177,4 @@ As decisões técnicas e os itens em aberto são mantidos em `10-DECISIONS.md`. 
 | JPA, JDBC ou abordagem híbrida | D-016 (sem JPA) |
 | Busca lexical e algoritmo de fusão | D-017 (provisória); comparação final em O-005 |
 | Provedor inicial de chat e embeddings | D-047 e D-063 (provisórias); bake-off em O-004 |
-| Biblioteca de UI e estado do frontend | Etapa 7 (D-026) |
+| Biblioteca de UI e estado do frontend | D-070 (Etapa 7) |

@@ -2,7 +2,7 @@
 
 Ferramenta local-first que responde perguntas sobre um repositório com evidências verificáveis (arquivo + linhas). A documentação do produto e da arquitetura está em [`docs/`](docs/README.md), e as decisões técnicas em [`docs/10-DECISIONS.md`](docs/10-DECISIONS.md).
 
-> Estado atual: Etapa 6 do [roadmap](docs/09-IMPLEMENTATION-ROADMAP.md) concluída (respostas com evidências). Só o backend existe; o frontend (`apps/web`) entra na Etapa 7.
+> Estado atual: Etapa 7 do [roadmap](docs/09-IMPLEMENTATION-ROADMAP.md) concluída (UX completa do MVP). Pela UI em `apps/web` dá para criar workspaces, importar uma pasta local ou um ZIP, revisar a pré-análise, indexar, perguntar, abrir as evidências no visualizador e rever as conversas. Próxima: Etapa 8 (qualidade e hardening).
 
 ## Pré-requisitos
 
