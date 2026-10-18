@@ -1,9 +1,22 @@
+import { Info } from 'lucide-react';
+import { Button } from '../../components/ui/Button';
+import { Callout } from '../../components/ui/Callout';
+import { CopyButton } from '../../components/ui/CopyButton';
+import { Popover } from '../../components/ui/Popover';
+import { StatusBadge, type Tone } from '../../components/ui/StatusBadge';
 import { formatCost, formatDuration, formatNumber } from '../../format';
 import { messages } from '../../messages';
 import type { Answer, Evidence } from './api';
+import { AnswerContent } from './AnswerContent';
 import { answerRecovery } from './answerRecovery';
-import { answerSegments } from './answerText';
-import { highlightedRange } from './evidence';
+
+const STATUS_TONE: Record<Answer['status'], Tone> = {
+  PENDING: 'progress',
+  ANSWERED: 'success',
+  PARTIAL: 'warning',
+  ABSTAINED: 'warning',
+  FAILED: 'danger',
+};
 
 interface AnswerTurnProps {
   answer: Answer;
@@ -21,41 +34,46 @@ export function AnswerTurn({
   onShowEvidence,
 }: AnswerTurnProps) {
   const text = messages.ask;
+  const done = answer.status !== 'PENDING';
   return (
     <li className={selected ? 'turn turn--selected' : 'turn'}>
       <Question question={answer.question} />
-      <div className="turn__answer stack">
-        <p className="turn__meta">
-          <span className={`status status--answer-${answer.status.toLowerCase()}`}>
-            {text.status[answer.status]}
-          </span>
-          {olderSnapshot && <span className="muted"> {text.olderSnapshot}</span>}
+      <article className="answer-card" aria-label={text.answer}>
+        <p className="answer-card__meta">
+          <StatusBadge tone={STATUS_TONE[answer.status]}>{text.status[answer.status]}</StatusBadge>
+          {olderSnapshot && <span className="muted">{text.olderSnapshot}</span>}
         </p>
         <AnswerBody answer={answer} onCite={onCite} />
         {answer.warnings.length > 0 && (
           <ul className="notice-list">
             {answer.warnings.map((warning) => (
-              <li key={warning.code} className="notice notice--warning">
+              <Callout as="li" key={warning.code} tone="warning">
                 <p>{warning.message}</p>
                 {text.warningHints[warning.code] && <p>{text.warningHints[warning.code]}</p>}
-              </li>
+              </Callout>
             ))}
           </ul>
         )}
-        {answer.evidence.length > 0 && (
-          <div>
-            <button
-              type="button"
-              className="link-button"
-              aria-pressed={selected}
-              onClick={() => onShowEvidence(answer)}
-            >
-              {text.showEvidence}
-            </button>
+        {(done || answer.evidence.length > 0) && (
+          <div className="answer-card__footer">
+            {done && <p className="answer-card__summary">{metricsSummary(answer)}</p>}
+            <div className="answer-card__actions">
+              {answer.evidence.length > 0 && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  aria-pressed={selected}
+                  onClick={() => onShowEvidence(answer)}
+                >
+                  {text.showEvidence}
+                </Button>
+              )}
+              {done && <AnswerMetrics answer={answer} />}
+              {answer.answer && <CopyButton text={answer.answer} label={text.copyAnswer} />}
+            </div>
           </div>
         )}
-        {answer.status !== 'PENDING' && <AnswerMetrics answer={answer} />}
-      </div>
+      </article>
     </li>
   );
 }
@@ -82,47 +100,43 @@ function AnswerBody({
   }
   if (answer.status === 'FAILED') {
     return (
-      <div className="problem-alert">
-        <p className="problem-alert__title">{text.failed}</p>
+      <Callout tone="danger" title={text.failed}>
         {answer.error && <p>{answer.error.message}</p>}
         <p>{messages.recovery[answer.error ? answerRecovery(answer.error.code) : 'askAgain']}</p>
-      </div>
+      </Callout>
     );
   }
   if (answer.answer === null) {
     return null;
   }
-  const byLabel = new Map(answer.evidence.map((evidence) => [evidence.citationLabel, evidence]));
   return (
-    <p className="turn__text">
-      <span className="visually-hidden">{text.answer}: </span>
-      {answerSegments(answer.answer, new Set(byLabel.keys())).map((segment, index) => {
-        if (segment.type === 'text') {
-          return segment.text;
-        }
-        const evidence = byLabel.get(segment.label);
-        if (!evidence) {
-          return null;
-        }
-        const range = highlightedRange(evidence);
-        return (
-          <button
-            key={`${segment.label}-${index}`}
-            type="button"
-            className="citation"
-            aria-label={text.citation(
-              segment.label,
-              evidence.path,
-              text.lines(range.start, range.end),
-            )}
-            onClick={() => onCite(answer, evidence)}
-          >
-            {segment.label}
-          </button>
-        );
-      })}
-    </p>
+    <AnswerContent
+      text={answer.answer}
+      evidence={answer.evidence}
+      onCite={(evidence) => onCite(answer, evidence)}
+    />
   );
+}
+
+function costText(metrics: Answer['metrics']): string | null {
+  return metrics.costStatus === 'ESTIMATED' &&
+    metrics.estimatedCost !== null &&
+    metrics.costCurrency !== null
+    ? formatCost(metrics.estimatedCost, metrics.costCurrency)
+    : null;
+}
+
+// "1,2 s · 6 evidências · US$ 0,0004 estimado": only what was measured, never a made-up value.
+function metricsSummary(answer: Answer): string {
+  const text = messages.ask.metrics;
+  const cost = costText(answer.metrics);
+  return [
+    answer.metrics.latencyMs !== null && formatDuration(answer.metrics.latencyMs),
+    text.evidenceShort(answer.evidence.length),
+    cost !== null && text.costShort(cost),
+  ]
+    .filter((part): part is string => typeof part === 'string')
+    .join(' · ');
 }
 
 function AnswerMetrics({ answer }: { answer: Answer }) {
@@ -134,16 +148,18 @@ function AnswerMetrics({ answer }: { answer: Answer }) {
     metrics.inputTokens !== null && metrics.outputTokens !== null
       ? text.tokensValue(formatNumber(metrics.inputTokens), formatNumber(metrics.outputTokens))
       : text.unavailable;
-  const cost =
-    metrics.costStatus === 'ESTIMATED' &&
-    metrics.estimatedCost !== null &&
-    metrics.costCurrency !== null
-      ? text.costEstimated(formatCost(metrics.estimatedCost, metrics.costCurrency))
-      : text.costUnknown;
+  const estimated = costText(metrics);
+  const cost = estimated !== null ? text.costEstimated(estimated) : text.costUnknown;
 
   return (
-    <details className="metrics">
-      <summary>{text.title}</summary>
+    <Popover
+      label={text.title}
+      trigger={
+        <Button size="sm" variant="ghost" icon={Info}>
+          {text.title}
+        </Button>
+      }
+    >
       <dl className="metrics__list">
         <div>
           <dt>{text.duration}</dt>
@@ -178,6 +194,6 @@ function AnswerMetrics({ answer }: { answer: Answer }) {
           <dd>{messages.ask.form.modes[retrieval.mode]}</dd>
         </div>
       </dl>
-    </details>
+    </Popover>
   );
 }

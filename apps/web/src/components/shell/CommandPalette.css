@@ -1,0 +1,170 @@
+@layer components {
+  .palette {
+    position: fixed;
+    top: min(15dvh, 8rem);
+    left: 50%;
+    z-index: 41;
+    width: min(40rem, calc(100vw - 2 * var(--space-4)));
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-3);
+    overflow: hidden;
+    translate: -50% 0;
+    animation: pop-in var(--duration-fast) var(--ease-out);
+  }
+
+  .palette:focus-visible {
+    outline: none;
+  }
+
+  .palette__command {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .palette__search {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 0 var(--space-4);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  /* The caret alone is a weak cue; the line under the search marks the focus. */
+  .palette__search:focus-within {
+    box-shadow: inset 0 -2px 0 var(--color-focus);
+  }
+
+  .palette__search-icon {
+    flex: none;
+    width: var(--icon);
+    height: var(--icon);
+    color: var(--color-text-muted);
+  }
+
+  /* The base styles give inputs a border and a focus ring; here the dialog frame plays that role. */
+  .palette__input {
+    flex: 1;
+    min-width: 0;
+    height: 3rem;
+    padding: 0;
+    font-size: var(--text-md);
+    background: transparent;
+    border: none;
+    box-shadow: none;
+  }
+
+  .palette__input:focus,
+  .palette__input:focus-visible {
+    outline: none;
+    box-shadow: none;
+  }
+
+  .palette__status:empty {
+    display: none;
+  }
+
+  .palette__status {
+    padding: var(--space-2) var(--space-4) 0;
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  .palette__list {
+    max-height: min(24rem, 55dvh);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: var(--space-1) var(--space-2) var(--space-2);
+    scroll-padding-block: var(--space-2);
+  }
+
+  .palette__list [cmdk-group-heading] {
+    padding: var(--space-2) var(--space-2) var(--space-1);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-medium);
+    color: var(--color-text-muted);
+  }
+
+  .palette__item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: 2.25rem;
+    padding: 0 var(--space-2);
+    color: var(--color-text);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .palette__item[data-selected='true'] {
+    background: var(--color-surface-hover);
+  }
+
+  .palette__item[data-disabled='true'] {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+
+  .palette__icon {
+    flex: none;
+    width: var(--icon);
+    height: var(--icon);
+    color: var(--color-text-muted);
+  }
+
+  .palette__label {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .palette__hint {
+    flex: none;
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+  }
+
+  .palette__empty {
+    padding: var(--space-6) var(--space-2);
+    text-align: center;
+    color: var(--color-text-muted);
+  }
+
+  .palette__footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+    padding: var(--space-2) var(--space-4);
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+    background: var(--color-sunken);
+    border-top: 1px solid var(--color-border);
+  }
+
+  .palette__footer span {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
+
+  @media (max-width: 40rem) {
+    .palette__footer {
+      display: none;
+    }
+  }
+
+  @media (forced-colors: active) {
+    .palette {
+      border-color: CanvasText;
+    }
+
+    .palette__item[data-selected='true'] {
+      outline: 2px solid Highlight;
+      outline-offset: -2px;
+    }
+  }
+}

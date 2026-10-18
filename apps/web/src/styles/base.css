@@ -1,0 +1,262 @@
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    min-height: 100dvh;
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    line-height: var(--leading-normal);
+    font-feature-settings: 'cv11', 'ss01';
+    color: var(--color-text);
+    background: var(--color-bg);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    line-height: var(--leading-tight);
+    font-weight: var(--weight-semibold);
+    letter-spacing: -0.011em;
+    text-wrap: balance;
+  }
+
+  h1 {
+    font-size: var(--text-xl);
+    letter-spacing: -0.02em;
+  }
+
+  h2 {
+    font-size: var(--text-md);
+  }
+
+  h3 {
+    font-size: var(--text-base);
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  a {
+    color: var(--color-accent-fg);
+    text-decoration-line: underline;
+    text-decoration-color: color-mix(in oklch, currentColor 40%, transparent);
+    text-underline-offset: 0.2em;
+    transition: text-decoration-color var(--duration-fast) var(--ease-out);
+  }
+
+  a:hover {
+    text-decoration-color: currentColor;
+  }
+
+  code,
+  pre,
+  kbd,
+  samp {
+    font-family: var(--font-mono);
+    font-size: 0.92em;
+    font-variant-ligatures: none;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: var(--color-accent-soft-hover);
+  }
+
+  dt {
+    color: var(--color-text-muted);
+  }
+
+  details > summary {
+    cursor: pointer;
+  }
+
+  /* Native form controls, so every form shares one look before it is rebuilt with the field components. */
+  input:where(:not([type='checkbox'], [type='radio'], [type='file'])),
+  select,
+  textarea {
+    width: 100%;
+    min-height: var(--control-height);
+    padding: var(--space-1-5) var(--space-3);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-1);
+    transition:
+      border-color var(--duration-fast) var(--ease-out),
+      box-shadow var(--duration-fast) var(--ease-out);
+  }
+
+  input:where(:not([type='checkbox'], [type='radio'], [type='file'])):hover,
+  select:hover,
+  textarea:hover {
+    border-color: var(--color-text-muted);
+  }
+
+  input:where(:not([type='checkbox'], [type='radio'], [type='file'])):focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: none;
+    border-color: var(--color-focus);
+    box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-focus) 25%, transparent);
+  }
+
+  textarea {
+    resize: vertical;
+  }
+
+  input[aria-invalid='true'],
+  select[aria-invalid='true'],
+  textarea[aria-invalid='true'] {
+    border-color: var(--color-danger);
+  }
+
+  input:disabled,
+  select:disabled,
+  textarea:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  input[type='checkbox'],
+  input[type='radio'] {
+    flex: none;
+    width: 1rem;
+    height: 1rem;
+    margin: 0.125rem 0 0;
+    accent-color: var(--color-accent);
+  }
+
+  input[type='file'] {
+    font-size: var(--text-sm);
+  }
+
+  input[type='file']::file-selector-button {
+    margin-right: var(--space-3);
+    padding: var(--space-1-5) var(--space-3);
+    font: inherit;
+    font-weight: var(--weight-medium);
+    color: var(--color-text);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1-5);
+    max-width: 28rem;
+  }
+
+  .field > label,
+  .field__label {
+    font-weight: var(--weight-medium);
+  }
+
+  .field--wide {
+    max-width: none;
+  }
+
+  .field textarea {
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+  }
+
+  .field__hint {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  .field-error {
+    margin: 0;
+    padding-left: var(--space-4);
+    font-size: var(--text-sm);
+    color: var(--color-danger);
+  }
+
+  .checkbox,
+  .choice__option {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    cursor: pointer;
+  }
+
+  /* Side by side, the radios stay 24 px apart (WCAG 2.5.8). */
+  .choice {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-6);
+  }
+
+  .choice legend {
+    width: 100%;
+    margin-bottom: var(--space-2);
+  }
+
+  .choice__option input {
+    width: 1rem;
+    height: 1rem;
+    margin: 0.125rem 0 0;
+  }
+
+  .skip-link {
+    position: absolute;
+    z-index: 100;
+    left: var(--space-2);
+    top: -100px;
+    padding: var(--space-2) var(--space-3);
+    font-weight: var(--weight-medium);
+    color: var(--color-accent-text);
+    background: var(--color-accent);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-2);
+  }
+
+  .skip-link:focus {
+    top: var(--space-2);
+  }
+
+  @media (forced-colors: active) {
+    :focus-visible {
+      outline-color: Highlight;
+    }
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px) scale(0.98);
+  }
+}
+
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}

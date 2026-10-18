@@ -1,9 +1,15 @@
 import { messages } from '../messages';
+import { Skeleton } from './ui/Skeleton';
 
-export function Loading() {
+const LINE_WIDTHS = ['60%', '92%', '78%', '85%', '40%'];
+
+export function Loading({ lines = 3 }: { lines?: number }) {
   return (
-    <p role="status" className="muted">
-      {messages.loading}
-    </p>
+    <div role="status" className="loading">
+      <span className="visually-hidden">{messages.loading}</span>
+      {LINE_WIDTHS.slice(0, lines).map((width) => (
+        <Skeleton key={width} width={width} />
+      ))}
+    </div>
   );
 }

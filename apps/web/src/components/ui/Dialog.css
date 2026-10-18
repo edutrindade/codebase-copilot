@@ -1,0 +1,72 @@
+@layer components {
+  .dialog-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    background: var(--color-overlay);
+    animation: fade-in var(--duration) var(--ease-out);
+  }
+
+  .dialog {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    z-index: 41;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    width: min(32rem, calc(100vw - 2 * var(--space-4)));
+    max-height: calc(100dvh - 2 * var(--space-4));
+    overflow-y: auto;
+    padding: var(--space-6);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-3);
+    /* translate, not transform: the pop-in animation owns transform. */
+    translate: -50% -50%;
+    animation: pop-in var(--duration) var(--ease-out);
+  }
+
+  .dialog:focus-visible {
+    outline: none;
+  }
+
+  .dialog__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .dialog__title {
+    font-size: var(--text-md);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-tight);
+  }
+
+  .dialog__description {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    color: var(--color-text-muted);
+  }
+
+  .dialog__description strong {
+    color: var(--color-text);
+  }
+
+  .dialog__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+  }
+
+  @media (forced-colors: active) {
+    .dialog {
+      border-color: CanvasText;
+    }
+  }
+}

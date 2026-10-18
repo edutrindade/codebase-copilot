@@ -1,13 +1,20 @@
-import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useParams, useSearchParams } from 'react-router';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { Plus } from 'lucide-react';
+import { useParams, useSearchParams } from 'react-router';
 import { ApiError } from '../../api/errors';
-import { ConfirmDialog } from '../../components/ConfirmDialog';
-import { Loading } from '../../components/Loading';
+import { usePageTitle } from '../../app/title';
 import { Pagination, pageFromSearch } from '../../components/Pagination';
 import { ProblemAlert } from '../../components/ProblemAlert';
+import { ButtonLink } from '../../components/ui/Button';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { RelativeTime } from '../../components/ui/RelativeTime';
+import { Skeleton } from '../../components/ui/Skeleton';
+import { TileGrid, TileGridSkeleton } from '../../components/ui/TileGrid';
 import { messages } from '../../messages';
-import { deleteProject, getWorkspace, listProjects, workspaceKeys, type Project } from './api';
-import { projectSource, projectStatus } from './projectStatus';
+import { getWorkspace, listProjects, workspaceKeys } from './api';
+import { EmptyProjectsIllustration } from './illustrations';
+import { ProjectTile } from './ProjectTile';
 
 const ACTIVE_JOB_POLL_MS = 1000;
 
@@ -28,18 +35,14 @@ export function WorkspacePage() {
       query.state.data?.items.some((project) => project.indexing) ? ACTIVE_JOB_POLL_MS : false,
   });
 
-  const back = (
-    <Link to="/" className="back-link">
-      {messages.projects.allWorkspaces}
-    </Link>
-  );
+  usePageTitle([workspace.data?.name ?? messages.pages.workspace]);
 
   if (workspace.isPending) {
     return (
-      <section>
-        {back}
+      <section className="stack">
         <h1>{messages.pages.workspace}</h1>
-        <Loading />
+        <Skeleton width="12rem" />
+        <TileGridSkeleton />
       </section>
     );
   }
@@ -48,8 +51,7 @@ export function WorkspacePage() {
     const notFound =
       workspace.error instanceof ApiError && workspace.error.code === 'WORKSPACE_NOT_FOUND';
     return (
-      <section>
-        {back}
+      <section className="stack">
         <h1>{messages.pages.workspace}</h1>
         <ProblemAlert
           error={workspace.error}
@@ -60,34 +62,51 @@ export function WorkspacePage() {
   }
 
   const newProject = `/workspaces/${workspaceId}/new`;
+  const text = messages.projects;
 
   return (
     <section className="stack">
-      {back}
-      <div className="page-header">
-        <h1>{workspace.data.name}</h1>
-        <Link to={newProject} className="button button--primary">
-          {messages.projects.newProject}
-        </Link>
-      </div>
-      {projects.isPending && <Loading />}
+      <PageHeader
+        title={workspace.data.name}
+        description={
+          <>
+            <span>{messages.workspaces.projectCount(workspace.data.projectCount)}</span>
+            <span aria-hidden="true">·</span>
+            <span>
+              {messages.workspaces.created} <RelativeTime iso={workspace.data.createdAt} />
+            </span>
+          </>
+        }
+        actions={
+          <ButtonLink to={newProject} variant="primary" icon={Plus}>
+            {text.newProject}
+          </ButtonLink>
+        }
+      />
+      {projects.isPending && <TileGridSkeleton />}
       {projects.isError && (
         <ProblemAlert error={projects.error} onRetry={() => void projects.refetch()} />
       )}
       {projects.isSuccess && projects.data.totalItems === 0 && (
-        <div className="empty-state">
-          <h2>{messages.projects.emptyTitle}</h2>
-          <p>{messages.projects.emptyDetail}</p>
-          <Link to={newProject}>{messages.projects.newProject}</Link>
-        </div>
+        <EmptyState
+          illustration={<EmptyProjectsIllustration />}
+          title={text.emptyTitle}
+          action={
+            <ButtonLink to={newProject} variant="primary" icon={Plus}>
+              {text.emptyAction}
+            </ButtonLink>
+          }
+        >
+          <p>{text.emptyDetail}</p>
+        </EmptyState>
       )}
       {projects.isSuccess && projects.data.totalItems > 0 && (
         <>
-          <ul className="card-list">
+          <TileGrid>
             {projects.data.items.map((project) => (
-              <ProjectItem key={project.id} project={project} />
+              <ProjectTile key={project.id} project={project} />
             ))}
-          </ul>
+          </TileGrid>
           <Pagination
             page={page}
             totalPages={projects.data.totalPages}
@@ -96,51 +115,5 @@ export function WorkspacePage() {
         </>
       )}
     </section>
-  );
-}
-
-function ProjectItem({ project }: { project: Project }) {
-  const queryClient = useQueryClient();
-  const status = projectStatus(project);
-  const progress = project.indexing?.progress;
-
-  async function remove() {
-    await deleteProject(project.id);
-    await queryClient.invalidateQueries({ queryKey: workspaceKeys.all });
-  }
-
-  return (
-    <li className="card">
-      <div className="card__main">
-        <Link to={`/projects/${project.id}`} className="card__title">
-          {project.name}
-        </Link>
-        <p className="muted">{projectSource(project)}</p>
-        <p>
-          <span className={`status status--${status.toLowerCase()}`}>
-            {messages.projects.status[status]}
-          </span>
-          {progress && progress.total > 0 && (
-            <span className="muted">
-              {' '}
-              · {messages.projects.progress(progress.completed, progress.total)}
-            </span>
-          )}
-        </p>
-      </div>
-      <ConfirmDialog
-        trigger={messages.confirm.deleteTrigger}
-        triggerLabel={messages.projects.delete(project.name)}
-        title={messages.projects.deleteTitle(project.name)}
-        description={
-          <>
-            <p>{messages.projects.deleteDetail}</p>
-            {project.indexing && <p>{messages.projects.deleteBusy}</p>}
-          </>
-        }
-        confirmLabel={messages.projects.deleteConfirm}
-        onConfirm={remove}
-      />
-    </li>
   );
 }

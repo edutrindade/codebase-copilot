@@ -28,7 +28,7 @@ Desenvolvedor que recebe um repositório existente e precisa contribuir com segu
 
 ### Casos pós-MVP
 
-- “O que mudou entre dois snapshots indexados?” (comparação entre snapshots, Etapa 9; D-027)
+- “O que mudou entre dois snapshots indexados?” (comparação entre snapshots, Etapa 10; D-027)
 
 ## 4. Princípios de produto
 
@@ -103,7 +103,7 @@ Exibir duração, quantidade de evidências recuperadas, tokens quando informado
 - Integrações com GitHub/GitLab por OAuth.
 - Colaboração multiusuário hospedada.
 - Análise semântica equivalente para toda linguagem existente.
-- Análise estrutural por AST e comparação entre snapshots (pós-MVP, Etapa 9; D-027).
+- Análise estrutural por AST e comparação entre snapshots (pós-MVP, Etapa 10; D-027).
 - Geração automática de documentação considerada confiável sem revisão humana.
 
 ## 8. Fluxos principais

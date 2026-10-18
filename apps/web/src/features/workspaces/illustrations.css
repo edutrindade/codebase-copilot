@@ -1,0 +1,49 @@
+@layer components {
+  .illustration {
+    display: block;
+    width: 7.5rem;
+    height: 5rem;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .illustration__surface {
+    fill: var(--color-surface);
+    stroke: var(--color-border-strong);
+    stroke-width: 1.5;
+  }
+
+  .illustration__soft {
+    fill: var(--color-accent-soft);
+    stroke: var(--color-accent-border);
+    stroke-width: 1.5;
+  }
+
+  .illustration__dashed {
+    stroke-dasharray: 4 3;
+  }
+
+  .illustration__line {
+    stroke: var(--color-border-strong);
+    stroke-width: 3;
+  }
+
+  .illustration__accent {
+    fill: var(--color-accent);
+  }
+
+  .illustration__accent-line {
+    stroke: var(--color-accent);
+    stroke-width: 3;
+  }
+
+  .illustration__on-accent {
+    stroke: var(--color-accent-text);
+    stroke-width: 2.5;
+  }
+
+  .illustration__evidence {
+    fill: var(--color-highlight);
+  }
+}

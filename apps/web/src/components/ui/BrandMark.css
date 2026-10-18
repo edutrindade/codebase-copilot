@@ -1,0 +1,15 @@
+@layer components {
+  .brand-mark {
+    flex: none;
+    width: 1.375rem;
+    height: 1.375rem;
+  }
+
+  .brand-mark__frame {
+    stroke: currentColor;
+  }
+
+  .brand-mark__dot {
+    fill: var(--color-accent);
+  }
+}

@@ -53,7 +53,6 @@ describe('ProjectPage', () => {
     const partial = readySnapshot('PARTIAL');
     partial.counts = { ...partial.counts, failedFiles: 2, unsupportedFiles: 1 };
     const current = project({ activeSnapshot: partial, outdatedReasons: ['SETTINGS_CHANGED'] });
-    const statuses: string[] = [];
     server.use(
       http.get(`/api/v1/snapshots/${snapshotId}`, () =>
         HttpResponse.json(
@@ -79,55 +78,14 @@ describe('ProjectPage', () => {
           ]),
         ),
       ),
-      http.get(`/api/v1/snapshots/${snapshotId}/files`, ({ request }) => {
-        const status = new URL(request.url).searchParams.get('status') ?? '';
-        statuses.push(status);
-        return HttpResponse.json(
-          page(
-            status === 'FAILED'
-              ? [
-                  {
-                    relativePath: 'src/Broken.java',
-                    status: 'FAILED',
-                    reason: 'READ_ERROR',
-                    language: 'java',
-                    sizeBytes: 100,
-                    lineCount: null,
-                    contentHash: null,
-                    chunkCount: 0,
-                  },
-                ]
-              : [
-                  {
-                    relativePath: 'data/dump.sql',
-                    status: 'UNSUPPORTED',
-                    reason: 'LINE_TOO_LONG',
-                    language: 'sql',
-                    sizeBytes: 524288,
-                    lineCount: null,
-                    contentHash: null,
-                    chunkCount: 0,
-                  },
-                  {
-                    relativePath: 'scripts/publish.sh',
-                    status: 'UNSUPPORTED',
-                    reason: 'SENSITIVE_CONTENT',
-                    language: 'shell',
-                    sizeBytes: 120,
-                    lineCount: null,
-                    contentHash: null,
-                    chunkCount: 0,
-                  },
-                ],
-          ),
-        );
-      }),
       ...handlers(() => current),
     );
     renderRoute(`/projects/${base.id}`);
 
-    expect(await screen.findByRole('heading', { level: 1, name: base.name })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: messages.project.ask })).toHaveAttribute(
+    expect(
+      await screen.findByRole('heading', { level: 1, name: messages.pages.overview }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: messages.projectArea.newQuestion })).toHaveAttribute(
       'href',
       `/projects/${base.id}/ask`,
     );
@@ -143,17 +101,12 @@ describe('ProjectPage', () => {
     expect(screen.getByRole('button', { name: messages.project.reindexTitle })).toBeInTheDocument();
 
     const unindexed = screen.getByRole('region', { name: messages.project.unindexed.title });
-    expect(await within(unindexed).findByText('src/Broken.java')).toBeInTheDocument();
-    expect(unindexed).toHaveTextContent(messages.project.unindexed.reasons.READ_ERROR);
-    await userEvent.click(
-      within(unindexed).getByRole('radio', { name: messages.project.unindexed.UNSUPPORTED(1) }),
-    );
-    expect(await within(unindexed).findByText('data/dump.sql')).toBeInTheDocument();
-    expect(unindexed).toHaveTextContent(messages.project.unindexed.reasons.LINE_TOO_LONG);
-    expect(within(unindexed).getByRole('row', { name: /scripts\/publish\.sh/ })).toHaveTextContent(
-      messages.project.unindexed.reasons.SENSITIVE_CONTENT,
-    );
-    expect(statuses).toEqual(['FAILED', 'UNSUPPORTED']);
+    expect(
+      within(unindexed).getByRole('link', { name: messages.project.unindexed.FAILED(2) }),
+    ).toHaveAttribute('href', `/projects/${base.id}/files?status=FAILED`);
+    expect(
+      within(unindexed).getByRole('link', { name: messages.project.unindexed.UNSUPPORTED(1) }),
+    ).toHaveAttribute('href', `/projects/${base.id}/files?status=UNSUPPORTED`);
 
     const history = screen.getByRole('region', { name: messages.project.snapshots.title });
     expect(
@@ -180,6 +133,9 @@ describe('ProjectPage', () => {
         snapshotCalls++;
         return HttpResponse.json(page(snapshotCalls > 1 ? [snapshotDetail()] : []));
       }),
+      http.get(`/api/v1/workspaces/${base.workspaceId}/projects`, () =>
+        HttpResponse.json(page([current])),
+      ),
       ...handlers(() => current, { providerNone: true }),
     );
     renderRoute(`/projects/${base.id}`);
@@ -202,9 +158,18 @@ describe('ProjectPage', () => {
       screen.queryByRole('button', { name: messages.project.indexTitle }),
     ).not.toBeInTheDocument();
     expect(await screen.findByText(messages.project.snapshots.empty)).toBeInTheDocument();
+    expect(document.title).toMatch(/^\(40%\) /);
     expect(await axeViolations()).toEqual([]);
 
-    current = project({ activeSnapshot: readySnapshot() });
+    current = project({
+      activeSnapshot: readySnapshot(),
+      lastJob: {
+        id: '0192f5c4-0000-7000-8000-000000000301',
+        status: 'COMPLETED',
+        errorCode: null,
+        finishedAt: '2026-10-16T12:10:00Z',
+      },
+    });
 
     expect(
       await screen.findByRole(
@@ -217,6 +182,8 @@ describe('ProjectPage', () => {
       screen.queryByRole('region', { name: messages.project.progress.title }),
     ).not.toBeInTheDocument();
     await waitFor(() => expect(snapshotCalls).toBeGreaterThan(1));
+    expect(document.title).not.toMatch(/^\(/);
+    expect((await screen.findAllByText(messages.toast.indexed)).length).toBeGreaterThan(0);
   });
 
   test('explains the last failed job with its message and the action for its code', async () => {
@@ -268,7 +235,9 @@ describe('ProjectPage', () => {
       'href',
       reviewHref,
     );
-    expect(screen.queryByRole('link', { name: messages.project.ask })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: messages.projectArea.newQuestion }),
+    ).not.toBeInTheDocument();
     const start = screen.getByRole('button', { name: messages.project.indexTitle });
     await waitFor(() => expect(start).toBeEnabled());
     await userEvent.click(start);
@@ -372,6 +341,33 @@ describe('ProjectPage', () => {
 
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent(messages.recovery.goBack);
-    expect(within(alert).queryByRole('button')).not.toBeInTheDocument();
+    expect(
+      within(alert).queryByRole('button', { name: messages.errors.retry }),
+    ).not.toBeInTheDocument();
+  });
+
+  test('a ready project starts with suggested questions that fill the question without sending', async () => {
+    let asked = false;
+    server.use(
+      http.post(`${projectUrl}/questions`, () => {
+        asked = true;
+        return HttpResponse.json({});
+      }),
+      ...handlers(() => project({ activeSnapshot: readySnapshot() })),
+    );
+    renderRoute(`/projects/${base.id}`);
+
+    const start = await screen.findByRole('region', { name: messages.project.startHere.title });
+    expect(
+      await screen.findByRole('button', { name: messages.project.reindexTitle }),
+    ).toBeEnabled();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(await axeViolations()).toEqual([]);
+
+    const [suggestion] = messages.ask.suggestions;
+    await userEvent.click(within(start).getByRole('link', { name: suggestion }));
+
+    expect(await screen.findByLabelText(messages.ask.form.label)).toHaveValue(suggestion);
+    expect(asked).toBe(false);
   });
 });

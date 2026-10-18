@@ -1,0 +1,45 @@
+@layer components {
+  .dropzone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-8) var(--space-4);
+    text-align: center;
+    background: var(--color-surface);
+    border: 2px dashed var(--color-border-strong);
+    border-radius: var(--radius-lg);
+    transition:
+      background-color var(--duration-fast) var(--ease-out),
+      border-color var(--duration-fast) var(--ease-out);
+  }
+
+  .dropzone--over {
+    background: var(--color-accent-soft);
+    border-color: var(--color-accent);
+  }
+
+  .dropzone--disabled {
+    opacity: 0.6;
+  }
+
+  .dropzone--disabled label {
+    cursor: not-allowed;
+  }
+
+  .dropzone:has(input:focus-visible) label {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+
+  .dropzone__icon {
+    width: 2rem;
+    height: 2rem;
+    color: var(--color-text-muted);
+  }
+
+  .dropzone__hint {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+}

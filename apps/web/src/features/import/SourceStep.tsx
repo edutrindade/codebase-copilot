@@ -1,7 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useId, useState, type FormEvent } from 'react';
+import { FileArchive, FolderOpen, type LucideIcon } from 'lucide-react';
 import { Loading } from '../../components/Loading';
 import { ProblemAlert } from '../../components/ProblemAlert';
+import { Button } from '../../components/ui/Button';
+import { Callout } from '../../components/ui/Callout';
+import { StatusBadge } from '../../components/ui/StatusBadge';
+import { useToast } from '../../components/ui/Toast';
 import { messages } from '../../messages';
 import { workspaceKeys } from '../workspaces/api';
 import { createProject, importKeys, listLocalRoots, type LocalRoot, type NewProject } from './api';
@@ -48,11 +53,13 @@ function SourceForm({ roots, workspaceId, onCreated }: SourceFormProps) {
   const [folder, setFolder] = useState<FolderSelection>({ rootKey: roots[0]?.key ?? '', path: '' });
   const [typedName, setTypedName] = useState<string | null>(null);
   const queryClient = useQueryClient();
+  const notify = useToast();
   const mutation = useMutation({
     mutationFn: (project: NewProject) => createProject(workspaceId, project),
     onSuccess: async (project) => {
       queryClient.setQueryData(importKeys.project(project.id), project);
       await queryClient.invalidateQueries({ queryKey: workspaceKeys.all });
+      notify({ tone: 'success', title: messages.toast.projectCreated, description: project.name });
       onCreated(project.id);
     },
   });
@@ -77,37 +84,36 @@ function SourceForm({ roots, workspaceId, onCreated }: SourceFormProps) {
           <p key={line}>{line}</p>
         ))}
       </div>
-      <fieldset className="choice">
+      <fieldset className="source-choice">
         <legend>{messages.newProject.sourceLegend}</legend>
-        <label className="choice__option">
-          <input
-            type="radio"
-            name="sourceType"
+        <div className="source-choice__options">
+          <ChoiceCard
             value="LOCAL_FOLDER"
+            icon={FolderOpen}
+            title={messages.newProject.sourceLocal}
+            badge={hasRoots ? messages.newProject.recommended : undefined}
+            hint={messages.newProject.sourceLocalHint}
+            next={messages.newProject.sourceLocalNext}
             checked={local}
             disabled={!hasRoots}
-            onChange={() => setSourceType('LOCAL_FOLDER')}
+            onSelect={setSourceType}
           />
-          <span>
-            {messages.newProject.sourceLocal}
-            <span className="muted"> — {messages.newProject.sourceLocalHint}</span>
-          </span>
-        </label>
-        <label className="choice__option">
-          <input
-            type="radio"
-            name="sourceType"
+          <ChoiceCard
             value="ZIP"
+            icon={FileArchive}
+            title={messages.newProject.sourceZip}
+            hint={messages.newProject.sourceZipHint}
+            next={messages.newProject.sourceZipNext}
             checked={!local}
-            onChange={() => setSourceType('ZIP')}
+            onSelect={setSourceType}
           />
-          <span>
-            {messages.newProject.sourceZip}
-            <span className="muted"> — {messages.newProject.sourceZipHint}</span>
-          </span>
-        </label>
+        </div>
       </fieldset>
-      {!hasRoots && <p className="notice">{messages.newProject.noRoots}</p>}
+      {!hasRoots && (
+        <Callout tone="info">
+          <p>{messages.newProject.noRoots}</p>
+        </Callout>
+      )}
       {local && <DirectoryBrowser roots={roots} value={folder} onChange={setFolder} />}
       <div className="field">
         <label htmlFor={nameId}>{messages.newProject.nameLabel}</label>
@@ -121,10 +127,60 @@ function SourceForm({ roots, workspaceId, onCreated }: SourceFormProps) {
       </div>
       {mutation.isError && <ProblemAlert error={mutation.error} />}
       <div>
-        <button type="submit" className="button button--primary" disabled={mutation.isPending}>
+        <Button type="submit" variant="primary" pending={mutation.isPending}>
           {mutation.isPending ? messages.newProject.creating : messages.newProject.create}
-        </button>
+        </Button>
       </div>
     </form>
+  );
+}
+
+interface ChoiceCardProps {
+  value: SourceType;
+  icon: LucideIcon;
+  title: string;
+  badge?: string;
+  hint: string;
+  next: string;
+  checked: boolean;
+  disabled?: boolean;
+  onSelect: (value: SourceType) => void;
+}
+
+function ChoiceCard({
+  value,
+  icon: Icon,
+  title,
+  badge,
+  hint,
+  next,
+  checked,
+  disabled,
+  onSelect,
+}: ChoiceCardProps) {
+  const ids = { title: useId(), detail: useId() };
+  return (
+    <label className="choice-card">
+      <input
+        type="radio"
+        name="sourceType"
+        value={value}
+        className="visually-hidden"
+        checked={checked}
+        disabled={disabled}
+        aria-labelledby={ids.title}
+        aria-describedby={ids.detail}
+        onChange={() => onSelect(value)}
+      />
+      <Icon aria-hidden="true" className="choice-card__icon" />
+      <span id={ids.title} className="choice-card__title">
+        {title}
+        {badge && <StatusBadge tone="info">{badge}</StatusBadge>}
+      </span>
+      <span id={ids.detail} className="choice-card__detail">
+        <span>{hint}</span>
+        <span className="muted">{next}</span>
+      </span>
+    </label>
   );
 }

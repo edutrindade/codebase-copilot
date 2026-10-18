@@ -1,14 +1,23 @@
+import { Trash, type LucideIcon } from 'lucide-react';
 import { AlertDialog } from 'radix-ui';
 import { useState, type MouseEvent, type ReactNode } from 'react';
 import { messages } from '../messages';
 import { ProblemAlert } from './ProblemAlert';
+import { Button } from './ui/Button';
+import { useReturnFocus } from './ui/returnFocus';
+import './ui/Dialog.css';
 
 interface ConfirmDialogProps {
-  trigger: string;
-  triggerLabel: string;
+  // Without a trigger, the dialog is controlled through open and onOpenChange.
+  trigger?: string;
+  triggerLabel?: string;
+  triggerIcon?: LucideIcon;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   title: string;
   description: ReactNode;
   confirmLabel: string;
+  confirmVariant?: 'danger' | 'primary';
   dismissLabel?: string;
   workingLabel?: string;
   onConfirm: () => Promise<unknown>;
@@ -17,16 +26,22 @@ interface ConfirmDialogProps {
 export function ConfirmDialog({
   trigger,
   triggerLabel,
+  triggerIcon = Trash,
+  open: controlledOpen,
+  onOpenChange,
   title,
   description,
   confirmLabel,
+  confirmVariant = 'danger',
   dismissLabel = messages.confirm.cancel,
   workingLabel = messages.confirm.working,
   onConfirm,
 }: ConfirmDialogProps) {
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = controlledOpen ?? uncontrolledOpen;
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  const returnFocus = useReturnFocus();
 
   function changeOpen(next: boolean) {
     if (pending) {
@@ -36,6 +51,11 @@ export function ConfirmDialog({
     if (next) {
       setError(null);
     }
+  }
+
+  function setOpen(next: boolean) {
+    setUncontrolledOpen(next);
+    onOpenChange?.(next);
   }
 
   async function confirm(event: MouseEvent) {
@@ -55,14 +75,16 @@ export function ConfirmDialog({
 
   return (
     <AlertDialog.Root open={open} onOpenChange={changeOpen}>
-      <AlertDialog.Trigger asChild>
-        <button type="button" className="button button--danger-quiet" aria-label={triggerLabel}>
-          {trigger}
-        </button>
-      </AlertDialog.Trigger>
+      {trigger && (
+        <AlertDialog.Trigger asChild>
+          <Button variant="danger-ghost" size="sm" icon={triggerIcon} aria-label={triggerLabel}>
+            {trigger}
+          </Button>
+        </AlertDialog.Trigger>
+      )}
       <AlertDialog.Portal>
         <AlertDialog.Overlay className="dialog-overlay" />
-        <AlertDialog.Content className="dialog">
+        <AlertDialog.Content className="dialog" {...(trigger ? {} : returnFocus)}>
           <AlertDialog.Title className="dialog__title">{title}</AlertDialog.Title>
           <AlertDialog.Description asChild>
             <div className="dialog__description">{description}</div>
@@ -70,19 +92,12 @@ export function ConfirmDialog({
           {error !== null && <ProblemAlert error={error} />}
           <div className="dialog__actions">
             <AlertDialog.Cancel asChild>
-              <button type="button" className="button" disabled={pending}>
-                {dismissLabel}
-              </button>
+              <Button disabled={pending}>{dismissLabel}</Button>
             </AlertDialog.Cancel>
             <AlertDialog.Action asChild>
-              <button
-                type="button"
-                className="button button--danger"
-                disabled={pending}
-                onClick={confirm}
-              >
+              <Button variant={confirmVariant} pending={pending} onClick={confirm}>
                 {pending ? workingLabel : confirmLabel}
-              </button>
+              </Button>
             </AlertDialog.Action>
           </div>
         </AlertDialog.Content>

@@ -130,7 +130,7 @@ Consolidadas dos documentos `02` a `08` e dos planos das Etapas 1 a 8; cada uma 
 - **Um chunk recusado pelo provedor** derruba o job inteiro (`EMBEDDING_REQUEST_REJECTED`); o lote não é dividido para achar o texto (D-054).
 - **Limite prático de 50 mil chunks por projeto** (~110–140 MB de código); acima, o job falha no limite (D-080).
 - **Cancelamento** leva até um lote (ou as tentativas de uma chamada ao provedor) para ter efeito; um pedido que chega depois da última verificação não impede a conclusão (D-084).
-- **Chunking por linhas** (`lines-v1`), sem análise sintática: um chunk pode cortar uma função ao meio (D-043; AST na Etapa 9).
+- **Chunking por linhas** (`lines-v1`), sem análise sintática: um chunk pode cortar uma função ao meio (D-043; AST na Etapa 10).
 - **Snapshots que falharam ou foram cancelados** ficam na lista, sem arquivos.
 
 ### Busca e respostas

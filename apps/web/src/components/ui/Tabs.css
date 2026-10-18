@@ -1,0 +1,51 @@
+@layer components {
+  .tabs {
+    display: flex;
+    gap: var(--space-1);
+    margin-bottom: var(--space-4);
+    overflow-x: auto;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .tabs__trigger {
+    position: relative;
+    flex: none;
+    padding: var(--space-2) var(--space-3);
+    font-weight: var(--weight-medium);
+    color: var(--color-text-muted);
+    background: none;
+    border: none;
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    cursor: pointer;
+    transition: color var(--duration-fast) var(--ease-out);
+  }
+
+  .tabs__trigger:hover {
+    color: var(--color-text);
+  }
+
+  .tabs__trigger[data-state='active'] {
+    color: var(--color-text);
+  }
+
+  .tabs__trigger[data-state='active']::after {
+    content: '';
+    position: absolute;
+    right: var(--space-2);
+    bottom: -1px;
+    left: var(--space-2);
+    height: 2px;
+    background: var(--color-accent);
+    border-radius: 2px 2px 0 0;
+  }
+
+  .tabs__content:focus-visible {
+    outline-offset: 4px;
+  }
+
+  @media (forced-colors: active) {
+    .tabs__trigger[data-state='active']::after {
+      background: Highlight;
+    }
+  }
+}

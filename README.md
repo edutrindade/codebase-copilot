@@ -2,7 +2,14 @@
 
 Ferramenta local-first que responde perguntas sobre um repositório com evidências verificáveis (arquivo + linhas). A documentação do produto e da arquitetura está em [`docs/`](docs/README.md), e as decisões técnicas em [`docs/10-DECISIONS.md`](docs/10-DECISIONS.md).
 
-> Estado atual: Etapa 8 do [roadmap](docs/09-IMPLEMENTATION-ROADMAP.md) concluída (qualidade e hardening). Pela UI dá para criar workspaces, importar uma pasta local ou um ZIP, revisar a pré-análise, indexar (e cancelar), perguntar, abrir as evidências no visualizador, rever e excluir conversas e ver o uso do projeto; tudo num processo só com `java -jar` (seção "Executar empacotado"). Limitações e recuperação de falhas: [`docs/11-OPERATIONS.md`](docs/11-OPERATIONS.md). As medições com o provedor real ficam para quando houver saldo. Próxima: Etapa 9 (recursos posteriores ao MVP).
+> Estado atual: Etapa 9 do [roadmap](docs/09-IMPLEMENTATION-ROADMAP.md) concluída (interface premium). Pela UI dá para criar workspaces, importar uma pasta local ou um ZIP, revisar a pré-análise, indexar (e cancelar), perguntar, abrir as evidências no visualizador com realce de sintaxe, explorar os arquivos do snapshot, rever e excluir conversas e ver o uso do projeto, com barra lateral, paleta de comandos (⌘K), atalhos e tema claro ou escuro; tudo num processo só com `java -jar` (seção "Executar empacotado"). Limitações e recuperação de falhas: [`docs/11-OPERATIONS.md`](docs/11-OPERATIONS.md). As medições com o provedor real ficam para quando houver saldo. Próxima: Etapa 10 (recursos posteriores ao MVP).
+
+| | |
+|---|---|
+| ![Pergunta com a evidência aberta no visualizador, tema claro](docs/screenshots/conversation-light-1440.png) | ![Aba Arquivos com a árvore e o arquivo aberto, tema escuro](docs/screenshots/files-dark-1440.png) |
+| ![Visão geral do projeto, tema claro](docs/screenshots/overview-light-1440.png) | ![Pergunta no celular, tema escuro](docs/screenshots/conversation-dark-390.png) |
+
+As imagens são as referências da regressão visual (`apps/web/e2e/visual.spec.ts`), com datas e durações mascaradas.
 
 ## Pré-requisitos
 
@@ -288,5 +295,7 @@ npm run e2e
 ```
 
 Fica fora do `npm run check`, como os harnesses do backend. O Playwright faz o build da UI, sobe o backend real na porta 8089 (provedores `fake`, raiz local em `apps/web/e2e/fixtures`, dados em um diretório temporário) e o `vite preview` na 4173, e percorre o fluxo do MVP: cria um workspace, importa o repositório de exemplo `sample-shop`, revisa a pré-análise, indexa, pergunta pelo teclado, abre a evidência no visualizador e reabre a conversa pelo histórico. Cada tela principal passa pelo axe (WCAG 2.1 A e AA, inclusive contraste) e o teste falha com qualquer erro de console. O workspace criado é removido no fim. A porta do backend muda com `E2E_BACKEND_PORT`; a 4173 precisa estar livre, porque é uma das origens aceitas pelo backend.
+
+Desde a Etapa 9, o `npm run e2e` também roda a navegação (barra lateral, trilha, paleta, atalhos e recarregar em cada rota), o tema (troca, persistência, sem piscar), a aba Arquivos e a regressão visual: doze telas em 390, 1024 e 1440 px nos dois temas, com axe (WCAG 2.2 AA) e sem rolagem horizontal, comparadas com as imagens de `e2e/visual.spec.ts-snapshots/` em 390 e 1440 px. As imagens foram geradas no macOS; depois de uma mudança visual intencional (ou em outro sistema), gere de novo com `npx playwright test e2e/visual.spec.ts --update-snapshots` e revise as diferenças antes de commitar.
 
 `npm run e2e:jar` roda os mesmos testes contra o jar empacotado: gera o jar com `-Pwith-ui`, sobe `java -jar` na porta 8089 e usa a UI servida por ele, sem o Vite. Inclui `e2e/packaged.spec.ts`, que confere o recarregamento numa rota da UI, os cabeçalhos de segurança, o `404` da API como ProblemDetail e uma mudança de estado vinda da própria origem.

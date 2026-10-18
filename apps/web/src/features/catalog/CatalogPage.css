@@ -1,0 +1,41 @@
+@layer screens {
+  .catalog__swatches {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+    gap: var(--space-2);
+    padding: 0;
+    list-style: none;
+  }
+
+  .catalog__swatches li {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+  }
+
+  .catalog__swatch {
+    flex: none;
+    width: 2rem;
+    height: 2rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+  }
+
+  .catalog__split {
+    display: grid;
+    height: 12rem;
+  }
+
+  .catalog__split .splitter__inner {
+    position: static;
+    height: 100%;
+  }
+
+  .catalog__pane {
+    padding: var(--space-3);
+    background: var(--color-sunken);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+  }
+}

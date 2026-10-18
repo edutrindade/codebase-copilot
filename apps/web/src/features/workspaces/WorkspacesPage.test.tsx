@@ -4,13 +4,19 @@ import { http, HttpResponse } from 'msw';
 import { describe, expect, test } from 'vitest';
 import { messages } from '../../messages';
 import { axeViolations } from '../../test/axe';
-import { page, workspace } from '../../test/fixtures';
+import { RECENT_PROJECTS_KEY } from '../../app/recentProjects';
+import { page, project, workspace } from '../../test/fixtures';
 import { problem } from '../../test/problems';
 import { renderRoute } from '../../test/render';
 import { server } from '../../test/server';
 import type { Workspace } from './api';
 
 const workspaces = '/api/v1/workspaces';
+
+async function chooseFromMenu(trigger: string, item: string) {
+  await userEvent.click(await screen.findByRole('button', { name: trigger }));
+  await userEvent.click(await screen.findByRole('menuitem', { name: item }));
+}
 
 describe('WorkspacesPage', () => {
   test('shows a loading state, then the first use with an optional name', async () => {
@@ -23,6 +29,10 @@ describe('WorkspacesPage', () => {
       await screen.findByRole('heading', { level: 1, name: messages.workspaces.firstUseTitle }),
     ).toBeInTheDocument();
     expect(screen.getByText(messages.workspaces.firstUseDetail)).toBeInTheDocument();
+    const steps = screen.getByRole('list', { name: messages.workspaces.stepsLabel });
+    expect(within(steps).getAllByRole('listitem')).toHaveLength(3);
+    expect(screen.getByText(messages.workspaces.privacyDetail)).toBeInTheDocument();
+    expect(screen.getByText(messages.workspaces.nameHint)).toBeInTheDocument();
     expect(screen.getByLabelText(messages.workspaces.nameLabel)).not.toBeRequired();
     expect(await axeViolations()).toEqual([]);
   });
@@ -108,9 +118,7 @@ describe('WorkspacesPage', () => {
     );
     renderRoute('/');
 
-    await userEvent.click(
-      await screen.findByRole('button', { name: messages.workspaces.delete('Antigo') }),
-    );
+    await chooseFromMenu(messages.workspaces.actions('Antigo'), messages.workspaces.deleteItem);
     const dialog = await screen.findByRole('alertdialog');
     expect(dialog).toHaveTextContent(messages.workspaces.deleteTitle('Antigo'));
     expect(await axeViolations()).toEqual([]);
@@ -133,9 +141,7 @@ describe('WorkspacesPage', () => {
     );
     renderRoute('/');
 
-    await userEvent.click(
-      await screen.findByRole('button', { name: messages.workspaces.delete('Clientes') }),
-    );
+    await chooseFromMenu(messages.workspaces.actions('Clientes'), messages.workspaces.deleteItem);
     const dialog = await screen.findByRole('alertdialog');
     expect(dialog).toHaveTextContent(messages.workspaces.deleteNotEmpty(2));
     await userEvent.click(
@@ -147,6 +153,21 @@ describe('WorkspacesPage', () => {
     );
     await userEvent.click(within(dialog).getByRole('button', { name: messages.confirm.cancel }));
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: messages.workspaces.actions('Clientes') }),
+      ).toHaveFocus(),
+    );
+  });
+
+  test('a workspace card opens the workspace from its menu', async () => {
+    const ws = workspace({ name: 'Clientes' });
+    server.use(http.get(workspaces, () => HttpResponse.json(page([ws]))));
+    const { router } = renderRoute('/');
+
+    await chooseFromMenu(messages.workspaces.actions('Clientes'), messages.workspaces.open);
+
+    await waitFor(() => expect(router.state.location.pathname).toBe(`/workspaces/${ws.id}`));
   });
 
   test('a failed load offers a retry', async () => {
@@ -166,5 +187,28 @@ describe('WorkspacesPage', () => {
     await userEvent.click(within(alert).getByRole('button', { name: messages.errors.retry }));
 
     expect(await screen.findByRole('link', { name: 'Clientes' })).toBeInTheDocument();
+  });
+
+  test('continues from the projects opened in this browser, dropping removed ones', async () => {
+    const kept = project({ name: 'sample-shop' });
+    const removedId = '0192f5c4-0000-7000-8000-000000000199';
+    window.localStorage.setItem(RECENT_PROJECTS_KEY, JSON.stringify([removedId, kept.id]));
+    server.use(
+      http.get(workspaces, () => HttpResponse.json(page([workspace()]))),
+      http.get(`/api/v1/projects/${kept.id}`, () => HttpResponse.json(kept)),
+      http.get(`/api/v1/projects/${removedId}`, () => problem(404, 'PROJECT_NOT_FOUND')),
+    );
+    renderRoute('/');
+
+    const recent = await screen.findByRole('region', { name: messages.workspaces.continueTitle });
+    expect(within(recent).getByRole('link', { name: 'sample-shop' })).toHaveAttribute(
+      'href',
+      `/projects/${kept.id}`,
+    );
+    expect(within(recent).getAllByRole('listitem')).toHaveLength(1);
+    await waitFor(() =>
+      expect(window.localStorage.getItem(RECENT_PROJECTS_KEY)).toBe(JSON.stringify([kept.id])),
+    );
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });

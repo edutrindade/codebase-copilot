@@ -1,0 +1,115 @@
+@layer components {
+  .button {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-1-5);
+    min-height: var(--control-height);
+    padding: 0 var(--space-3);
+    font-size: var(--text-base);
+    font-weight: var(--weight-medium);
+    line-height: 1.2;
+    text-align: center;
+    text-decoration: none;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    user-select: none;
+    transition:
+      background-color var(--duration-fast) var(--ease-out),
+      border-color var(--duration-fast) var(--ease-out),
+      color var(--duration-fast) var(--ease-out);
+  }
+
+  .button:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+
+  .button__icon {
+    flex: none;
+    width: var(--icon);
+    height: var(--icon);
+  }
+
+  .button--sm {
+    gap: var(--space-1);
+    min-height: var(--control-height-sm);
+    padding: 0 var(--space-2);
+    font-size: var(--text-sm);
+  }
+
+  .button--sm .button__icon,
+  .button--sm .spinner {
+    width: var(--icon-sm);
+    height: var(--icon-sm);
+  }
+
+  .button--icon {
+    width: var(--control-height);
+    padding: 0;
+  }
+
+  .button--sm.button--icon {
+    width: var(--control-height-sm);
+  }
+
+  .button--primary {
+    color: var(--color-accent-text);
+    background: var(--color-accent);
+    box-shadow:
+      var(--shadow-1),
+      inset 0 1px 0 oklch(1 0 0 / 12%);
+  }
+
+  .button--primary:hover:not(:disabled) {
+    background: var(--color-accent-hover);
+  }
+
+  .button--secondary {
+    color: var(--color-text);
+    background: var(--color-surface);
+    border-color: var(--color-border);
+    box-shadow: var(--shadow-1);
+  }
+
+  .button--secondary:hover:not(:disabled) {
+    background: var(--color-surface-hover);
+    border-color: var(--color-border-strong);
+  }
+
+  .button--ghost {
+    color: var(--color-text);
+    background: transparent;
+  }
+
+  .button--ghost:hover:not(:disabled),
+  .button--ghost[data-state='open'] {
+    background: var(--color-surface-hover);
+  }
+
+  .button--danger {
+    color: var(--color-danger-text);
+    background: var(--color-danger-solid);
+  }
+
+  .button--danger:hover:not(:disabled) {
+    background: var(--color-danger-solid-hover);
+  }
+
+  .button--danger-ghost {
+    color: var(--color-danger);
+    background: transparent;
+  }
+
+  .button--danger-ghost:hover:not(:disabled) {
+    background: var(--color-danger-bg);
+  }
+
+  @media (forced-colors: active) {
+    .button {
+      border-color: ButtonText;
+    }
+  }
+}

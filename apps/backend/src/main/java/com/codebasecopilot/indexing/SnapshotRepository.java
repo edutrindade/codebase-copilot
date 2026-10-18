@@ -439,6 +439,75 @@ class SnapshotRepository {
                 .optional();
     }
 
+    record TreeEntry(
+            String name,
+            boolean directory,
+            int files,
+            int indexedFiles,
+            int unsupportedFiles,
+            int failedFiles,
+            long sizeBytes,
+            @Nullable FileStatus status,
+            @Nullable String reason,
+            @Nullable String language) {}
+
+    // Immediate children of a directory: subdirectories aggregate their descendants.
+    List<TreeEntry> findTree(UUID snapshotId, @Nullable FileStatus status, String path) {
+        return jdbc.sql(
+                        """
+                        WITH scoped AS (
+                            SELECT substr(f.relative_path,
+                                          CASE WHEN :prefix = '' THEN 1
+                                               ELSE char_length(:prefix) + 2 END) AS rest,
+                                   f.status, f.reason, f.language, f.size_bytes
+                            FROM snapshot_files f
+                            WHERE f.snapshot_id = :id
+                              AND (CAST(:status AS text) IS NULL OR f.status = :status)
+                              AND (:prefix = '' OR starts_with(f.relative_path, :prefix || '/'))
+                        ), entries AS (
+                        SELECT split_part(rest, '/', 1) AS name, true AS directory,
+                               count(*) AS files,
+                               count(*) FILTER (WHERE status = 'INDEXED') AS indexed,
+                               count(*) FILTER (WHERE status = 'UNSUPPORTED') AS unsupported,
+                               count(*) FILTER (WHERE status = 'FAILED') AS failed,
+                               sum(size_bytes) AS size_bytes,
+                               NULL AS status, NULL AS reason, NULL AS language
+                        FROM scoped
+                        WHERE strpos(rest, '/') > 0
+                        GROUP BY 1
+                        UNION ALL
+                        SELECT rest, false, 1,
+                               CASE WHEN status = 'INDEXED' THEN 1 ELSE 0 END,
+                               CASE WHEN status = 'UNSUPPORTED' THEN 1 ELSE 0 END,
+                               CASE WHEN status = 'FAILED' THEN 1 ELSE 0 END,
+                               size_bytes, status, reason, language
+                        FROM scoped
+                        WHERE strpos(rest, '/') = 0
+                        )
+                        SELECT * FROM entries
+                        ORDER BY directory DESC, name COLLATE "C"
+                        """)
+                .param("id", snapshotId)
+                .param("status", status == null ? null : status.name())
+                .param("prefix", path)
+                .query(
+                        (rs, rowNum) -> {
+                            String fileStatus = rs.getString("status");
+                            return new TreeEntry(
+                                    rs.getString("name"),
+                                    rs.getBoolean("directory"),
+                                    rs.getInt("files"),
+                                    rs.getInt("indexed"),
+                                    rs.getInt("unsupported"),
+                                    rs.getInt("failed"),
+                                    rs.getLong("size_bytes"),
+                                    fileStatus == null ? null : FileStatus.valueOf(fileStatus),
+                                    rs.getString("reason"),
+                                    rs.getString("language"));
+                        })
+                .list();
+    }
+
     long countFiles(UUID snapshotId, @Nullable FileStatus status, String pathPrefix) {
         return jdbc.sql(
                         "SELECT count(*) FROM snapshot_files f WHERE f.snapshot_id = :id"

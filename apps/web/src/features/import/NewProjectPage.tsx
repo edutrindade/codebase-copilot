@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link, useParams, useSearchParams } from 'react-router';
+import { useParams, useSearchParams } from 'react-router';
+import { usePageTitle } from '../../app/title';
 import { Loading } from '../../components/Loading';
 import { ProblemAlert } from '../../components/ProblemAlert';
 import { messages } from '../../messages';
@@ -12,12 +13,10 @@ export function NewProjectPage() {
   const { workspaceId = '' } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const projectId = searchParams.get('project');
+  usePageTitle([messages.pages.newProject]);
 
   return (
     <section className="stack">
-      <Link to={`/workspaces/${workspaceId}`} className="back-link">
-        {messages.newProject.backToWorkspace}
-      </Link>
       <h1>{messages.pages.newProject}</h1>
       {projectId === null ? (
         <SourceStep

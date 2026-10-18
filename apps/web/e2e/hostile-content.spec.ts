@@ -1,4 +1,5 @@
 import { expect, test, type APIRequestContext } from '@playwright/test';
+import { messages } from '../src/messages';
 
 // Markup in file content, file and directory names and the question is shown as text: nothing
 // runs and the CSP is never violated (P4 of Etapa 8).
@@ -6,8 +7,23 @@ const FIXTURE = 'hostile-content';
 const QUESTION = `<img src=x onerror="window.__xss = 'question'"> xsscheck refund`;
 const FILE_NAME = '<img src=x onerror=window.__xss=1>.md';
 const DIRECTORY_NAME = '<svg onload=window.__xss=1>';
+// The fake provider never writes markdown, so the stored answer is swapped in the response (D-091).
+const hostileAnswer = (label: string) =>
+  [
+    '**Resumo** <b>sem HTML</b>',
+    `1. Veja [o guia](javascript:window.__xss=1) [${label}]`,
+    '2. ![x](x) <img src=x onerror="window.__xss=\'answer\'"> [E99]',
+    '',
+    '```html',
+    '<script>window.__xss = 1</script>',
+    '```',
+  ].join('\n');
 
 const created: { workspaceId?: string; projectId?: string } = {};
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 async function post(request: APIRequestContext, url: string, data?: object) {
   const response = await request.post(url, { data });
@@ -69,6 +85,42 @@ test('hostile content, names and question are rendered as text', async ({ page, 
     await expect(page.locator('.code-view')).toContainText(
       "<script>window.__xss = 'content-script';</script>",
     );
+  });
+
+  await test.step('answer with hostile markdown', async () => {
+    await page.route('**/api/v1/conversations/*', async (route) => {
+      const response = await route.fetch();
+      const body = (await response.json()) as {
+        answers: { answer: string | null; evidence: { citationLabel: string }[] }[];
+      };
+      for (const item of body.answers) {
+        item.answer = hostileAnswer(item.evidence[0]?.citationLabel ?? 'E1');
+      }
+      await route.fulfill({ response, json: body });
+    });
+    await page.reload();
+
+    const card = page.getByRole('article', { name: messages.ask.answer }).first();
+    await expect(card.locator('strong')).toHaveText('Resumo');
+    await expect(card.locator('li')).toHaveCount(2);
+    await expect(card).toContainText('<b>sem HTML</b>');
+    await expect(card).toContainText('[o guia](javascript:window.__xss=1)');
+    await expect(card).toContainText(`<img src=x onerror="window.__xss='answer'"> [E99]`);
+    await expect(card.locator('pre code')).toHaveText('<script>window.__xss = 1</script>');
+    await expect(card.locator('a, img, b, script, iframe')).toHaveCount(0);
+    await expect(card.getByRole('button', { name: /^Abrir a evidência E\d+/ })).toHaveCount(1);
+    await page.unrouteAll();
+  });
+
+  await test.step('names in the file tree', async () => {
+    await page.goto(`/projects/${created.projectId}/files`);
+    const tree = page.getByRole('list', { name: messages.files.treeLabel });
+    await expect(tree.getByRole('link', { name: FILE_NAME })).toBeVisible();
+    await tree
+      .getByRole('button', { name: new RegExp(`^${escapeRegExp(DIRECTORY_NAME)}`) })
+      .click();
+    await tree.getByRole('link', { name: 'notes.md' }).click();
+    await expect(page.locator('.code-view')).toBeVisible();
   });
 
   await test.step('nothing ran', async () => {

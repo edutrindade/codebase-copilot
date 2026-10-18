@@ -42,7 +42,7 @@ Cada chunk contém:
 - contagem de tokens estimada;
 - versão da estratégia de chunking.
 
-Tipo de chunk e símbolos entram com os adaptadores AST (Etapa 9, D-027).
+Tipo de chunk e símbolos entram com os adaptadores AST (Etapa 10, D-027).
 
 Preferir limites semânticos quando houver parser confiável. Caso contrário, dividir por linhas e limites de tamanho, com sobreposição controlada. Evitar chunks enormes e preservar contexto suficiente para entendimento.
 

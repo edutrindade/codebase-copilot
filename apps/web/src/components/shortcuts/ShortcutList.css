@@ -1,0 +1,40 @@
+@layer components {
+  .shortcut-list {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+  }
+
+  .shortcut-list__row {
+    display: grid;
+    grid-template-columns: minmax(8rem, auto) 1fr;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-2) 0;
+    border-bottom: 1px solid var(--color-border-subtle);
+  }
+
+  .shortcut-list__row:last-child {
+    border-bottom: none;
+  }
+
+  .shortcut-list__row--off .shortcut-list__keys {
+    opacity: 0.55;
+  }
+
+  .shortcut-list__keys {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-1);
+  }
+
+  .shortcut-list__join {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+  }
+
+  .shortcut-list dd {
+    margin: 0;
+  }
+}

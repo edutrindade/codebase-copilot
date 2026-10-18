@@ -19,6 +19,8 @@
 
 No MVP (Etapa 7), exclusões e limites ficam na pré-análise, que também serve a projetos já indexados; provedor e preços continuam na configuração do servidor (`.env`), e a UI só mostra o que está configurado e para onde vão os trechos (D-073).
 
+Desde a Etapa 9 (D-089, D-090, D-092): uma barra lateral com o seletor de workspace, os projetos e o estado de cada um, as conversas recentes e "Sistema e privacidade" (em gaveta abaixo de 48rem); uma barra superior com a trilha, a busca (⌘K), o indicador Local/Remoto e o tema. Dentro do projeto, abas como links: Visão geral · Perguntar · Arquivos · Histórico · Configurações. A paleta de comandos chega a qualquer seção, projeto ou conversa recente, e os atalhos (`g` + `o`/`p`/`a`/`h`, `/`, `[`/`]`, `?`) podem ser desligados em `/system`. Exclusões e limites também ficam em Configurações, fora do assistente.
+
 ## 3. Fluxo de primeiro uso
 
 ### Etapa 1 — Criar workspace
@@ -75,6 +77,8 @@ Em telas menores, os painéis podem virar abas.
 
 No MVP, a partir de 64rem a conversa fica à esquerda e as evidências e o visualizador à direita; abaixo disso, as três áreas viram abas, e abrir uma citação leva à aba do código. O cabeçalho mostra o snapshot ativo, a indexação em andamento e o aviso de desatualizado, com link para o resumo do projeto, onde fica "indexar de novo" (D-075).
 
+Desde a Etapa 9 (D-091, D-093): um divisor redimensionável entre a conversa e a coluna lateral (30% a 70%, também pelas setas e por dois botões), com a largura lembrada; campo da pergunta fixo embaixo; resposta como cartão, com formatação leve e as citações mostrando uma prévia ao passar o mouse ou focar; evidências agrupadas por arquivo; visualizador com o caminho em trilha, "Da resposta / Atual", "Abrir em Arquivos" e realce de sintaxe.
+
 ## 5. Formato de resposta
 
 Uma resposta deve conter:
@@ -121,6 +125,8 @@ No histórico, diferenciar valores medidos, estimados e indisponíveis.
 ## 8. Acessibilidade e visual
 
 Adotar visual limpo e funcional, com hierarquia clara, contraste adequado, navegação por teclado e estados que não dependam apenas de cor. A identidade visual final é decisão posterior; priorizar legibilidade do código e das evidências.
+
+Identidade decidida na Etapa 9 (D-087, D-088): Inter na interface e JetBrains Mono no código (auto-hospedadas), tokens de cor em OKLCH com acento índigo, tema claro, escuro ou do sistema aplicado antes da primeira pintura, ícones Lucide, cores de realce com 4,5:1 sobre o código e as linhas citadas, e movimento curto, desligado com `prefers-reduced-motion`. A meta de acessibilidade passou a WCAG 2.2 AA, conferida pelo axe nos dois temas e em 390, 1024 e 1440 px.
 
 ## 9. Eventos úteis de produto
 

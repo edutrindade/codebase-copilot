@@ -1,10 +1,17 @@
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { RefreshCw } from 'lucide-react';
 import { ProblemAlert } from '../../components/ProblemAlert';
+import { Button } from '../../components/ui/Button';
+import { Card } from '../../components/ui/Card';
+import { Stat, StatGrid } from '../../components/ui/Stat';
+import { StatusBadge } from '../../components/ui/StatusBadge';
 import { formatBytes, formatDateTime, formatNumber } from '../../format';
 import { messages } from '../../messages';
 import { LanguagesTable } from '../import/InventorySummary';
 import type { Project } from '../workspaces/api';
 import { getSnapshot, projectKeys } from './api';
+import { ReindexDialog } from './ReindexDialog';
 
 const COUNTS = [
   'files',
@@ -17,36 +24,54 @@ const COUNTS = [
 
 type ActiveSnapshotData = NonNullable<Project['activeSnapshot']>;
 
-export function ActiveSnapshot({ snapshot }: { snapshot: ActiveSnapshotData }) {
+interface ActiveSnapshotProps {
+  snapshot: ActiveSnapshotData;
+  // Given when the project can be re-indexed from here.
+  project?: Project;
+}
+
+export function ActiveSnapshot({ snapshot, project }: ActiveSnapshotProps) {
   const text = messages.project.snapshot;
+  const [reindexing, setReindexing] = useState(false);
   const detail = useQuery({
     queryKey: projectKeys.snapshot(snapshot.id),
     queryFn: ({ signal }) => getSnapshot(snapshot.id, signal),
   });
 
   return (
-    <section className="stack panel" aria-labelledby="active-snapshot-title">
-      <h2 id="active-snapshot-title">{text.title}</h2>
+    <Card as="section" className="stack" aria-labelledby="active-snapshot-title">
+      <div className="page-header">
+        <h2 id="active-snapshot-title">{text.title}</h2>
+        {project && (
+          <Button size="sm" icon={RefreshCw} onClick={() => setReindexing(true)}>
+            {messages.project.reindexTitle}
+          </Button>
+        )}
+      </div>
+      {project && reindexing && (
+        <ReindexDialog project={project} onClose={() => setReindexing(false)} />
+      )}
       <p>
-        <span className={`status status--${snapshot.status.toLowerCase()}`}>
+        <StatusBadge tone={snapshot.status === 'READY' ? 'success' : 'warning'}>
           {text.status[snapshot.status]}
-        </span>{' '}
+        </StatusBadge>{' '}
         {snapshot.completedAt && (
           <span className="muted">{text.completedAt(formatDateTime(snapshot.completedAt))}</span>
         )}
       </p>
-      <dl className="totals">
+      <StatGrid>
         {COUNTS.map((key) => (
-          <div key={key} className="totals__item">
-            <dt>{text.counts[key]}</dt>
-            <dd>
-              {key === 'bytes'
+          <Stat
+            key={key}
+            label={text.counts[key]}
+            value={
+              key === 'bytes'
                 ? formatBytes(snapshot.counts.bytes)
-                : formatNumber(snapshot.counts[key])}
-            </dd>
-          </div>
+                : formatNumber(snapshot.counts[key])
+            }
+          />
         ))}
-      </dl>
+      </StatGrid>
       {detail.isError && (
         <ProblemAlert error={detail.error} onRetry={() => void detail.refetch()} />
       )}
@@ -64,11 +89,14 @@ export function ActiveSnapshot({ snapshot }: { snapshot: ActiveSnapshotData }) {
           {detail.data.inventory && (
             <section aria-labelledby="snapshot-languages">
               <h3 id="snapshot-languages">{text.languagesTitle}</h3>
-              <LanguagesTable languages={detail.data.inventory.byLanguage} />
+              <LanguagesTable
+                languages={detail.data.inventory.byLanguage}
+                labelledBy="snapshot-languages"
+              />
             </section>
           )}
         </>
       )}
-    </section>
+    </Card>
   );
 }

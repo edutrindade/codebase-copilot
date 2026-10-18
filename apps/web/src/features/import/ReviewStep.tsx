@@ -1,7 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
+import { RefreshCw } from 'lucide-react';
 import { Loading } from '../../components/Loading';
 import { ProblemAlert } from '../../components/ProblemAlert';
+import { Button } from '../../components/ui/Button';
+import { Card } from '../../components/ui/Card';
 import { messages } from '../../messages';
 import type { Project } from '../workspaces/api';
 import { getInventory, getSettings, importKeys, type Inventory, type Settings } from './api';
@@ -21,11 +24,13 @@ export function ReviewStep({ project }: { project: Project }) {
   return (
     <div className="stack">
       <StepIndicator sourceType={project.source.type} current="review" />
-      <InventoryPanel projectId={project.id} />
       {saved && <p role="status">{messages.settings.saved}</p>}
-      {settings.isPending && <Loading />}
+      {settings.isPending && <ReviewLayout projectId={project.id} main={<Loading />} />}
       {settings.isError && (
-        <ProblemAlert error={settings.error} onRetry={() => void settings.refetch()} />
+        <ReviewLayout
+          projectId={project.id}
+          main={<ProblemAlert error={settings.error} onRetry={() => void settings.refetch()} />}
+        />
       )}
       {settings.isSuccess && (
         // A saved version remounts the draft from the server's normalized settings.
@@ -40,6 +45,25 @@ export function ReviewStep({ project }: { project: Project }) {
   );
 }
 
+interface ReviewLayoutProps {
+  projectId: string;
+  main: ReactNode;
+  side?: ReactNode;
+}
+
+// The pre-analysis and the exclusions on the left; what indexing does stays in view on the right.
+function ReviewLayout({ projectId, main, side }: ReviewLayoutProps) {
+  return (
+    <div className="review">
+      <div className="review__main stack">
+        <InventoryPanel projectId={projectId} />
+        {main}
+      </div>
+      {side && <div className="review__side">{side}</div>}
+    </div>
+  );
+}
+
 function InventoryPanel({ projectId }: { projectId: string }) {
   const inventory = useQuery({
     queryKey: importKeys.inventory(projectId),
@@ -47,17 +71,17 @@ function InventoryPanel({ projectId }: { projectId: string }) {
   });
 
   return (
-    <section className="stack panel" aria-labelledby="pre-analysis-title">
+    <Card as="section" className="stack" aria-labelledby="pre-analysis-title">
       <div className="page-header">
         <h2 id="pre-analysis-title">{messages.preAnalysis.title}</h2>
-        <button
-          type="button"
-          className="button"
+        <Button
+          size="sm"
+          icon={RefreshCw}
           disabled={inventory.isFetching}
           onClick={() => void inventory.refetch()}
         >
           {messages.preAnalysis.refresh}
-        </button>
+        </Button>
       </div>
       <p>{messages.preAnalysis.detail}</p>
       {inventory.isPending && <Loading />}
@@ -65,7 +89,7 @@ function InventoryPanel({ projectId }: { projectId: string }) {
         <ProblemAlert error={inventory.error} onRetry={() => void inventory.refetch()} />
       )}
       {inventory.isSuccess && <InventorySummary inventory={inventory.data} />}
-    </section>
+    </Card>
   );
 }
 
@@ -99,23 +123,28 @@ function SettingsAndIndex({ projectId, settings, onSaved }: SettingsAndIndexProp
   });
 
   return (
-    <>
-      <SettingsForm
-        projectId={projectId}
-        settings={settings}
-        draft={draft}
-        onDraftChange={setDraft}
-        onDiscard={() => setDraft(toDraft(settings))}
-        onSaved={onSaved}
-      />
-      <IndexPanel
-        projectId={projectId}
-        title={messages.privacy.title}
-        startLabel={messages.indexing.start}
-        reviewHref={`#${SETTINGS_SECTION_ID}`}
-        ready={inventory.isSuccess && !inventory.isFetching}
-        blockedReason={blockedReason(inventory.data, isDirty(draft, settings))}
-      />
-    </>
+    <ReviewLayout
+      projectId={projectId}
+      main={
+        <SettingsForm
+          projectId={projectId}
+          settings={settings}
+          draft={draft}
+          onDraftChange={setDraft}
+          onDiscard={() => setDraft(toDraft(settings))}
+          onSaved={onSaved}
+        />
+      }
+      side={
+        <IndexPanel
+          projectId={projectId}
+          title={messages.indexing.whatHappens}
+          startLabel={messages.indexing.start}
+          reviewHref={`#${SETTINGS_SECTION_ID}`}
+          ready={inventory.isSuccess && !inventory.isFetching}
+          blockedReason={blockedReason(inventory.data, isDirty(draft, settings))}
+        />
+      }
+    />
   );
 }

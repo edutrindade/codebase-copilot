@@ -342,6 +342,7 @@ Projetos ZIP não têm caminho; guardam uma referência ao import correspondente
 - O critério de reindexação do PRD passa a ser "somente arquivos novos ou alterados; arquivos removidos ou excluídos saem do índice ativo", já que não há grafo de dependências no MVP.
 
 **Motivo:** o roadmap prioriza validar o núcleo RAG antes de recursos de análise; manter os três documentos coerentes evita promessas que o MVP não cumpre.  
+**Atualização (18/10/2026, P0 da Etapa 9):** a interface premium entrou como Etapa 9, e os recursos posteriores ao MVP (AST, comparação entre snapshots, provedor local e o resto da lista) passaram a ser a **Etapa 10**. Os documentos vivos dizem "Etapa 10"; as decisões e os planos anteriores mantêm "Etapa 9" para esses recursos, como registro do que valia quando foram escritos.  
 **Consequências:** `RESUMO-EXECUTIVO.md` e `01-PRD.md` atualizados em 15/10/2026.  
 **O que levaria à revisão:** resultados da avaliação mostrarem que o chunking genérico é insuficiente para as linguagens prioritárias.
 
@@ -1193,6 +1194,8 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Motivo:** um streaming do texto mostraria marcadores ainda não validados; virtualizar sempre é um caminho só, testado com um arquivo sintético de 1 MB; texto puro fecha a porta a HTML e links injetados pelo modelo.  
 **Consequências:** a espera é de até 60 s sem texto parcial; arquivos sem realce.  
 **O que levaria à revisão:** latência medida ruim (Etapa 8), legibilidade pedir realce, ou respostas com formatação rica.
+**Etapa 9 (17/10/2026):** a resposta passou a ter formatação leve e segura, e a tela, o layout em colunas com o divisor (D-091); continuam o envio síncrono, o visualizador virtualizado e os marcadores só para evidências da própria resposta.
+**Etapa 9 (18/10/2026):** o visualizador e os blocos de código da resposta ganharam realce de sintaxe, num worker e sem gerar marcação (D-093).
 
 ### D-076 — Como a UI chega ao backend e como `apps/web` se organiza (P2 e P11 da Etapa 7)
 **Status:** Aceita (17/10/2026; F1, F2 e fechamento da Etapa 7)  
@@ -1369,6 +1372,109 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Motivo:** manter o escopo no que tem evidência e não gastar o corpus de avaliação em mudanças que só ele poderia justificar.  
 **Consequências:** a Etapa 9 começa com a F3 da Etapa 8 como pré-requisito para qualquer mudança de ranking (reranking, AST), pela regra da D-081.  
 **O que levaria à revisão:** pedidos de uso (acompanhamento, realce), ou a avaliação real mostrando abstenção indevida ou um teto do `lines-v1`.
+**Etapa 9 (18/10/2026):** o realce de sintaxe entrou, pedido como parte da interface premium (D-093); o resto da lista continua de fora.
+
+
+### D-087 — Direção visual, sistema de design e dependências da interface (P1, P2 e P12 da Etapa 9)
+**Status:** Aceita (17/10/2026; F1 da Etapa 9)  
+**Contexto:** a Etapa 7 entregou uma interface funcional e acessível, mas mínima; o `03` §8 deixou a identidade visual para depois. A Etapa 9 faz essa parte sem relaxar a CSP (D-085) nem a acessibilidade (D-078).  
+**Opções consideradas:** para o estilo, CSS próprio sobre o Radix (como na D-070), CSS Modules, ou uma biblioteca com estilo (Tailwind, MUI); para as fontes, Inter + JetBrains Mono, Geist + Geist Mono ou IBM Plex.  
+**Decisão:**
+- **Tokens em três camadas:** primitivos (escalas de cinza, índigo, verde, âmbar, vermelho e azul em OKLCH), semânticos (`--color-surface`, `--color-text-muted`, `--color-accent`, `--color-highlight`…) e de componente só quando preciso. As telas usam só os semânticos. Os dois temas ficam no mesmo token, com `light-dark()`; os contrastes foram calculados antes (texto e texto secundário acima de 6:1, bordas de controle acima de 3:1) e conferidos pelo axe nos dois temas.
+- **CSS em camadas:** `@layer reset, tokens, base, components, screens, utilities`, declaradas no `styles/index.css`, que o `main.tsx` importa primeiro. Cada componente traz o seu CSS ao lado; os controles nativos de formulário são estilizados na `base`, e as classes das telas da Etapa 7 ficam na camada `screens` até cada tela ser refeita (F4 a F8). Nomes em BEM, globais, porque o E2E usa `.code-view` e afins.
+- **Componentes** em `src/components/ui/`, sobre o Radix quando há primitivo: `Button`/`ButtonLink`, `IconButton`, `Tooltip`, `StatusBadge` (ícone + texto), `Callout`, `Card`, `PageHeader`, `Breadcrumbs`, `Tabs`, `Dialog`, `Menu`, `Skeleton`, `EmptyState`, `Stat`, `Progress`, `Kbd`, `CopyButton`, `RelativeTime`, `Field`/`TextField`/`TextAreaField`/`SelectField` e `TableScroll`. Catálogo em `/_ui`, só no `npm run dev`.
+- **Fontes** Inter e JetBrains Mono, variáveis, auto-hospedadas e só no subconjunto latino, com preload da Inter (plugin do Vite) e fallback Arial com as métricas da Inter.
+- **Dependências novas:** `lucide-react` 1.51.0, `@fontsource-variable/inter` 5.3.0 e `@fontsource-variable/jetbrains-mono` 5.3.0. Critério: a versão mais recente com pelo menos 14 dias de publicação (F0 da Etapa 9).
+
+**Motivo:** mantém a D-070 (sem biblioteca com estilo) e a CSP; `light-dark()` evita repetir cada token por tema; as camadas deixam o CSS novo e o antigo conviverem sem disputa de especificidade enquanto as telas são refeitas.  
+**Consequências:** a casca passa a carregar o menu e o tooltip do Radix (posicionamento com floating-ui): 150,27 kB com gzip, contra 115,65 kB antes, e o JavaScript total foi de 175,0 kB para 199,4 kB. O teto da casca na P13 passa de 150 kB para 175 kB com gzip (aprovado em 17/10/2026), medido de novo ao fim da F2.  
+**O que levaria à revisão:** um navegador suportado sem `light-dark()` ou OKLCH, ou o orçamento da casca estourar de novo com a F2.
+
+### D-088 — Tema claro, escuro e do sistema (P9 da Etapa 9)
+**Status:** Aceita (17/10/2026; F1 da Etapa 9)  
+**Contexto:** a UI só seguia o tema do sistema, e o tema escuro era uma inversão de cores.  
+**Decisão:** três opções (Sistema, Claro e Escuro) num menu no cabeçalho. A escolha fica em `localStorage` (chave `theme`), vira `data-theme` no `<html>` e define o `color-scheme`; "Sistema" remove os dois. O `public/theme-init.js`, síncrono no `<head>`, aplica o tema salvo antes da primeira pintura: é um arquivo da própria origem, então a CSP continua sem script inline. Uma mudança em outra aba é aplicada pelo evento `storage`. `prefers-contrast: more` reforça bordas e texto secundário; `forced-colors` usa as cores do sistema no foco e nos controles.  
+**Motivo:** escolha explícita sem piscar no carregamento e sem relaxar a CSP.  
+**Consequências:** a chave existe em dois lugares (`theme.ts` e `theme-init.js`); um teste confere que são iguais. Sem `localStorage`, a escolha dura até recarregar a página.  
+**O que levaria à revisão:** preferências guardadas no servidor (não há usuários no MVP).
+
+### D-089 — Casca, navegação e responsividade (P3 e P10 da Etapa 9; revê a D-077)
+**Status:** Aceita (17/10/2026; F2 da Etapa 9)  
+**Contexto:** a navegação era uma barra com o nome do produto e links "← voltar" em cada tela; não havia caminho direto entre projetos nem indicação de onde se estava.  
+**Decisão:**
+- **Casca:** barra lateral (16rem, recolhível para 3,5rem só com ícones e dicas; abaixo de 48rem vira uma gaveta, num diálogo do Radix carregado só no celular) com o seletor de workspace, os projetos da primeira página do workspace com o estado em ícone e texto (e o progresso quando indexando), "Novo projeto", as cinco conversas mais recentes do projeto aberto e "Sistema e privacidade". Fora de um workspace, a barra mostra o último aberto. Barra superior com a trilha (Workspaces › workspace › projeto › seção, as duas últimas no celular), o indicador **Local / Remoto** (de `GET /system/providers`, com link para `/system`) e o menu de tema. Os links "← voltar" saem; a trilha cumpre o papel.
+- **Área do projeto:** rota aninhada `/projects/:id` com cabeçalho comum (nome, estado, origem, snapshot ativo e "Nova pergunta") e abas Visão geral · Perguntar · Histórico · Configurações como links com `aria-current` (não `role="tablist"`, porque cada aba é uma URL). O projeto é carregado e consultado uma vez, na área, e passado às telas; o polling de indexação fica nela. A aba Arquivos entra com a F8.
+- **Rotas** (revê a D-077): as da D-077 continuam; entram `/projects/:id/settings` (exclusões e limites fora do assistente) e `/system` (provedores, o que sai da máquina, onde ficam os dados e o tema). Cada rota leva um `handle` com a seção, que a casca lê para a trilha e o destaque.
+- **Títulos e foco:** cada tela define o `<title>` ("Perguntar · sample-shop · Codebase Copilot"). Depois de uma navegação (não em `replace`, como a conversa nova ganhando o endereço), o foco vai para o `<h1>` da tela, acompanhando a troca do `<h1>` de carregamento pelo definitivo até a pessoa agir, e uma região `aria-live` anuncia o título.
+- **Preferências no navegador** (`localStorage`, sempre com `try/catch`): barra recolhida, último workspace e os cinco últimos projetos abertos, que o início mostra em "Continuar de onde parou", conferidos contra a API (um projeto removido sai da lista sem erro).
+- **Transições:** `viewTransition` nos links da barra lateral e das abas, desligadas com `prefers-reduced-motion`.
+- **Ordem das camadas de CSS:** declarada também em `public/layers.css`, carregado antes de qualquer CSS do bundle; um teste confere que é a mesma do `styles/index.css`.
+
+**Motivo:** a pessoa sabe onde está e chega a qualquer projeto ou conversa recente em um clique; a área comum evita repetir o carregamento e o tratamento de erro do projeto em cada tela.  
+**Consequências:** a casca passa a fazer até quatro consultas leves (workspace, projetos, conversas e provedores), compartilhando o cache com as telas. O JavaScript da casca foi de 150,27 kB para 163,6 kB com gzip (teto de 175 kB), agora em dois arquivos (o principal e um chunk comum com o Radix, pré-carregado), nenhum acima de 500 kB. Essa divisão fez o CSS dos componentes carregar antes do `index.css` e inverteu a ordem das camadas no build, o que motivou o `layers.css`.  
+**O que levaria à revisão:** workspaces com mais projetos do que cabem na barra (hoje mostra a primeira página e "Ver todos"), ou um tamanho de casca acima do teto.
+
+### D-090 — Paleta de comandos e atalhos de teclado (P4 da Etapa 9)
+**Status:** Aceita (17/10/2026; F3 da Etapa 9)  
+**Contexto:** chegar a um projeto, a uma conversa ou a uma seção exigia passar pela barra lateral ou pelas abas, e não havia atalho nenhum além do ⌘Enter da pergunta. O Radix também não travava a rolagem atrás de diálogos e menus, porque o `<style>` que ele injeta é bloqueado pela CSP (achado da F2).  
+**Opções consideradas:** `cmdk` ou um componente próprio com o padrão ARIA de combobox; para a rolagem, relaxar a CSP (`'unsafe-inline'` ou nonce fixo), desligar o modo modal do Radix, ou substituir o injetor de estilo.  
+**Decisão:**
+- **Paleta** com o `cmdk` 1.1.1 (D-087, critério dos 14 dias) dentro do diálogo do Radix, num chunk carregado no primeiro uso. Abre com ⌘K/Ctrl+K e pelo botão "Buscar" da barra superior. Itens: seções do projeto aberto, "Indexar de novo" (com confirmação e o texto de privacidade), conversas recentes do projeto, projetos do workspace, workspaces e ações (novo projeto, todos os workspaces, sistema, atalhos, tema). O filtro considera só o texto visível. Sem busca pela API (não existe; a etapa não muda o backend além da P5.7).
+- **Atalhos:** um ouvinte global na casca e um registro por ação (`useShortcut`), em que a tela registrada por último vence. ⌘K/Ctrl+K (paleta, inclusive em campos), `?` (lista), `g` + `o`/`p`/`h` (seções do projeto, em até 1,5 s), `/` (campo da pergunta), `[`/`]` (evidência anterior e próxima, na ordem da lista, com anúncio), ⌘Enter (enviar) e Esc (fechar, pelo Radix). As teclas sem modificador não agem em campos de texto, diálogos e menus, e podem ser desligadas em `/system` (`localStorage`, chave `single-key-shortcuts`), onde fica também a lista. `g a` (Arquivos) e "abrir arquivo" entram com a F8.
+- **Rolagem travada sob a CSP:** um alias no Vite troca o `react-style-singleton` (usado pelo `react-remove-scroll`, que o Radix usa) por `src/vendor/styleSingleton.ts`, com a mesma API, que aplica o estilo como folha construída (`new CSSStyleSheet()` + `document.adoptedStyleSheets`). Manipular o CSSOM por script não é bloqueado pelo `style-src`, assim como os estilos que o floating-ui já aplica.
+- **Foco:** diálogos sem gatilho (paleta, atalhos, gaveta) devolvem o foco ao elemento de origem ao fechar (`useReturnFocus`), salvo quando outro elemento já o recebeu, como o `<h1>` depois de uma navegação.
+
+**Motivo:** a paleta e os atalhos dão um caminho de um passo para qualquer lugar já carregado, sem pesar na casca; o substituto do injetor resolve a rolagem sem relaxar a CSP.  
+**Consequências:** a casca foi de 163,6 kB para 165,7 kB com gzip (teto de 175 kB); a paleta tem 7,0 kB com gzip, à parte. O alias depende da API interna do `react-style-singleton` (três funções); uma atualização do Radix que a mude quebra a trava de rolagem, e o `e2e/navigation.spec.ts` confere que ela continua funcionando sem erro de CSP. O `cmdk` está sem release desde março de 2025 (F0); se quebrar com o React, o componente próprio com o mesmo padrão ARIA é a saída.  
+**O que levaria à revisão:** um endpoint de busca (para achar projetos e conversas fora da primeira página), o fim do suporte a folhas construídas num navegador suportado, ou pedidos de atalhos configuráveis.
+
+### D-091 — Formatação leve da resposta e layout da pergunta (P7 e P5.5 da Etapa 9; revê parte da D-075)
+**Status:** Aceita (17/10/2026; F7 da Etapa 9)  
+**Contexto:** a D-075 mostrava a resposta como texto puro, para fechar a porta a HTML e links injetados pelo modelo. Respostas longas ficavam difíceis de ler, e o modelo usa naturalmente listas e `código`. Na tela, o visualizador ficava abaixo da dobra a 1440 px (F0).  
+**Opções consideradas:** manter o texto puro; uma biblioteca de markdown com sanitização; um formatador próprio que só conhece um subconjunto.  
+**Decisão:**
+- **Formatador próprio** (`features/ask/answerFormat.ts`), que transforma o texto em blocos e trechos tipados, renderizados como elementos React. Reconhece só parágrafos (linha em branco separa; quebra simples vira `<br>`), listas planas (`-`, `*`, `1.`, com o número inicial), `código inline`, blocos entre crases triplas (com a linguagem, se for uma palavra simples, e botão de copiar) e **negrito**. Títulos viram parágrafo, sem os `#`. Links, imagens, HTML e tabelas não têm tipo de nó, então só podem sair como texto. Os marcadores `[En]` viram botões apenas para evidências da própria resposta, também dentro do negrito; dentro de código ficam literais. A regra de lint contra `dangerouslySetInnerHTML` continua.
+- **Citação:** o botão mantém o nome com caminho e linhas; ao passar o mouse ou focar, um `HoverCard` (Radix) mostra o caminho, as linhas e as quatro primeiras linhas citadas do trecho. A prévia é só visual (`aria-hidden`), porque o nome do botão já diz tudo.
+- **Layout a partir de 64rem:** conversa à esquerda e, à direita, evidências em cima e o visualizador embaixo, fixos na altura da janela. Entre as colunas, um divisor feito à mão (`Splitter`, `role="separator"` com valor de 30% a 70%), por arraste, setas, Home/End ou dois botões "Estreitar/Alargar a conversa" (WCAG 2.5.7); a largura fica no `localStorage` (`ask-split`). Abaixo de 64rem, as abas continuam.
+- **Campo da pergunta** fixo embaixo da conversa, crescendo com o texto até 14rem; busca (`select`, com os modos indisponíveis desabilitados e o motivo na descrição) e máximo de evidências na barra do próprio campo, no lugar das "Opções avançadas". `scroll-padding-bottom` evita que ele cubra o foco (WCAG 2.4.11).
+- **Resposta como cartão:** estado, texto formatado, avisos e um rodapé com as métricas medidas ("1,8 s · 4 evidências · US$ 0,0004 estimado", sem custo quando não há estimativa), "Detalhes da resposta" num `Popover` e copiar a resposta. A espera é um esqueleto do cartão com "12 s de até 60 s".
+- **Evidências agrupadas por arquivo**, na ordem de `sortEvidence` (citadas primeiro), com ícone pelo tipo de arquivo, linhas e selo de estado; ↑/↓ percorrem os itens, e `[`/`]` seguem a mesma ordem.
+- **Visualizador:** caminho em trilha, "Ir para o trecho", copiar caminho e trecho, e "Da resposta / Atual" como `SegmentedControl` (Radix `ToggleGroup`, um grupo de rádios) quando o arquivo mudou.
+
+**Motivo:** um subconjunto pequeno e fechado dá a legibilidade que faltava sem parser de HTML, sanitizador ou URL; o que não é reconhecido aparece como o modelo escreveu. Os testes de conteúdo hostil (unitários e o `e2e/hostile-content.spec.ts`, com a resposta trocada na rede porque o provedor `fake` não escreve markdown) cobrem links `javascript:`, imagens, HTML e marcadores falsos.  
+**Consequências:** a casca foi de 171,5 kB para 171,7 kB com gzip (teto de 175 kB); o chunk da tela de pergunta tem 25,1 kB com gzip (21,1 kB na linha de base da F0). Listas aninhadas viram uma lista só; negrito não atravessa linhas. "Abrir em Arquivos" entra com a F8, e o realce dos blocos de código com a F9.  
+**O que levaria à revisão:** respostas reais (com saldo) que usem tabelas ou listas aninhadas com frequência, ou pedidos de links para arquivos do próprio projeto.
+
+### D-092 — Explorador de arquivos e `GET /snapshots/{id}/tree` (P5.7 da Etapa 9)
+**Status:** Aceita (17/10/2026; F8 da Etapa 9)  
+**Contexto:** não havia como ver o que um snapshot contém além das evidências de uma resposta e da tabela de arquivos não indexados da visão geral. `GET /snapshots/{id}/files` filtra por prefixo, mas devolve todos os descendentes, de 100 em 100: montar a árvore de um projeto com 10 mil arquivos exigiria 100 chamadas.  
+**Opções consideradas:** (a) só frontend, carregando a lista inteira até um teto e caindo numa busca por prefixo acima dele; (b) um endpoint com os filhos imediatos de um diretório.  
+**Decisão:**
+- **`GET /snapshots/{snapshotId}/tree?path=&status=`** (módulo `indexing`, SQL explícito com `JdbcClient`): devolve `{ path, entries }`, os filhos imediatos de `path` (vazio na raiz), diretórios primeiro e depois arquivos, cada grupo por nome em `COLLATE "C"`, como a listagem. Cada entrada traz `name`, `path`, `type` (`DIRECTORY` ou `FILE`), as contagens `files`, `indexedFiles`, `unsupportedFiles` e `failedFiles` (do diretório e dos subdiretórios; 1 para arquivo) e `sizeBytes`; arquivos trazem também `status`, `reason` e `language`. Diretórios não são guardados: saem do agrupamento dos caminhos de `snapshot_files`.
+- **Filtro `status`** como no `/files`: só aparecem arquivos nesse estado e os diretórios que têm algum, com as contagens do filtro.
+- **Sem paginação:** o tamanho é o de um diretório, não o do projeto. Diretório inexistente, caminho de arquivo e snapshot podado devolvem `entries` vazio, como o `/files` com um prefixo que não casa. Erros: `400 VALIDATION_FAILED` (`path` com `/` inicial, `..`, `\` ou controle; `status` inválido), antes de `404 SNAPSHOT_NOT_FOUND`.
+- **Aba Arquivos** (`/projects/:id/files`, `g a`, item da paleta): árvore do snapshot ativo à esquerda, carregada pasta a pasta (botões de abrir com `aria-expanded`, arquivos como links; ↑/↓, Home/End, → abre ou entra, ← fecha ou volta à pasta de cima) e o visualizador da tela de pergunta à direita, fixos na altura da janela a partir de 64rem. Filtro por estado com as contagens do snapshot; arquivos não indexados mostram o motivo, sem conteúdo. O arquivo, o filtro e as linhas destacadas ficam na URL (`?file=&status=&lines=`), então o voltar do navegador e o recarregar funcionam. "Perguntar sobre este arquivo" abre a pergunta com o caminho no campo, sem enviar.
+- **"Abrir em Arquivos"** no visualizador da pergunta, quando o arquivo existe no snapshot ativo; com o mesmo conteúdo (`activeVersion = SAME`), leva também as linhas citadas.
+- **Visão geral:** "Arquivos não indexados" fica só com as contagens, como links para a aba já filtrada.
+
+**Motivo:** é a única forma de o explorador funcionar igual em qualquer tamanho de projeto, com uma consulta pequena por pasta aberta e as regras do projeto (SQL explícito, teste de integração com Testcontainers, contrato versionado).  
+**Consequências:** a única mudança de backend da Etapa 9; o contrato (`openapi.json`) e os tipos do frontend foram regenerados. O `06` recebe o endpoint no fechamento (F11). Cada pasta aberta é uma consulta que agrupa as linhas do snapshot sob o prefixo. O chunk da aba tem 3,1 kB com gzip; a casca ficou em 171,2 kB com gzip (teto de 175 kB).  
+**O que levaria à revisão:** diretórios com milhares de filhos imediatos (pediria paginação ou virtualização da árvore), ou busca por nome de arquivo em todo o snapshot.
+
+### D-093 — Realce de sintaxe (P8 da Etapa 9; revê a D-075 e a D-086)
+**Status:** Aceita (18/10/2026; F9 da Etapa 9)  
+**Contexto:** o visualizador e os blocos de código da resposta eram texto monocromático (D-075); a D-086 adiou o realce por falta de pedido, e a interface premium da Etapa 9 é esse pedido. O conteúdo é não confiável, e a CSP não permite `eval`, WebAssembly nem estilos inline.  
+**Opções consideradas:** Shiki (gera HTML e usa WebAssembly), Prism ou highlight.js (API pública devolve HTML), e o Lezer, cujo `highlightTree` entrega só intervalos e nomes de classe.  
+**Decisão:**
+- **Lezer num Web Worker** (`features/ask/highlight/`), na própria origem (`script-src 'self'`, sem mudança na CSP), com o `classHighlighter` (classes `tok-*`, coloridas por CSS). O worker devolve um `Int32Array` (início, fim e índice da classe) transferido, e a tabela de classes; nada do arquivo vira marcação. A tela monta, por linha visível, `<span>`s com texto, cortando tokens que atravessam linhas.
+- **Linguagens:** Java, JavaScript/JSX, TypeScript/TSX, Python, Go, Rust, JSON, YAML, XML, HTML e Markdown, uma por chunk, carregada no primeiro uso; escolhidas pela extensão do arquivo ou pelo nome depois das crases na resposta. SQL e as demais ficam em texto puro (não há `@lezer/sql`, F0).
+- **Texto primeiro:** o visualizador mostra o texto puro na hora e aplica as cores quando o worker responde. Sem limite de tamanho além do `max-file-bytes` (1 MB); um limite de tempo de 1,5 s encerra o worker (a única forma de parar um parse) e deixa o arquivo em texto puro, com um aviso discreto. Sem `Worker` (testes em jsdom), tudo fica em texto puro.
+- **Cores como tokens** (`--color-syntax-*`), com contraste de pelo menos 4,5:1 sobre o fundo do código, a superfície e o fundo das linhas citadas, nos dois temas (conferido por script); com "Aumentar contraste", os comentários usam a cor do texto. O destaque das linhas citadas continua por cima.
+- **Dependências:** `@lezer/highlight` 1.2.5, `common` 1.5.3, `lr` 1.4.10 e os parsers da tabela da F0 (MIT), com `--save-exact` e sem duplicação.
+
+**Motivo:** é o único caminho que dá cores sem HTML gerado, sem WebAssembly e sem relaxar a CSP, e mantém a thread principal livre.  
+**Consequências:** arquivo de 1 MB (34 mil linhas de Java): texto em 103 a 113 ms, como na linha de base da F0 (~110 ms), e cores em cerca de 285 ms, sem tarefa longa na thread principal. O worker tem 27,9 kB (com o núcleo do Lezer); cada linguagem vem num chunk à parte, fora da casca (171,2 kB com gzip). O build usa `worker.format: 'es'`, porque o worker divide o código por linguagem.  
+**O que levaria à revisão:** um parser de SQL sem o CodeMirror inteiro, linguagens pedidas que o Lezer não tenha, ou arquivos reais que passem do limite de tempo com frequência.
 
 ---
 

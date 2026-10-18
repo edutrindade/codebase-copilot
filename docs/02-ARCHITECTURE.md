@@ -36,6 +36,7 @@ Embedding / Chat provider (remote initially)
 - TanStack Query para o estado do servidor, React Router, primitivos do Radix UI com CSS próprio e `@tanstack/react-virtual` no visualizador (D-070).
 - Tipos gerados do `openapi.json` com `openapi-typescript` e cliente `openapi-fetch`; um teste falha se os tipos estiverem defasados (D-070).
 - Em desenvolvimento e no `preview`, o Vite faz proxy de `/api` para o backend, sem CORS (D-076).
+- Desde a Etapa 9: `lucide-react` (ícones), Inter e JetBrains Mono pelo `@fontsource-variable` (D-087), `cmdk` na paleta de comandos, num chunk carregado no primeiro uso (D-090), e o Lezer (`@lezer/highlight` e um parser por linguagem) num Web Worker para o realce (D-093). Versões exatas, com pelo menos 14 dias de publicação (D-087).
 
 ### Backend
 - Java 25 e Spring Boot 4.1.x (D-014).
@@ -101,11 +102,14 @@ codebase-copilot/
   apps/
     web/            (React + Vite + TypeScript, D-070 e D-076)
       src/api/        cliente, tipos gerados e ações por código de erro
-      src/app/        rotas e QueryClient
-      src/components/ primitivos (diálogo, paginação, alertas)
-      src/features/   uma pasta por tela: workspaces, import, project, ask, history
+      src/app/        rotas, QueryClient, tema, atalhos e títulos
+      src/components/ casca (barra lateral, barra superior, paleta) e ui/ (sistema de design)
+      src/features/   uma pasta por tela: workspaces, import, project, ask, files, history,
+                      system; ask/highlight/ tem o worker do realce
+      src/styles/     camadas de CSS, tokens e fontes
       src/messages.ts textos da UI em pt-BR
-      e2e/            teste de aceite (Playwright) e repositório de exemplo
+      e2e/            aceite, navegação, tema, arquivos, conteúdo hostil e regressão visual
+                      (Playwright), com os repositórios de exemplo
     backend/
       openapi.json  (contrato versionado, D-023)
   docs/

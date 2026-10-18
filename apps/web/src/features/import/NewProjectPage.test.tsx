@@ -1,7 +1,8 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, describe, expect, test } from 'vitest';
+import { formatBytes } from '../../format';
 import { messages } from '../../messages';
 import { axeViolations } from '../../test/axe';
 import {
@@ -440,6 +441,91 @@ describe('NewProjectPage: pre-analysis', () => {
 
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent(messages.recovery.waitForJob);
-    expect(within(alert).queryByRole('button')).not.toBeInTheDocument();
+    expect(
+      within(alert).queryByRole('button', { name: messages.errors.retry }),
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe('NewProjectPage: wizard interactions', () => {
+  test('announces the current step and browses the folders with the arrow keys', async () => {
+    server.use(
+      http.get('/api/v1/local-roots', () => HttpResponse.json(roots)),
+      http.get('/api/v1/local-roots/default/directories', ({ request }) => {
+        const path = new URL(request.url).searchParams.get('path');
+        return HttpResponse.json(
+          path === ''
+            ? {
+                path: '',
+                directories: [
+                  directory('api', 'api'),
+                  directory('privado', 'privado', { readable: false }),
+                  directory('web', 'web'),
+                ],
+                truncated: false,
+              }
+            : { path, directories: [directory('src', `${path}/src`)], truncated: false },
+        );
+      }),
+    );
+    renderRoute(newProjectPath);
+
+    const steps = await screen.findByRole('list', { name: messages.newProject.steps.label });
+    const current = within(steps)
+      .getAllByRole('listitem')
+      .find((item) => item.getAttribute('aria-current') === 'step');
+    expect(current).toHaveTextContent(messages.newProject.steps.current(1, 3));
+    expect(current).toHaveTextContent(messages.newProject.steps.sourceLocal);
+
+    const api = await screen.findByRole('button', {
+      name: messages.newProject.browser.open('api'),
+    });
+    api.focus();
+    await userEvent.keyboard('{ArrowDown}');
+    expect(
+      screen.getByRole('button', { name: messages.newProject.browser.open('web') }),
+    ).toHaveFocus();
+
+    await userEvent.keyboard('{ArrowRight}');
+    expect(
+      await screen.findByText(messages.newProject.browser.selected('Projetos/web')),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: messages.newProject.browser.open('src') }),
+      ).toHaveFocus(),
+    );
+
+    await userEvent.keyboard('{ArrowLeft}');
+    expect(
+      await screen.findByText(messages.newProject.browser.selected('Projetos')),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: messages.newProject.browser.open('api') }),
+      ).toHaveFocus(),
+    );
+  });
+
+  test('accepts a dropped ZIP and refuses another kind of file', async () => {
+    server.use(
+      http.get(projectUrl, () => HttpResponse.json(zipProject)),
+      http.get(`${projectUrl}/imports`, () => HttpResponse.json(page([]))),
+    );
+    renderRoute(reviewPath);
+    const text = messages.newProject.upload;
+
+    const prompt = await screen.findByText(text.dropPrompt);
+    const zone = prompt.parentElement as HTMLElement;
+    const drop = (file: File) => fireEvent.drop(zone, { dataTransfer: { files: [file] } });
+
+    drop(new File(['x'], 'notes.txt', { type: 'text/plain' }));
+    expect(screen.getByText(text.notZip)).toBeInTheDocument();
+    expect(screen.getByLabelText(text.fileLabel)).toHaveAttribute('aria-invalid', 'true');
+
+    drop(new File(['PK'], 'projeto.zip', { type: 'application/zip' }));
+    expect(screen.queryByText(text.notZip)).not.toBeInTheDocument();
+    expect(screen.getByText(text.chosen('projeto.zip', formatBytes(2)))).toBeInTheDocument();
+    expect(await axeViolations()).toEqual([]);
   });
 });

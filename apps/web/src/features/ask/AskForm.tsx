@@ -1,5 +1,17 @@
-import { useId, useState, type FormEvent, type KeyboardEvent } from 'react';
+import { SendHorizontal } from 'lucide-react';
+import {
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+} from 'react';
 import { Link } from 'react-router';
+import { isApplePlatform, useShortcut } from '../../app/shortcuts';
+import { Button } from '../../components/ui/Button';
+import { Callout } from '../../components/ui/Callout';
+import { Kbd } from '../../components/ui/Kbd';
 import { messages } from '../../messages';
 import type { Providers } from '../import/api';
 import { acknowledgePrivacy, hasAcknowledgedPrivacy, providerName } from '../import/privacy';
@@ -10,29 +22,39 @@ const DEFAULT_MAX_EVIDENCE = 8;
 const MODES: readonly RetrievalMode[] = ['HYBRID', 'LEXICAL', 'VECTOR'];
 
 interface AskFormProps {
+  questionId: string;
   projectId: string;
   conversationId: string | null;
   providers: Providers;
   vectorAvailable: boolean;
   reviewHref: string;
-  showSuggestions: boolean;
+  draft: string;
+  onDraftChange: (draft: string) => void;
   pending: boolean;
   onAsk: (question: NewQuestion) => Promise<unknown>;
 }
 
 export function AskForm({
+  questionId,
   projectId,
   conversationId,
   providers,
   vectorAvailable,
   reviewHref,
-  showSuggestions,
+  draft,
+  onDraftChange,
   pending,
   onAsk,
 }: AskFormProps) {
   const text = messages.ask.form;
-  const ids = { question: useId(), hint: useId(), error: useId(), maxEvidence: useId() };
-  const [draft, setDraft] = useState('');
+  const ids = {
+    hint: useId(),
+    error: useId(),
+    mode: useId(),
+    modeHint: useId(),
+    maxEvidence: useId(),
+  };
+  const textarea = useRef<HTMLTextAreaElement>(null);
   const [emptyError, setEmptyError] = useState(false);
   const [chosenMode, setChosenMode] = useState<RetrievalMode | null>(null);
   const [maxEvidence, setMaxEvidence] = useState(String(DEFAULT_MAX_EVIDENCE));
@@ -42,6 +64,16 @@ export function AskForm({
   const remote = providers.generation.remote;
   const mode: RetrievalMode = vectorAvailable ? (chosenMode ?? 'HYBRID') : 'LEXICAL';
   const blocked = pending || (remote && !remembered && !acknowledged);
+  useShortcut('focusQuestion', () => textarea.current?.focus());
+
+  // Grows with the text up to the CSS max-height, then scrolls.
+  useLayoutEffect(() => {
+    const element = textarea.current;
+    if (element) {
+      element.style.height = 'auto';
+      element.style.height = `${element.scrollHeight}px`;
+    }
+  }, [draft]);
 
   async function submit() {
     const question = draft.trim();
@@ -63,7 +95,7 @@ export function AskForm({
       // Shown by the page from the mutation state; the draft stays for another try.
       return;
     }
-    setDraft('');
+    onDraftChange('');
     if (remote && !remembered) {
       acknowledgePrivacy(projectId, 'ask');
       setRemembered(true);
@@ -83,53 +115,7 @@ export function AskForm({
   }
 
   return (
-    <form className="stack ask-form" onSubmit={onSubmit}>
-      {showSuggestions && (
-        <section className="stack" aria-labelledby="suggestions-title">
-          <h3 id="suggestions-title">{messages.ask.suggestionsTitle}</h3>
-          <ul className="actions suggestions">
-            {messages.ask.suggestions.map((suggestion) => (
-              <li key={suggestion}>
-                <button
-                  type="button"
-                  className="button"
-                  onClick={() => {
-                    setDraft(suggestion);
-                    setEmptyError(false);
-                    document.getElementById(ids.question)?.focus();
-                  }}
-                >
-                  {suggestion}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-      <div className="field field--wide">
-        <label htmlFor={ids.question}>{text.label}</label>
-        <textarea
-          id={ids.question}
-          rows={3}
-          maxLength={MAX_QUESTION_LENGTH}
-          value={draft}
-          aria-invalid={emptyError || undefined}
-          aria-describedby={emptyError ? `${ids.error} ${ids.hint}` : ids.hint}
-          onChange={(event) => {
-            setDraft(event.target.value);
-            setEmptyError(false);
-          }}
-          onKeyDown={onKeyDown}
-        />
-        {emptyError && (
-          <p id={ids.error} className="field-error">
-            {text.empty}
-          </p>
-        )}
-        <p id={ids.hint} className="field__hint muted">
-          {text.hint(draft.length, MAX_QUESTION_LENGTH)}
-        </p>
-      </div>
+    <form className="composer" onSubmit={onSubmit}>
       <PrivacyNotice
         providers={providers}
         mode={mode}
@@ -138,27 +124,47 @@ export function AskForm({
         acknowledged={acknowledged}
         onAcknowledge={setAcknowledged}
       />
-      <details className="advanced">
-        <summary>{text.advanced}</summary>
-        <div className="stack">
-          <fieldset className="choice">
-            <legend>{text.modeLegend}</legend>
-            {MODES.map((option) => (
-              <label key={option} className="choice__option">
-                <input
-                  type="radio"
-                  name="retrievalMode"
+      <div className="composer__box">
+        <label htmlFor={questionId} className="visually-hidden">
+          {text.label}
+        </label>
+        <textarea
+          ref={textarea}
+          id={questionId}
+          className="composer__input"
+          rows={2}
+          maxLength={MAX_QUESTION_LENGTH}
+          placeholder={text.placeholder}
+          value={draft}
+          aria-invalid={emptyError || undefined}
+          aria-describedby={emptyError ? `${ids.error} ${ids.hint}` : ids.hint}
+          onChange={(event) => {
+            onDraftChange(event.target.value);
+            setEmptyError(false);
+          }}
+          onKeyDown={onKeyDown}
+        />
+        <div className="composer__toolbar">
+          <div className="composer__option">
+            <label htmlFor={ids.mode}>{text.modeLegend}</label>
+            <select
+              id={ids.mode}
+              value={mode}
+              aria-describedby={vectorAvailable ? undefined : ids.modeHint}
+              onChange={(event) => setChosenMode(event.target.value as RetrievalMode)}
+            >
+              {MODES.map((option) => (
+                <option
+                  key={option}
                   value={option}
-                  checked={mode === option}
                   disabled={option !== 'LEXICAL' && !vectorAvailable}
-                  onChange={() => setChosenMode(option)}
-                />
-                {text.modes[option]}
-              </label>
-            ))}
-            {!vectorAvailable && <p className="field__hint muted">{text.vectorUnavailable}</p>}
-          </fieldset>
-          <div className="field">
+                >
+                  {text.modeOptions[option]}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="composer__option">
             <label htmlFor={ids.maxEvidence}>{text.maxEvidenceLabel}</label>
             <input
               id={ids.maxEvidence}
@@ -171,13 +177,36 @@ export function AskForm({
               onChange={(event) => setMaxEvidence(event.target.value)}
             />
           </div>
+          <span className="composer__send">
+            <span className="composer__keys" aria-hidden="true">
+              <Kbd>{isApplePlatform() ? '⌘' : 'Ctrl'}</Kbd>
+              <Kbd>↵</Kbd>
+            </span>
+            <Button
+              type="submit"
+              variant="primary"
+              icon={SendHorizontal}
+              disabled={blocked}
+              pending={pending}
+            >
+              {pending ? text.submitting : text.submit}
+            </Button>
+          </span>
         </div>
-      </details>
-      <div>
-        <button type="submit" className="button button--primary" disabled={blocked}>
-          {pending ? text.submitting : text.submit}
-        </button>
       </div>
+      {emptyError && (
+        <p id={ids.error} className="field-error">
+          {text.empty}
+        </p>
+      )}
+      <p id={ids.hint} className="field__hint muted">
+        {text.hint(draft.length, MAX_QUESTION_LENGTH)}
+      </p>
+      {!vectorAvailable && (
+        <p id={ids.modeHint} className="field__hint muted">
+          {text.vectorUnavailable}
+        </p>
+      )}
     </form>
   );
 }
@@ -218,7 +247,7 @@ function PrivacyNotice({
     );
   }
   return (
-    <div className="notice notice--warning stack">
+    <Callout tone="warning">
       <p>{text.remote(name, generation.model)}</p>
       {embeddingsNotice && <p>{embeddingsNotice}</p>}
       <p>
@@ -232,6 +261,6 @@ function PrivacyNotice({
         />
         {text.acknowledge}
       </label>
-    </div>
+    </Callout>
   );
 }

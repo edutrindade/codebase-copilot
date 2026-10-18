@@ -2,6 +2,9 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { useEffect, useRef } from 'react';
 import { messages } from '../../messages';
 import type { LineRange } from './evidence';
+import type { Highlighting } from './highlight/Highlighting';
+import { LineText } from './highlight/LineText';
+import './viewer.css';
 
 // Must match the row height in .code-view__line; rows never wrap, so every row has this height.
 const LINE_HEIGHT_PX = 20;
@@ -11,10 +14,20 @@ interface CodeLinesProps {
   firstLine: number;
   highlight: LineRange | null;
   label: string;
+  highlighting?: Highlighting | null;
+  // Changing it scrolls back to the highlight.
+  scrollRequest?: number;
 }
 
 // Always virtualized (P7): files reach tens of thousands of lines.
-export function CodeLines({ lines, firstLine, highlight, label }: CodeLinesProps) {
+export function CodeLines({
+  lines,
+  firstLine,
+  highlight,
+  label,
+  highlighting = null,
+  scrollRequest = 0,
+}: CodeLinesProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   // The build has no React Compiler, so nothing memoizes around the virtualizer.
   // eslint-disable-next-line react-hooks/incompatible-library
@@ -30,7 +43,7 @@ export function CodeLines({ lines, firstLine, highlight, label }: CodeLinesProps
     if (scrollTarget !== null && scrollTarget >= 0 && scrollTarget < lines.length) {
       virtualizer.scrollToIndex(scrollTarget, { align: 'center' });
     }
-  }, [scrollTarget, lines.length, virtualizer]);
+  }, [scrollTarget, lines.length, virtualizer, scrollRequest]);
 
   const items = virtualizer.getVirtualItems();
   const before = items[0]?.start ?? 0;
@@ -53,7 +66,13 @@ export function CodeLines({ lines, firstLine, highlight, label }: CodeLinesProps
                 {cited ? '▶' : ''}
               </span>
               {cited && <span className="visually-hidden">{messages.ask.viewer.citedMarker}</span>}
-              <span className="code-view__text">{lines[item.index]}</span>
+              <span className="code-view__text">
+                <LineText
+                  text={lines[item.index] ?? ''}
+                  highlighting={highlighting}
+                  line={item.index}
+                />
+              </span>
             </div>
           );
         })}

@@ -1,14 +1,24 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Tabs } from 'radix-ui';
-import { useEffect, useState, type ReactNode } from 'react';
-import { Link, Navigate, useNavigate, useParams } from 'react-router';
+import { MessageSquare, SquarePen } from 'lucide-react';
+import { useEffect, useId, useRef, useState, type CSSProperties } from 'react';
+import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router';
 import { ApiError } from '../../api/errors';
+import { useShortcut } from '../../app/shortcuts';
+import { readStorage, writeStorage } from '../../app/storage';
+import { usePageTitle } from '../../app/title';
 import { Loading } from '../../components/Loading';
 import { ProblemAlert } from '../../components/ProblemAlert';
+import { ButtonLink } from '../../components/ui/Button';
+import { Callout } from '../../components/ui/Callout';
+import { Card } from '../../components/ui/Card';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { Skeleton } from '../../components/ui/Skeleton';
+import { Splitter } from '../../components/ui/Splitter';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/Tabs';
 import { useMediaQuery } from '../../components/useMediaQuery';
-import { formatDateTime } from '../../format';
 import { messages } from '../../messages';
-import { getProject, getProviders, importKeys, type Providers } from '../import/api';
+import { getProviders, importKeys, type Providers } from '../import/api';
+import { useProject } from '../project/ProjectLayout';
 import type { Project } from '../workspaces/api';
 import {
   askKeys,
@@ -22,9 +32,14 @@ import {
 import { AnswerTurn, Question } from './AnswerTurn';
 import { AskForm } from './AskForm';
 import { CodeViewer } from './CodeViewer';
+import { draftFromState } from './draft';
 import { EvidencePanel } from './EvidencePanel';
+import { highlightedRange, listOrder } from './evidence';
+import './ChatPage.css';
 
 const WIDE_LAYOUT = '(min-width: 64rem)';
+const SPLIT_KEY = 'ask-split';
+const SPLIT = { min: 30, max: 70, default: 50 };
 // An answer is PENDING only while another request generates it, or until the server marks it interrupted.
 const PENDING_POLL_MS = 2000;
 const VECTOR_BLOCKERS = new Set<Project['outdatedReasons'][number]>([
@@ -35,11 +50,9 @@ const VECTOR_BLOCKERS = new Set<Project['outdatedReasons'][number]>([
 type Pane = 'conversation' | 'evidence' | 'code';
 
 export function ChatPage() {
-  const { projectId = '', conversationId } = useParams();
-  const project = useQuery({
-    queryKey: importKeys.project(projectId),
-    queryFn: ({ signal }) => getProject(projectId, signal),
-  });
+  const { conversationId } = useParams();
+  const project = useProject();
+  const projectId = project.id;
   const providers = useQuery({
     queryKey: importKeys.providers,
     queryFn: ({ signal }) => getProviders(signal),
@@ -56,17 +69,14 @@ export function ChatPage() {
   const title = conversationId
     ? (conversation.data?.conversation.title ?? messages.pages.conversation)
     : messages.pages.ask;
+  usePageTitle([title, project.name]);
 
-  const failed = [project, providers, conversation].find((query) => query.isError);
+  const failed = [providers, conversation].find((query) => query.isError);
   if (failed) {
     const notFound =
-      failed.error instanceof ApiError &&
-      (failed.error.code === 'PROJECT_NOT_FOUND' || failed.error.code === 'CONVERSATION_NOT_FOUND');
+      failed.error instanceof ApiError && failed.error.code === 'CONVERSATION_NOT_FOUND';
     return (
       <section className="stack">
-        <Link to={project.isSuccess ? `/projects/${projectId}` : '/'} className="back-link">
-          {project.isSuccess ? messages.ask.backToProject : messages.projects.allWorkspaces}
-        </Link>
         <h1>{title}</h1>
         <ProblemAlert
           error={failed.error}
@@ -75,7 +85,7 @@ export function ChatPage() {
       </section>
     );
   }
-  if (!project.isSuccess || !providers.isSuccess || (conversationId && conversation.isPending)) {
+  if (!providers.isSuccess || (conversationId && conversation.isPending)) {
     return (
       <section>
         <h1>{title}</h1>
@@ -96,7 +106,7 @@ export function ChatPage() {
     <Chat
       key={conversationId ?? 'new'}
       title={title}
-      project={project.data}
+      project={project}
       providers={providers.data}
       conversation={loaded}
     />
@@ -120,6 +130,13 @@ function Chat({ title, project, providers, conversation }: ChatProps) {
   const [selectedAnswerId, setSelectedAnswerId] = useState<string | null>(null);
   const [selectedEvidence, setSelectedEvidence] = useState<Evidence | null>(null);
   const [pane, setPane] = useState<Pane>('conversation');
+  const [announcement, setAnnouncement] = useState('');
+  const location = useLocation();
+  const [draft, setDraft] = useState(() => draftFromState(location.state));
+  const [split, setSplit] = useState(readSplit);
+  const columns = useRef<HTMLDivElement>(null);
+  const ids = { question: useId(), conversation: useId() };
+  useEffect(() => writeStorage(SPLIT_KEY, String(split)), [split]);
   const selectedAnswer =
     answers.find((answer) => answer.answerId === selectedAnswerId) ?? answers.at(-1) ?? null;
 
@@ -151,7 +168,44 @@ function Chat({ title, project, providers, conversation }: ChatProps) {
     setSelectedAnswerId(answer.answerId);
     setSelectedEvidence(evidence);
     setPane('code');
+    // The side column sticks only after the page scrolls past the header; until then the viewer
+    // runs below the fold, so scroll just enough for the whole column to fit.
+    const side = columns.current?.querySelector('.chat__side');
+    const overflow = side ? side.getBoundingClientRect().bottom - window.innerHeight + 16 : 0;
+    if (wide && overflow > 0) {
+      window.scrollBy({ top: overflow });
+    }
   }
+
+  // Same order as the evidence list; stops at both ends.
+  function stepEvidence(step: 1 | -1) {
+    const ordered = selectedAnswer ? listOrder(selectedAnswer.evidence) : [];
+    if (!selectedAnswer || ordered.length === 0) {
+      return;
+    }
+    const index = ordered.findIndex((evidence) => evidence.id === selectedEvidence?.id);
+    const next =
+      index === -1
+        ? step === 1
+          ? 0
+          : ordered.length - 1
+        : Math.min(ordered.length - 1, Math.max(0, index + step));
+    const evidence = ordered[next];
+    if (index === next || !evidence) {
+      return;
+    }
+    openEvidence(selectedAnswer, evidence);
+    const range = highlightedRange(evidence);
+    setAnnouncement(
+      text.evidence.opened(
+        evidence.citationLabel,
+        evidence.path,
+        messages.ask.lines(range.start, range.end),
+      ),
+    );
+  }
+  useShortcut('previousEvidence', () => stepEvidence(-1));
+  useShortcut('nextEvidence', () => stepEvidence(1));
 
   const activeSnapshot = project.activeSnapshot;
   const generationAvailable = providers.generation.provider !== 'none';
@@ -160,13 +214,27 @@ function Chat({ title, project, providers, conversation }: ChatProps) {
     !project.outdatedReasons.some((reason) => VECTOR_BLOCKERS.has(reason));
   const review = `/workspaces/${project.workspaceId}/new?project=${project.id}`;
 
+  const empty = answers.length === 0 && !mutation.isPending;
+  const canAsk = generationAvailable && activeSnapshot !== null;
   const conversationPane = (
-    <section className="stack chat__conversation" aria-labelledby="conversation-title">
+    <section
+      id={ids.conversation}
+      className="chat__conversation"
+      aria-labelledby="conversation-title"
+    >
       <h2 id="conversation-title" className={wide ? 'visually-hidden' : undefined}>
         {text.conversationTitle}
       </h2>
-      {answers.length === 0 && !mutation.isPending && <p className="muted">{text.empty}</p>}
-      {(answers.length > 0 || mutation.isPending) && (
+      {empty && (
+        <EmptyConversation
+          suggestions={canAsk}
+          onSuggestion={(suggestion) => {
+            setDraft(suggestion);
+            document.getElementById(ids.question)?.focus();
+          }}
+        />
+      )}
+      {!empty && (
         <ol className="turns">
           {answers.map((answer) => (
             <AnswerTurn
@@ -188,40 +256,48 @@ function Chat({ title, project, providers, conversation }: ChatProps) {
       )}
       {mutation.isError && <ProblemAlert error={mutation.error} />}
       {!generationAvailable ? (
-        <p className="notice notice--warning">{text.noGeneration}</p>
+        <Callout tone="warning">
+          <p>{text.noGeneration}</p>
+        </Callout>
       ) : activeSnapshot ? (
         <AskForm
+          questionId={ids.question}
           projectId={project.id}
           conversationId={conversationId}
           providers={providers}
           vectorAvailable={vectorAvailable}
           reviewHref={review}
-          showSuggestions={answers.length === 0 && !mutation.isPending}
+          draft={draft}
+          onDraftChange={setDraft}
           pending={mutation.isPending}
           onAsk={(question) => mutation.mutateAsync(question)}
         />
       ) : (
-        <div className="notice stack">
+        <Callout tone="info">
           <p>{text.noSnapshot}</p>
           <p>
             <Link to={`/projects/${project.id}`}>{text.openProject}</Link>
           </p>
-        </div>
+        </Callout>
       )}
     </section>
   );
+  const evidenceCount = selectedAnswer?.evidence.length ?? 0;
   const evidencePane = (
-    <section className="stack panel" aria-labelledby="evidence-title">
-      <h2 id="evidence-title">{text.evidence.title}</h2>
+    <Card as="section" className="stack chat__evidence" aria-labelledby="evidence-title">
+      <div className="chat__pane-header">
+        <h2 id="evidence-title">{text.evidence.title}</h2>
+        {evidenceCount > 0 && <span className="muted">{text.evidence.count(evidenceCount)}</span>}
+      </div>
       <EvidencePanel
         answer={selectedAnswer}
         selectedEvidenceId={selectedEvidence?.id ?? null}
         onOpen={(evidence) => selectedAnswer && openEvidence(selectedAnswer, evidence)}
       />
-    </section>
+    </Card>
   );
   const codePane = (
-    <section className="stack panel" aria-labelledby="viewer-title">
+    <Card as="section" className="stack chat__code" aria-labelledby="viewer-title">
       <h2 id="viewer-title">{text.viewer.title}</h2>
       {selectedEvidence ? (
         <CodeViewer
@@ -233,47 +309,52 @@ function Chat({ title, project, providers, conversation }: ChatProps) {
       ) : (
         <p className="muted">{text.viewer.empty}</p>
       )}
-    </section>
+    </Card>
   );
 
   return (
     <section className="stack chat">
       <ChatHeader title={title} project={project} inConversation={conversation !== null} />
+      <div className="visually-hidden" aria-live="polite" aria-atomic="true">
+        {announcement}
+      </div>
       {wide ? (
-        <div className="chat__columns">
+        <div
+          ref={columns}
+          className="chat__columns"
+          style={{ '--chat-split': `${split}%` } as CSSProperties}
+        >
           {conversationPane}
-          <div className="stack chat__side">
+          <Splitter
+            value={split}
+            min={SPLIT.min}
+            max={SPLIT.max}
+            onChange={setSplit}
+            containerRef={columns}
+            controls={ids.conversation}
+            label={text.split.label}
+            valueText={text.split.value}
+            decreaseLabel={text.split.narrower}
+            increaseLabel={text.split.wider}
+          />
+          <div className="chat__side">
             {evidencePane}
             {codePane}
           </div>
         </div>
       ) : (
-        <Tabs.Root value={pane} onValueChange={(value) => setPane(value as Pane)}>
-          <Tabs.List className="tabs" aria-label={text.tabs.label}>
-            <Tabs.Trigger className="tabs__trigger" value="conversation">
-              {text.tabs.conversation}
-            </Tabs.Trigger>
-            <Tabs.Trigger className="tabs__trigger" value="evidence">
-              {text.tabs.evidence}
-            </Tabs.Trigger>
-            <Tabs.Trigger className="tabs__trigger" value="code">
-              {text.tabs.code}
-            </Tabs.Trigger>
-          </Tabs.List>
-          <TabPane value="conversation">{conversationPane}</TabPane>
-          <TabPane value="evidence">{evidencePane}</TabPane>
-          <TabPane value="code">{codePane}</TabPane>
-        </Tabs.Root>
+        <Tabs value={pane} onValueChange={(value) => setPane(value as Pane)}>
+          <TabsList aria-label={text.tabs.label}>
+            <TabsTrigger value="conversation">{text.tabs.conversation}</TabsTrigger>
+            <TabsTrigger value="evidence">{text.tabs.evidence}</TabsTrigger>
+            <TabsTrigger value="code">{text.tabs.code}</TabsTrigger>
+          </TabsList>
+          <TabsContent value="conversation">{conversationPane}</TabsContent>
+          <TabsContent value="evidence">{evidencePane}</TabsContent>
+          <TabsContent value="code">{codePane}</TabsContent>
+        </Tabs>
       )}
     </section>
-  );
-}
-
-function TabPane({ value, children }: { value: Pane; children: ReactNode }) {
-  return (
-    <Tabs.Content value={value} className="tabs__content">
-      {children}
-    </Tabs.Content>
   );
 }
 
@@ -288,36 +369,72 @@ function ChatHeader({ title, project, inConversation }: ChatHeaderProps) {
   const { activeSnapshot } = project;
   return (
     <div className="stack chat__header">
-      <Link to={`/projects/${project.id}`} className="back-link">
-        {text.backToProject}
-      </Link>
-      <div className="page-header">
-        <h1>{title}</h1>
-        <div className="actions">
-          <Link to={`/projects/${project.id}/history`} className="button">
-            {text.history}
-          </Link>
-          {inConversation && activeSnapshot && (
-            <Link to={`/projects/${project.id}/ask`} className="button">
+      <PageHeader
+        title={title}
+        actions={
+          inConversation &&
+          activeSnapshot && (
+            <ButtonLink to={`/projects/${project.id}/ask`} icon={SquarePen}>
               {text.newConversation}
-            </Link>
-          )}
-        </div>
-      </div>
-      <p>
-        <span className="muted">{project.name}</span>
-        {activeSnapshot?.completedAt && (
-          <span className="muted">
-            {' '}
-            · {text.snapshot(formatDateTime(activeSnapshot.completedAt))}
-          </span>
-        )}
-      </p>
-      {project.indexing && <p className="notice">{text.indexing}</p>}
+            </ButtonLink>
+          )
+        }
+      />
+      {project.indexing && (
+        <Callout tone="info">
+          <p>{text.indexing}</p>
+        </Callout>
+      )}
       {activeSnapshot && project.outdatedReasons.length > 0 && (
-        <p className="notice notice--warning">
-          {text.outdated} <Link to={`/projects/${project.id}`}>{text.outdatedLink}</Link>
-        </p>
+        <Callout tone="warning">
+          <p>
+            {text.outdated} <Link to={`/projects/${project.id}`}>{text.outdatedLink}</Link>
+          </p>
+        </Callout>
+      )}
+    </div>
+  );
+}
+
+function readSplit(): number {
+  const stored = Number(readStorage(SPLIT_KEY));
+  return Number.isFinite(stored) && stored >= SPLIT.min && stored <= SPLIT.max
+    ? stored
+    : SPLIT.default;
+}
+
+function EmptyConversation({
+  suggestions,
+  onSuggestion,
+}: {
+  suggestions: boolean;
+  onSuggestion: (suggestion: string) => void;
+}) {
+  const text = messages.ask;
+  return (
+    <div className="stack chat__empty">
+      <div>
+        <h3>{text.emptyTitle}</h3>
+        <p className="muted">{text.empty}</p>
+      </div>
+      {suggestions && (
+        <section className="stack" aria-labelledby="suggestions-title">
+          <h4 id="suggestions-title">{text.suggestionsTitle}</h4>
+          <ul className="suggestion-grid">
+            {text.suggestions.map((suggestion) => (
+              <li key={suggestion}>
+                <button
+                  type="button"
+                  className="suggestion-card"
+                  onClick={() => onSuggestion(suggestion)}
+                >
+                  <MessageSquare aria-hidden="true" className="suggestion-card__icon" />
+                  {suggestion}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
     </div>
   );
@@ -334,11 +451,16 @@ function WaitingTurn({ question, since }: { question: string; since: number }) {
   return (
     <li className="turn">
       <Question question={question} />
-      <div className="turn__answer stack">
+      <div className="answer-card answer-card--waiting" aria-busy="true">
         <p>
           <span role="status">{text.status}</span>{' '}
-          <span className="muted">{text.elapsed(seconds)}</span>
+          <span className="muted tabular">{text.elapsed(seconds)}</span>
         </p>
+        <div className="answer-card__skeleton">
+          <Skeleton width="92%" />
+          <Skeleton width="85%" />
+          <Skeleton width="60%" />
+        </div>
         <p className="muted">{text.limit}</p>
       </div>
     </li>

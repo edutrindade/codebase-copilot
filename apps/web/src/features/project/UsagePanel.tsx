@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { ProblemAlert } from '../../components/ProblemAlert';
+import { Card } from '../../components/ui/Card';
+import { Stat, StatGrid } from '../../components/ui/Stat';
 import { formatCost, formatDuration, formatNumber } from '../../format';
 import { messages } from '../../messages';
 import { getUsage, projectKeys, type Usage } from './api';
@@ -12,12 +14,12 @@ export function UsagePanel({ projectId }: { projectId: string }) {
   });
 
   return (
-    <section className="stack panel" aria-labelledby="usage-title">
+    <Card as="section" className="stack" aria-labelledby="usage-title">
       <h2 id="usage-title">{text.title}</h2>
       <p className="muted">{text.detail}</p>
       {usage.isError && <ProblemAlert error={usage.error} onRetry={() => void usage.refetch()} />}
       {usage.isSuccess && <UsageTotals usage={usage.data} />}
-    </section>
+    </Card>
   );
 }
 
@@ -74,14 +76,11 @@ function Totals({ title, items }: { title: string; items: [string, string][] }) 
   return (
     <div className="stack">
       <h3>{title}</h3>
-      <dl className="totals">
+      <StatGrid>
         {items.map(([label, value]) => (
-          <div key={label} className="totals__item">
-            <dt>{label}</dt>
-            <dd>{value}</dd>
-          </div>
+          <Stat key={label} label={label} value={value} />
         ))}
-      </dl>
+      </StatGrid>
     </div>
   );
 }

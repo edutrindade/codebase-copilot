@@ -1,11 +1,26 @@
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useParams, useSearchParams } from 'react-router';
-import { ApiError } from '../../api/errors';
+import {
+  ArrowRight,
+  Ellipsis,
+  MessageSquare,
+  MessageSquareText,
+  MessagesSquare,
+  Trash,
+} from 'lucide-react';
+import { useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router';
+import { usePageTitle } from '../../app/title';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { Loading } from '../../components/Loading';
 import { Pagination, pageFromSearch } from '../../components/Pagination';
 import { ProblemAlert } from '../../components/ProblemAlert';
-import { formatDateTime } from '../../format';
+import { ButtonLink } from '../../components/ui/Button';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { IconButton } from '../../components/ui/IconButton';
+import { Menu, MenuItem, MenuSeparator } from '../../components/ui/Menu';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { RelativeTime } from '../../components/ui/RelativeTime';
+import { useToast } from '../../components/ui/Toast';
 import { messages } from '../../messages';
 import {
   askKeys,
@@ -13,40 +28,32 @@ import {
   listConversations,
   type ConversationSummary,
 } from '../ask/api';
-import { getProject, importKeys } from '../import/api';
+import { useProject } from '../project/ProjectLayout';
+import { groupByPeriod } from './periods';
+import './HistoryPage.css';
 
 export function HistoryPage() {
   const text = messages.history;
-  const { projectId = '' } = useParams();
+  const project = useProject();
+  const projectId = project.id;
   const [searchParams, setSearchParams] = useSearchParams();
   const page = pageFromSearch(searchParams);
-  const project = useQuery({
-    queryKey: importKeys.project(projectId),
-    queryFn: ({ signal }) => getProject(projectId, signal),
-  });
+  usePageTitle([messages.pages.history, project.name]);
   const conversations = useQuery({
     queryKey: askKeys.conversationsPage(projectId, page),
     queryFn: ({ signal }) => listConversations(projectId, page, signal),
     placeholderData: keepPreviousData,
   });
 
-  const failed = [project, conversations].find((query) => query.isError);
-  if (failed) {
-    const notFound = failed.error instanceof ApiError && failed.error.code === 'PROJECT_NOT_FOUND';
+  if (conversations.isError) {
     return (
       <section className="stack">
-        <Link to="/" className="back-link">
-          {messages.projects.allWorkspaces}
-        </Link>
         <h1>{messages.pages.history}</h1>
-        <ProblemAlert
-          error={failed.error}
-          onRetry={notFound ? undefined : () => void failed.refetch()}
-        />
+        <ProblemAlert error={conversations.error} onRetry={() => void conversations.refetch()} />
       </section>
     );
   }
-  if (!project.isSuccess || !conversations.isSuccess) {
+  if (conversations.isPending) {
     return (
       <section>
         <h1>{messages.pages.history}</h1>
@@ -55,38 +62,41 @@ export function HistoryPage() {
     );
   }
 
-  const canAsk = project.data.activeSnapshot !== null;
+  const canAsk = project.activeSnapshot !== null;
   const askLink = (
-    <Link to={`/projects/${projectId}/ask`} className="button button--primary">
+    <ButtonLink to={`/projects/${projectId}/ask`} variant="primary" icon={MessageSquareText}>
       {text.ask}
-    </Link>
+    </ButtonLink>
   );
   return (
     <section className="stack">
-      <Link to={`/projects/${projectId}`} className="back-link">
-        {messages.ask.backToProject}
-      </Link>
-      <div className="page-header">
-        <h1>{messages.pages.history}</h1>
-        {canAsk && conversations.data.totalItems > 0 && askLink}
-      </div>
-      <p>
-        <span className="muted">{project.data.name}</span>
-      </p>
+      <PageHeader
+        title={messages.pages.history}
+        actions={canAsk && conversations.data.totalItems > 0 && askLink}
+      />
       {conversations.data.totalItems === 0 ? (
-        <div className="empty-state stack">
-          <h2>{text.emptyTitle}</h2>
+        <EmptyState icon={MessagesSquare} title={text.emptyTitle} action={canAsk && askLink}>
           <p>{text.emptyDetail}</p>
-          {canAsk && <div>{askLink}</div>}
-        </div>
+        </EmptyState>
       ) : (
         <>
           <p className="muted">{text.detail}</p>
-          <ul className="card-list">
-            {conversations.data.items.map((conversation) => (
-              <ConversationItem key={conversation.id} conversation={conversation} />
-            ))}
-          </ul>
+          {groupByPeriod(conversations.data.items).map((group) => (
+            <section
+              key={group.period}
+              className="history-group"
+              aria-labelledby={`history-${group.period}`}
+            >
+              <h2 id={`history-${group.period}`} className="history-group__title">
+                {text.periods[group.period]}
+              </h2>
+              <ul className="history-list">
+                {group.items.map((conversation) => (
+                  <ConversationItem key={conversation.id} conversation={conversation} />
+                ))}
+              </ul>
+            </section>
+          ))}
           <Pagination
             page={page}
             totalPages={conversations.data.totalPages}
@@ -101,6 +111,10 @@ export function HistoryPage() {
 function ConversationItem({ conversation }: { conversation: ConversationSummary }) {
   const text = messages.history;
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const notify = useToast();
+  const [confirming, setConfirming] = useState(false);
+  const to = `/projects/${conversation.projectId}/conversations/${conversation.id}`;
 
   async function remove() {
     await deleteConversation(conversation.id);
@@ -108,26 +122,46 @@ function ConversationItem({ conversation }: { conversation: ConversationSummary 
     await queryClient.invalidateQueries({
       queryKey: ['projects', conversation.projectId],
     });
+    notify({
+      tone: 'success',
+      title: messages.toast.conversationDeleted,
+      description: conversation.title,
+    });
   }
 
   return (
-    <li className="card">
-      <div className="card__main">
-        <Link
-          to={`/projects/${conversation.projectId}/conversations/${conversation.id}`}
-          className="card__title"
-        >
+    <li className="history-item">
+      <MessageSquare aria-hidden="true" className="history-item__icon" />
+      <div className="history-item__main">
+        <Link to={to} className="history-item__title" viewTransition>
           {conversation.title}
         </Link>
-        <p className="muted">
+        <p className="history-item__meta">
           {text.questionCount(conversation.questionCount)} ·{' '}
-          {text.updatedAt(formatDateTime(conversation.updatedAt))} ·{' '}
-          {text.createdAt(formatDateTime(conversation.createdAt))}
+          <RelativeTime iso={conversation.updatedAt} />
         </p>
       </div>
+      <Menu
+        trigger={
+          <IconButton
+            label={text.actions(conversation.title)}
+            icon={Ellipsis}
+            size="sm"
+            tooltip={false}
+          />
+        }
+      >
+        <MenuItem icon={ArrowRight} onSelect={() => void navigate(to, { viewTransition: true })}>
+          {text.open}
+        </MenuItem>
+        <MenuSeparator />
+        <MenuItem icon={Trash} tone="danger" onSelect={() => setConfirming(true)}>
+          {text.deleteItem}
+        </MenuItem>
+      </Menu>
       <ConfirmDialog
-        trigger={messages.confirm.deleteTrigger}
-        triggerLabel={text.delete(conversation.title)}
+        open={confirming}
+        onOpenChange={setConfirming}
         title={text.deleteTitle}
         description={
           <>

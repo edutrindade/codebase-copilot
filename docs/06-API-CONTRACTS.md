@@ -636,6 +636,31 @@ Lista os arquivos incluídos pela varredura do snapshot (substitui `GET /project
 
 Erros: `400 VALIDATION_FAILED` (filtros), `404 SNAPSHOT_NOT_FOUND`.
 
+### `GET /snapshots/{snapshotId}/tree?path=&status=`
+Os filhos imediatos de um diretório do snapshot, para o explorador de arquivos (D-092). Sem paginação: o tamanho é o de um diretório, não o do projeto.
+
+```json
+{
+  "path": "src",
+  "entries": [
+    { "name": "main", "path": "src/main", "type": "DIRECTORY", "files": 12, "indexedFiles": 11,
+      "unsupportedFiles": 1, "failedFiles": 0, "sizeBytes": 40960,
+      "status": null, "reason": null, "language": null },
+    { "name": "App.java", "path": "src/App.java", "type": "FILE", "files": 1, "indexedFiles": 1,
+      "unsupportedFiles": 0, "failedFiles": 0, "sizeBytes": 2048,
+      "status": "INDEXED", "reason": null, "language": "java" }
+  ]
+}
+```
+
+- `path`: opcional, vazio na raiz, com a normalização de `relativePath` (§5) e devolvido normalizado.
+- Ordem: diretórios primeiro, depois arquivos, cada grupo por nome (`COLLATE "C"`, como a listagem).
+- Contagens: de todos os arquivos do diretório e dos subdiretórios; um arquivo conta 1 no próprio estado. `status`, `reason` e `language` só para arquivos, nos valores de `GET /snapshots/{snapshotId}/files`.
+- `status`: filtro opcional (`INDEXED`, `UNSUPPORTED` ou `FAILED`); só aparecem arquivos nesse estado e os diretórios que têm algum, com as contagens do filtro.
+- Diretório inexistente, caminho de um arquivo e snapshot podado: `entries` vazio. Arquivos excluídos pelas regras não aparecem.
+
+Erros: `400 VALIDATION_FAILED` (`path` com `/` inicial, `..`, `\` ou caracteres de controle; `status` inválido), antes de `404 SNAPSHOT_NOT_FOUND`.
+
 ### `GET /snapshots/{snapshotId}/files/content?path=...`
 Retorna o conteúdo do arquivo como estava no snapshot, a partir de `file_contents` (D-039, D-071). Só arquivos `INDEXED` têm conteúdo; nada é lido do disco nesta chamada.
 
