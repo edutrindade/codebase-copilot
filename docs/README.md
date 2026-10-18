@@ -18,6 +18,7 @@ Leia nesta ordem:
 10. [Roadmap de implementação](09-IMPLEMENTATION-ROADMAP.md)
 11. [Registro de decisões](10-DECISIONS.md)
 12. [Operação, recuperação de falhas e limitações](11-OPERATIONS.md)
+13. [Configuração e desenvolvimento](12-DEVELOPMENT.md)
 
 ## Stack aprovada
 
