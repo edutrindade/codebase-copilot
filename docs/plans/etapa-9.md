@@ -367,6 +367,20 @@ Tokens, fontes, camadas de CSS, tema com `theme-init.js` (P9), primitivos da P2 
 ### F2 — Casca e navegação
 Barra lateral, barra superior, trilha, área do projeto com abas, rotas `/projects/:id/settings` e `/system`, títulos, anúncio de rota, "Continuar de onde parou", gaveta no celular. Registro: D-089 (navegação; revê a D-077).
 
+**Como foi entregue (17/10/2026)**
+- **Casca** (`components/shell/`): barra lateral com seletor de workspace, projetos com estado e progresso, "Novo projeto", conversas recentes e "Sistema e privacidade"; recolhível (lembrada no navegador) e em gaveta abaixo de 48rem. Barra superior com trilha, indicador Local/Remoto e tema. Os links "← voltar" saíram das telas.
+- **Área do projeto:** `ProjectLayout` com cabeçalho comum, abas como links e "Nova pergunta"; as telas de visão geral, pergunta e histórico recebem o projeto dela. Na visão geral, o `<h1>` "Visão geral" fica oculto visualmente, porque a aba já o mostra.
+- **Telas novas:** `/projects/:id/settings` (o formulário de exclusões e limites da pré-análise, com o aviso de que o snapshot fica desatualizado) e `/system` (provedores, o que sai da máquina, onde ficam os dados e o tema).
+- **Títulos, foco e anúncio** por rota (`RouteAnnouncer`, `usePageTitle`), e "Continuar de onde parou" no início.
+- **Verificação:** `npm run check` com 163 testes (eram 143); `npm run e2e` e `npm run e2e:jar` passam, com o aceite adaptado às abas. Passada descartável com axe (WCAG 2.2 AA, com contraste) nas dez telas, com a gaveta aberta, nos dois temas, em 1440 e 390 px: **nenhuma violação**. Casca: 163,6 kB com gzip (teto de 175 kB), em dois arquivos abaixo de 500 kB.
+
+**Desvios:**
+- **Ordem das camadas de CSS.** Ao tirar a área do projeto e a gaveta da casca, o bundler criou um chunk comum (Radix e componentes) cujo CSS carrega antes do `index.css`; a primeira `@layer` passou a ser `components`, que ficou abaixo da `base` (o botão primário perdeu a cor do texto, pego pelo axe no E2E). Corrigido com `public/layers.css`, carregado primeiro no `index.html` e conferido por teste; a CSP não muda.
+- **Sem botão da paleta na barra superior:** entra com a paleta, na F3.
+- **Indicador Local/Remoto** leva à página `/system` em vez de abrir um painel flutuante: o detalhe já está lá, e um popover somaria um primitivo à casca.
+- **Testes ajustados:** os que procuravam os links "← voltar" ou "Histórico de conversas" passaram a usar a trilha e as abas; os que contavam chamadas à lista de conversas aceitam a da barra lateral, que usa a mesma chave de cache. O setup dos testes ganhou respostas padrão para as consultas da casca e limpa o `localStorage` entre testes.
+- **Achado anterior à F2, não corrigido:** o Radix (via `react-remove-scroll`) injeta um `<style>` para travar a rolagem quando abre um menu ou diálogo, e a CSP (`style-src 'self'`) o bloqueia, com um erro no console. Acontece desde a Etapa 7 (diálogo de confirmação) e a F1 (menu de tema); a gaveta é mais um caso. Nada quebra, mas a rolagem do fundo não trava. Proposta: tratar na F3, que traz a paleta (outro diálogo).
+
 ### F3 — Paleta de comandos e atalhos
 P4, com a lista de atalhos em `/system`. Registro: D-090.
 

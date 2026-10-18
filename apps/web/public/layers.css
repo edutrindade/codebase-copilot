@@ -1,0 +1,3 @@
+/* Loaded before any bundled stylesheet: the first @layer statement fixes the order, and the
+   bundler may emit a shared component chunk ahead of index.css. Kept in sync by a test. */
+@layer reset, tokens, base, components, screens, utilities;

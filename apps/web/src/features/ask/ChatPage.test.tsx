@@ -415,9 +415,13 @@ describe('ChatPage', () => {
     expect(await screen.findByText(text.pending)).toBeInTheDocument();
     expect(screen.getByText(text.status.PENDING)).toBeInTheDocument();
     expect(screen.queryByText(text.metrics.title)).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: text.history })).toHaveAttribute(
-      'href',
-      `/projects/${base.id}/history`,
+    const tabs = screen.getByRole('navigation', { name: messages.projectArea.tabsLabel });
+    expect(
+      within(tabs).getByRole('link', { name: messages.projectArea.tabs.history }),
+    ).toHaveAttribute('href', `/projects/${base.id}/history`);
+    expect(within(tabs).getByRole('link', { name: messages.projectArea.tabs.ask })).toHaveAttribute(
+      'aria-current',
+      'true',
     );
     expect(screen.getByRole('link', { name: text.newConversation })).toHaveAttribute(
       'href',
@@ -571,7 +575,11 @@ describe('ChatPage', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Título do erro');
     expect(screen.queryByRole('button', { name: messages.errors.retry })).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: text.backToProject })).toBeInTheDocument();
+    const trail = screen.getByRole('navigation', { name: messages.breadcrumbs.label });
+    expect(within(trail).getByRole('link', { name: base.name })).toHaveAttribute(
+      'href',
+      `/projects/${base.id}`,
+    );
   });
 
   test('on narrow screens the areas become tabs and a citation opens the code tab', async () => {

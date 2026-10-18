@@ -5,14 +5,11 @@ interface PageHeaderProps {
   title: ReactNode;
   description?: ReactNode;
   actions?: ReactNode;
-  // A link above the title, until the breadcrumbs of F2 replace it.
-  back?: ReactNode;
 }
 
-export function PageHeader({ title, description, actions, back }: PageHeaderProps) {
+export function PageHeader({ title, description, actions }: PageHeaderProps) {
   return (
     <header className="page-heading">
-      {back}
       <div className="page-heading__row">
         <div className="page-heading__text">
           <h1>{title}</h1>

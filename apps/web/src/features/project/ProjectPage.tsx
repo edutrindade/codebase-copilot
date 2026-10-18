@@ -1,78 +1,27 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef } from 'react';
-import { Link, useParams } from 'react-router';
-import { MessageSquareText, MessagesSquare } from 'lucide-react';
-import { ApiError } from '../../api/errors';
-import { Loading } from '../../components/Loading';
+import { Link } from 'react-router';
+import { usePageTitle } from '../../app/title';
 import { ProblemAlert } from '../../components/ProblemAlert';
-import { ButtonLink } from '../../components/ui/Button';
 import { Callout } from '../../components/ui/Callout';
-import { PageHeader } from '../../components/ui/PageHeader';
-import { StatusBadge } from '../../components/ui/StatusBadge';
 import { formatDateTime } from '../../format';
 import { messages } from '../../messages';
-import { getProject, getProviders, importKeys } from '../import/api';
+import { getProviders, importKeys } from '../import/api';
 import { IndexPanel } from '../import/IndexPanel';
-import { workspaceKeys, type Project } from '../workspaces/api';
-import { PROJECT_STATUS_TONE, projectSource, projectStatus } from '../workspaces/projectStatus';
+import type { Project } from '../workspaces/api';
+import { projectStatus } from '../workspaces/projectStatus';
 import { ActiveSnapshot } from './ActiveSnapshot';
 import { cancelIndexJob, getLatestIndexJob, projectKeys, type IndexJob } from './api';
 import { IndexingProgress } from './IndexingProgress';
 import { jobRecovery } from './jobRecovery';
+import { useProject } from './ProjectLayout';
 import { SnapshotList } from './SnapshotList';
 import { UnindexedFiles } from './UnindexedFiles';
 import { UsagePanel } from './UsagePanel';
 
-const ACTIVE_JOB_POLL_MS = 1000;
-
 export function ProjectPage() {
-  const { projectId = '' } = useParams();
-  const project = useQuery({
-    queryKey: importKeys.project(projectId),
-    queryFn: ({ signal }) => getProject(projectId, signal),
-    refetchInterval: (query) => (query.state.data?.indexing ? ACTIVE_JOB_POLL_MS : false),
-  });
-  useRefreshWhenJobChanges(projectId, project.data?.indexing?.id ?? null);
-
-  if (project.isPending) {
-    return (
-      <section>
-        <h1>{messages.pages.project}</h1>
-        <Loading />
-      </section>
-    );
-  }
-  if (project.isError) {
-    const notFound =
-      project.error instanceof ApiError && project.error.code === 'PROJECT_NOT_FOUND';
-    return (
-      <section className="stack">
-        <Link to="/" className="back-link">
-          {messages.projects.allWorkspaces}
-        </Link>
-        <h1>{messages.pages.project}</h1>
-        <ProblemAlert
-          error={project.error}
-          onRetry={notFound ? undefined : () => void project.refetch()}
-        />
-      </section>
-    );
-  }
-  return <ProjectSummary project={project.data} />;
-}
-
-// Snapshots, jobs and counts only change when a job starts or ends.
-function useRefreshWhenJobChanges(projectId: string, indexingId: string | null) {
-  const queryClient = useQueryClient();
-  const previous = useRef(indexingId);
-  useEffect(() => {
-    if (previous.current === indexingId) {
-      return;
-    }
-    previous.current = indexingId;
-    void queryClient.invalidateQueries({ queryKey: importKeys.project(projectId) });
-    void queryClient.invalidateQueries({ queryKey: workspaceKeys.all });
-  }, [indexingId, projectId, queryClient]);
+  const project = useProject();
+  usePageTitle([messages.pages.overview, project.name]);
+  return <ProjectSummary project={project} />;
 }
 
 function ProjectSummary({ project }: { project: Project }) {
@@ -100,38 +49,8 @@ function ProjectSummary({ project }: { project: Project }) {
 
   return (
     <section className="stack">
-      <PageHeader
-        back={
-          <Link to={`/workspaces/${project.workspaceId}`} className="back-link">
-            {text.backToWorkspace}
-          </Link>
-        }
-        title={project.name}
-        description={
-          <>
-            <span>{projectSource(project)}</span>
-            <StatusBadge tone={PROJECT_STATUS_TONE[status]}>
-              {messages.projects.status[status]}
-            </StatusBadge>
-          </>
-        }
-        actions={
-          <>
-            <ButtonLink to={`/projects/${project.id}/history`} icon={MessagesSquare}>
-              {text.history}
-            </ButtonLink>
-            {activeSnapshot && (
-              <ButtonLink
-                to={`/projects/${project.id}/ask`}
-                variant="primary"
-                icon={MessageSquareText}
-              >
-                {text.ask}
-              </ButtonLink>
-            )}
-          </>
-        }
-      />
+      {/* The active tab already shows the name of this section. */}
+      <h1 className="visually-hidden">{messages.pages.overview}</h1>
       {awaitingUpload && (
         <Callout tone="info">
           <p>{text.awaitingUpload}</p>

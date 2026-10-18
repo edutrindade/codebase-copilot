@@ -147,6 +147,11 @@
     --duration: 180ms;
     --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
 
+    /* Shell */
+    --topbar-height: 3.25rem;
+    --sidebar-width: 16rem;
+    --sidebar-width-collapsed: 3.5rem;
+
     /* Controls */
     --control-height-sm: 1.75rem;
     --control-height: 2.25rem;

@@ -24,6 +24,11 @@ const ICONS: Record<Tone, LucideIcon> = {
   info: Info,
 };
 
+export function StatusIcon({ tone, className }: { tone: Tone; className?: string }) {
+  const Icon = ICONS[tone];
+  return <Icon aria-hidden="true" className={className} />;
+}
+
 interface StatusBadgeProps {
   tone?: Tone;
   icon?: LucideIcon;

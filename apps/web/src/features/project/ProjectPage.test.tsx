@@ -126,8 +126,10 @@ describe('ProjectPage', () => {
     );
     renderRoute(`/projects/${base.id}`);
 
-    expect(await screen.findByRole('heading', { level: 1, name: base.name })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: messages.project.ask })).toHaveAttribute(
+    expect(
+      await screen.findByRole('heading', { level: 1, name: messages.pages.overview }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: messages.projectArea.newQuestion })).toHaveAttribute(
       'href',
       `/projects/${base.id}/ask`,
     );
@@ -268,7 +270,9 @@ describe('ProjectPage', () => {
       'href',
       reviewHref,
     );
-    expect(screen.queryByRole('link', { name: messages.project.ask })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: messages.projectArea.newQuestion }),
+    ).not.toBeInTheDocument();
     const start = screen.getByRole('button', { name: messages.project.indexTitle });
     await waitFor(() => expect(start).toBeEnabled());
     await userEvent.click(start);

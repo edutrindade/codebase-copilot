@@ -1394,6 +1394,22 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Consequências:** a chave existe em dois lugares (`theme.ts` e `theme-init.js`); um teste confere que são iguais. Sem `localStorage`, a escolha dura até recarregar a página.  
 **O que levaria à revisão:** preferências guardadas no servidor (não há usuários no MVP).
 
+### D-089 — Casca, navegação e responsividade (P3 e P10 da Etapa 9; revê a D-077)
+**Status:** Aceita (17/10/2026; F2 da Etapa 9)  
+**Contexto:** a navegação era uma barra com o nome do produto e links "← voltar" em cada tela; não havia caminho direto entre projetos nem indicação de onde se estava.  
+**Decisão:**
+- **Casca:** barra lateral (16rem, recolhível para 3,5rem só com ícones e dicas; abaixo de 48rem vira uma gaveta, num diálogo do Radix carregado só no celular) com o seletor de workspace, os projetos da primeira página do workspace com o estado em ícone e texto (e o progresso quando indexando), "Novo projeto", as cinco conversas mais recentes do projeto aberto e "Sistema e privacidade". Fora de um workspace, a barra mostra o último aberto. Barra superior com a trilha (Workspaces › workspace › projeto › seção, as duas últimas no celular), o indicador **Local / Remoto** (de `GET /system/providers`, com link para `/system`) e o menu de tema. Os links "← voltar" saem; a trilha cumpre o papel.
+- **Área do projeto:** rota aninhada `/projects/:id` com cabeçalho comum (nome, estado, origem, snapshot ativo e "Nova pergunta") e abas Visão geral · Perguntar · Histórico · Configurações como links com `aria-current` (não `role="tablist"`, porque cada aba é uma URL). O projeto é carregado e consultado uma vez, na área, e passado às telas; o polling de indexação fica nela. A aba Arquivos entra com a F8.
+- **Rotas** (revê a D-077): as da D-077 continuam; entram `/projects/:id/settings` (exclusões e limites fora do assistente) e `/system` (provedores, o que sai da máquina, onde ficam os dados e o tema). Cada rota leva um `handle` com a seção, que a casca lê para a trilha e o destaque.
+- **Títulos e foco:** cada tela define o `<title>` ("Perguntar · sample-shop · Codebase Copilot"). Depois de uma navegação (não em `replace`, como a conversa nova ganhando o endereço), o foco vai para o `<h1>` da tela, acompanhando a troca do `<h1>` de carregamento pelo definitivo até a pessoa agir, e uma região `aria-live` anuncia o título.
+- **Preferências no navegador** (`localStorage`, sempre com `try/catch`): barra recolhida, último workspace e os cinco últimos projetos abertos, que o início mostra em "Continuar de onde parou", conferidos contra a API (um projeto removido sai da lista sem erro).
+- **Transições:** `viewTransition` nos links da barra lateral e das abas, desligadas com `prefers-reduced-motion`.
+- **Ordem das camadas de CSS:** declarada também em `public/layers.css`, carregado antes de qualquer CSS do bundle; um teste confere que é a mesma do `styles/index.css`.
+
+**Motivo:** a pessoa sabe onde está e chega a qualquer projeto ou conversa recente em um clique; a área comum evita repetir o carregamento e o tratamento de erro do projeto em cada tela.  
+**Consequências:** a casca passa a fazer até quatro consultas leves (workspace, projetos, conversas e provedores), compartilhando o cache com as telas. O JavaScript da casca foi de 150,27 kB para 163,6 kB com gzip (teto de 175 kB), agora em dois arquivos (o principal e um chunk comum com o Radix, pré-carregado), nenhum acima de 500 kB. Essa divisão fez o CSS dos componentes carregar antes do `index.css` e inverteu a ordem das camadas no build, o que motivou o `layers.css`.  
+**O que levaria à revisão:** workspaces com mais projetos do que cabem na barra (hoje mostra a primeira página e "Ver todos"), ou um tamanho de casca acima do teto.
+
 ---
 
 ## Decisões em aberto

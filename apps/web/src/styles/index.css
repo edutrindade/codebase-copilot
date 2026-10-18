@@ -1,4 +1,4 @@
-/* Layer order is fixed here; main.tsx imports this file before any component stylesheet. */
+/* Same order as public/layers.css, which index.html loads first (a test keeps both in sync). */
 @layer reset, tokens, base, components, screens, utilities;
 
 @import './fonts.css';

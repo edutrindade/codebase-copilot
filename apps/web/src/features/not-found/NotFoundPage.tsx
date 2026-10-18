@@ -2,8 +2,10 @@ import { SearchX } from 'lucide-react';
 import { ButtonLink } from '../../components/ui/Button';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { messages } from '../../messages';
+import { usePageTitle } from '../../app/title';
 
 export function NotFoundPage() {
+  usePageTitle([messages.notFound.title]);
   return (
     <section>
       <EmptyState

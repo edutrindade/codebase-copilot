@@ -33,7 +33,8 @@ describe('HistoryPage', () => {
     const { router } = renderRoute(`/projects/${base.id}/history`);
 
     expect(screen.getByRole('status')).toHaveTextContent(messages.loading);
-    const link = await screen.findByRole('link', { name: summary.title });
+    const main = screen.getByRole('main');
+    const link = await within(main).findByRole('link', { name: summary.title });
     expect(link).toHaveAttribute('href', `/projects/${base.id}/conversations/${summary.id}`);
     const card = link.closest('li') as HTMLElement;
     expect(within(card).getByText(new RegExp(text.questionCount(3)))).toBeInTheDocument();
@@ -48,9 +49,10 @@ describe('HistoryPage', () => {
 
     await userEvent.click(screen.getByRole('button', { name: messages.pagination.next }));
 
-    expect(await screen.findByRole('link', { name: 'Segunda página' })).toBeInTheDocument();
+    expect(await within(main).findByRole('link', { name: 'Segunda página' })).toBeInTheDocument();
     expect(router.state.location.search).toBe('?page=2');
-    expect(pages).toEqual(['0', '1']);
+    // The sidebar reads the first page too, under the same cache key.
+    expect(new Set(pages)).toEqual(new Set(['0', '1']));
   });
 
   test('deletes a conversation after confirmation and refreshes the list', async () => {
@@ -112,18 +114,21 @@ describe('HistoryPage', () => {
   });
 
   test('a failed list offers a retry; a missing project does not', async () => {
-    let calls = 0;
+    let failing = true;
     server.use(
       http.get(projectUrl, () => HttpResponse.json(base)),
-      http.get(`${projectUrl}/conversations`, () => {
-        calls++;
-        return calls === 1 ? problem(500, 'INTERNAL_ERROR') : HttpResponse.json(page([summary]));
-      }),
+      http.get(`${projectUrl}/conversations`, () =>
+        failing ? problem(500, 'INTERNAL_ERROR') : HttpResponse.json(page([summary])),
+      ),
     );
     const { unmount } = renderRoute(`/projects/${base.id}/history`);
 
-    await userEvent.click(await screen.findByRole('button', { name: messages.errors.retry }));
-    expect(await screen.findByRole('link', { name: summary.title })).toBeInTheDocument();
+    const retry = await screen.findByRole('button', { name: messages.errors.retry });
+    failing = false;
+    await userEvent.click(retry);
+    expect(
+      await within(screen.getByRole('main')).findByRole('link', { name: summary.title }),
+    ).toBeInTheDocument();
     unmount();
 
     server.use(http.get(projectUrl, () => problem(404, 'PROJECT_NOT_FOUND')));

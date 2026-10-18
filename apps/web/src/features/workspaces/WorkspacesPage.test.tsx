@@ -4,7 +4,8 @@ import { http, HttpResponse } from 'msw';
 import { describe, expect, test } from 'vitest';
 import { messages } from '../../messages';
 import { axeViolations } from '../../test/axe';
-import { page, workspace } from '../../test/fixtures';
+import { RECENT_PROJECTS_KEY } from '../../app/recentProjects';
+import { page, project, workspace } from '../../test/fixtures';
 import { problem } from '../../test/problems';
 import { renderRoute } from '../../test/render';
 import { server } from '../../test/server';
@@ -166,5 +167,28 @@ describe('WorkspacesPage', () => {
     await userEvent.click(within(alert).getByRole('button', { name: messages.errors.retry }));
 
     expect(await screen.findByRole('link', { name: 'Clientes' })).toBeInTheDocument();
+  });
+
+  test('continues from the projects opened in this browser, dropping removed ones', async () => {
+    const kept = project({ name: 'sample-shop' });
+    const removedId = '0192f5c4-0000-7000-8000-000000000199';
+    window.localStorage.setItem(RECENT_PROJECTS_KEY, JSON.stringify([removedId, kept.id]));
+    server.use(
+      http.get(workspaces, () => HttpResponse.json(page([workspace()]))),
+      http.get(`/api/v1/projects/${kept.id}`, () => HttpResponse.json(kept)),
+      http.get(`/api/v1/projects/${removedId}`, () => problem(404, 'PROJECT_NOT_FOUND')),
+    );
+    renderRoute('/');
+
+    const recent = await screen.findByRole('region', { name: messages.workspaces.continueTitle });
+    expect(within(recent).getByRole('link', { name: 'sample-shop' })).toHaveAttribute(
+      'href',
+      `/projects/${kept.id}`,
+    );
+    expect(within(recent).getAllByRole('listitem')).toHaveLength(1);
+    await waitFor(() =>
+      expect(window.localStorage.getItem(RECENT_PROJECTS_KEY)).toBe(JSON.stringify([kept.id])),
+    );
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });

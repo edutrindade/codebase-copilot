@@ -89,7 +89,8 @@ test('from a new workspace to an answer with evidence and its conversation in th
   });
 
   await test.step('question by keyboard, answer and evidence', async () => {
-    await page.getByRole('link', { name: messages.project.ask, exact: true }).click();
+    const tabs = page.getByRole('navigation', { name: messages.projectArea.tabsLabel });
+    await tabs.getByRole('link', { name: messages.projectArea.tabs.ask }).click();
     await expect(page.getByRole('heading', { level: 1, name: messages.pages.ask })).toBeVisible();
     await expectAccessible(page, 'ask');
 
@@ -113,11 +114,14 @@ test('from a new workspace to an answer with evidence and its conversation in th
   });
 
   await test.step('history', async () => {
-    await page.getByRole('link', { name: messages.ask.history }).click();
+    await page
+      .getByRole('navigation', { name: messages.projectArea.tabsLabel })
+      .getByRole('link', { name: messages.projectArea.tabs.history })
+      .click();
     await expect(
       page.getByRole('heading', { level: 1, name: messages.pages.history }),
     ).toBeVisible();
-    const conversation = page.getByRole('link', { name: QUESTION });
+    const conversation = page.getByRole('main').getByRole('link', { name: QUESTION });
     await expect(conversation).toBeVisible();
     await expectAccessible(page, 'history');
 

@@ -1,7 +1,7 @@
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useParams, useSearchParams } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { MessageSquareText, MessagesSquare } from 'lucide-react';
-import { ApiError } from '../../api/errors';
+import { usePageTitle } from '../../app/title';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { Loading } from '../../components/Loading';
 import { Pagination, pageFromSearch } from '../../components/Pagination';
@@ -17,40 +17,30 @@ import {
   listConversations,
   type ConversationSummary,
 } from '../ask/api';
-import { getProject, importKeys } from '../import/api';
+import { useProject } from '../project/ProjectLayout';
 
 export function HistoryPage() {
   const text = messages.history;
-  const { projectId = '' } = useParams();
+  const project = useProject();
+  const projectId = project.id;
   const [searchParams, setSearchParams] = useSearchParams();
   const page = pageFromSearch(searchParams);
-  const project = useQuery({
-    queryKey: importKeys.project(projectId),
-    queryFn: ({ signal }) => getProject(projectId, signal),
-  });
+  usePageTitle([messages.pages.history, project.name]);
   const conversations = useQuery({
     queryKey: askKeys.conversationsPage(projectId, page),
     queryFn: ({ signal }) => listConversations(projectId, page, signal),
     placeholderData: keepPreviousData,
   });
 
-  const failed = [project, conversations].find((query) => query.isError);
-  if (failed) {
-    const notFound = failed.error instanceof ApiError && failed.error.code === 'PROJECT_NOT_FOUND';
+  if (conversations.isError) {
     return (
       <section className="stack">
-        <Link to="/" className="back-link">
-          {messages.projects.allWorkspaces}
-        </Link>
         <h1>{messages.pages.history}</h1>
-        <ProblemAlert
-          error={failed.error}
-          onRetry={notFound ? undefined : () => void failed.refetch()}
-        />
+        <ProblemAlert error={conversations.error} onRetry={() => void conversations.refetch()} />
       </section>
     );
   }
-  if (!project.isSuccess || !conversations.isSuccess) {
+  if (conversations.isPending) {
     return (
       <section>
         <h1>{messages.pages.history}</h1>
@@ -59,7 +49,7 @@ export function HistoryPage() {
     );
   }
 
-  const canAsk = project.data.activeSnapshot !== null;
+  const canAsk = project.activeSnapshot !== null;
   const askLink = (
     <ButtonLink to={`/projects/${projectId}/ask`} variant="primary" icon={MessageSquareText}>
       {text.ask}
@@ -68,13 +58,7 @@ export function HistoryPage() {
   return (
     <section className="stack">
       <PageHeader
-        back={
-          <Link to={`/projects/${projectId}`} className="back-link">
-            {messages.ask.backToProject}
-          </Link>
-        }
         title={messages.pages.history}
-        description={project.data.name}
         actions={canAsk && conversations.data.totalItems > 0 && askLink}
       />
       {conversations.data.totalItems === 0 ? (

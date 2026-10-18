@@ -1,6 +1,7 @@
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams, useSearchParams } from 'react-router';
 import { ApiError } from '../../api/errors';
+import { usePageTitle } from '../../app/title';
 import { FolderOpen, Plus } from 'lucide-react';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { Loading } from '../../components/Loading';
@@ -33,16 +34,11 @@ export function WorkspacePage() {
       query.state.data?.items.some((project) => project.indexing) ? ACTIVE_JOB_POLL_MS : false,
   });
 
-  const back = (
-    <Link to="/" className="back-link">
-      {messages.projects.allWorkspaces}
-    </Link>
-  );
+  usePageTitle([workspace.data?.name ?? messages.pages.workspace]);
 
   if (workspace.isPending) {
     return (
       <section>
-        {back}
         <h1>{messages.pages.workspace}</h1>
         <Loading />
       </section>
@@ -53,8 +49,7 @@ export function WorkspacePage() {
     const notFound =
       workspace.error instanceof ApiError && workspace.error.code === 'WORKSPACE_NOT_FOUND';
     return (
-      <section>
-        {back}
+      <section className="stack">
         <h1>{messages.pages.workspace}</h1>
         <ProblemAlert
           error={workspace.error}
@@ -69,7 +64,6 @@ export function WorkspacePage() {
   return (
     <section className="stack">
       <PageHeader
-        back={back}
         title={workspace.data.name}
         actions={
           <ButtonLink to={newProject} variant="primary" icon={Plus}>

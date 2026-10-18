@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { MessagesSquare, SquarePen } from 'lucide-react';
+import { SquarePen } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router';
 import { ApiError } from '../../api/errors';
+import { usePageTitle } from '../../app/title';
 import { Loading } from '../../components/Loading';
 import { ProblemAlert } from '../../components/ProblemAlert';
 import { ButtonLink } from '../../components/ui/Button';
@@ -11,9 +12,9 @@ import { Card } from '../../components/ui/Card';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/Tabs';
 import { useMediaQuery } from '../../components/useMediaQuery';
-import { formatDateTime } from '../../format';
 import { messages } from '../../messages';
-import { getProject, getProviders, importKeys, type Providers } from '../import/api';
+import { getProviders, importKeys, type Providers } from '../import/api';
+import { useProject } from '../project/ProjectLayout';
 import type { Project } from '../workspaces/api';
 import {
   askKeys,
@@ -40,11 +41,9 @@ const VECTOR_BLOCKERS = new Set<Project['outdatedReasons'][number]>([
 type Pane = 'conversation' | 'evidence' | 'code';
 
 export function ChatPage() {
-  const { projectId = '', conversationId } = useParams();
-  const project = useQuery({
-    queryKey: importKeys.project(projectId),
-    queryFn: ({ signal }) => getProject(projectId, signal),
-  });
+  const { conversationId } = useParams();
+  const project = useProject();
+  const projectId = project.id;
   const providers = useQuery({
     queryKey: importKeys.providers,
     queryFn: ({ signal }) => getProviders(signal),
@@ -61,17 +60,14 @@ export function ChatPage() {
   const title = conversationId
     ? (conversation.data?.conversation.title ?? messages.pages.conversation)
     : messages.pages.ask;
+  usePageTitle([title, project.name]);
 
-  const failed = [project, providers, conversation].find((query) => query.isError);
+  const failed = [providers, conversation].find((query) => query.isError);
   if (failed) {
     const notFound =
-      failed.error instanceof ApiError &&
-      (failed.error.code === 'PROJECT_NOT_FOUND' || failed.error.code === 'CONVERSATION_NOT_FOUND');
+      failed.error instanceof ApiError && failed.error.code === 'CONVERSATION_NOT_FOUND';
     return (
       <section className="stack">
-        <Link to={project.isSuccess ? `/projects/${projectId}` : '/'} className="back-link">
-          {project.isSuccess ? messages.ask.backToProject : messages.projects.allWorkspaces}
-        </Link>
         <h1>{title}</h1>
         <ProblemAlert
           error={failed.error}
@@ -80,7 +76,7 @@ export function ChatPage() {
       </section>
     );
   }
-  if (!project.isSuccess || !providers.isSuccess || (conversationId && conversation.isPending)) {
+  if (!providers.isSuccess || (conversationId && conversation.isPending)) {
     return (
       <section>
         <h1>{title}</h1>
@@ -101,7 +97,7 @@ export function ChatPage() {
     <Chat
       key={conversationId ?? 'new'}
       title={title}
-      project={project.data}
+      project={project}
       providers={providers.data}
       conversation={loaded}
     />
@@ -282,30 +278,14 @@ function ChatHeader({ title, project, inConversation }: ChatHeaderProps) {
   return (
     <div className="stack chat__header">
       <PageHeader
-        back={
-          <Link to={`/projects/${project.id}`} className="back-link">
-            {text.backToProject}
-          </Link>
-        }
         title={title}
-        description={
-          <span>
-            {project.name}
-            {activeSnapshot?.completedAt &&
-              ` · ${text.snapshot(formatDateTime(activeSnapshot.completedAt))}`}
-          </span>
-        }
         actions={
-          <>
-            <ButtonLink to={`/projects/${project.id}/history`} icon={MessagesSquare}>
-              {text.history}
+          inConversation &&
+          activeSnapshot && (
+            <ButtonLink to={`/projects/${project.id}/ask`} icon={SquarePen}>
+              {text.newConversation}
             </ButtonLink>
-            {inConversation && activeSnapshot && (
-              <ButtonLink to={`/projects/${project.id}/ask`} icon={SquarePen}>
-                {text.newConversation}
-              </ButtonLink>
-            )}
-          </>
+          )
         }
       />
       {project.indexing && (

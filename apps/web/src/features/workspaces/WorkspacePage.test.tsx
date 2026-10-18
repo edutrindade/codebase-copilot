@@ -90,7 +90,8 @@ describe('WorkspacePage', () => {
     expect(
       within(alert).queryByRole('button', { name: messages.errors.retry }),
     ).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: messages.projects.allWorkspaces })).toHaveAttribute(
+    const trail = screen.getByRole('navigation', { name: messages.breadcrumbs.label });
+    expect(within(trail).getByRole('link', { name: messages.pages.workspaces })).toHaveAttribute(
       'href',
       '/',
     );
