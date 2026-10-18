@@ -194,6 +194,24 @@
     cursor: pointer;
   }
 
+  /* Side by side, the radios stay 24 px apart (WCAG 2.5.8). */
+  .choice {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-6);
+  }
+
+  .choice legend {
+    width: 100%;
+    margin-bottom: var(--space-2);
+  }
+
+  .choice__option input {
+    width: 1rem;
+    height: 1rem;
+    margin: 0.125rem 0 0;
+  }
+
   .skip-link {
     position: absolute;
     z-index: 100;

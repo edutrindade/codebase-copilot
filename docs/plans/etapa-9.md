@@ -509,6 +509,29 @@ P8, com os limites medidos na F0. Registro: D-093 (revê a D-075 e a D-086).
 ### F10 — Responsividade, acessibilidade e regressão visual
 Passadas nas três larguras e nos dois temas, os specs novos da P13, as imagens de referência, o orçamento de desempenho medido contra a linha de base e a passada manual (roteiro abaixo).
 
+**Como foi entregue (18/10/2026)**
+- **`e2e/visual.spec.ts`:** doze telas (início, workspace, novo projeto, pré-análise, visão geral, perguntar, conversa com a evidência aberta, arquivos com um arquivo aberto, histórico, configurações, sistema e página não encontrada) em **390, 1024 e 1440 px × claro e escuro**. Em cada uma: axe com WCAG 2.2 AA, nenhuma rolagem horizontal e, em 390 e 1440 px, `toHaveScreenshot` contra **48 imagens de referência** (`e2e/visual.spec.ts-snapshots/`, geradas no macOS com o Chromium do Playwright), com datas, durações, custos e a grade de workspaces do banco mascarados e o movimento reduzido. Duas execuções seguidas sem diferença.
+- **`e2e/theme.spec.ts`:** troca pelo menu, persistência ao recarregar e o tema certo já no primeiro quadro (tema salvo e tema do sistema), sem piscar.
+- **`e2e/navigation.spec.ts`:** barra lateral com o projeto atual, trilha com links para o workspace e o projeto, barra recolhida lembrada ao recarregar, e as dez rotas recarregadas no lugar com o `<h1>` e o título.
+- **Correções que a passada achou:** a pré-análise e `/system` rolavam na horizontal em 390 px (grade de uma coluna sem `minmax(0, 1fr)`, empurrada por tabelas e caminhos longos); os rádios de tema em `/system` eram alvos menores que 24 px sem o espaçamento da exceção (WCAG 2.5.8), e agora ficam lado a lado com 24 px entre eles.
+- **Orçamento (P13) contra a linha de base da F0:**
+
+| Medida | F0 | F10 | Limite |
+|---|---|---|---|
+| JavaScript da casca (com gzip) | 115,65 kB | 171,2 kB | 175 kB |
+| Maior chunk (sem compressão) | 363,45 kB | 293,7 kB | 500 kB |
+| Fontes | — | 2 `woff2` (48.256 + 40.404 bytes), `preload` da Inter | 2 arquivos |
+| Arquivo de 1 MB: texto visível | ~110 ms | 103–113 ms | sem piorar |
+| Arquivo de 1 MB: com realce | — | ~285 ms, sem tarefa longa | fora da thread principal |
+| CSP | — | igual à do `main` | sem mudança |
+
+- **Verificação:** `npm run check` com 223 testes; `npm run e2e` com 13 testes e `npm run e2e:jar` com 15 passam; `./mvnw verify` passou na F8, e o backend não mudou depois.
+
+**Desvios:**
+- **Passada manual com VoiceOver não feita nesta sessão:** os passos de teclado do roteiro (1 a 7) estão cobertos pelos E2E (pular para o conteúdo, setas no navegador de pastas e na árvore, paleta, ⌘Enter, `[`/`]`, divisor, voltar do navegador, exclusões nos diálogos), e o 8 pelas passadas nos dois temas com movimento reduzido. Ouvir os anúncios com o VoiceOver e testar "Aumentar contraste" de verdade ficam com você.
+- **`aria-hidden-focus` com um menu do Radix aberto (achado da F4) mantido:** o menu é modal (prende o foco e trava a rolagem, conferido no `navigation.spec.ts`), então os elementos que o axe aponta não são alcançáveis pelo teclado enquanto ele está aberto. Tirar o modo modal resolveria o aviso trocando-o por um menu sem trava de foco; o axe não roda com menus abertos.
+- **Imagens de referência só para macOS:** em outro sistema, a renderização das fontes muda e o `visual.spec.ts` precisa gerar as próprias (`--update-snapshots`), como previsto na P13.
+
 ### F11 — Fechamento
 - `03-UX-ONBOARDING.md`: §2 (navegação), §4 (layout da pergunta) e §8 (identidade visual decidida).
 - `02-ARCHITECTURE.md` §3 e §6 (dependências e estrutura de `apps/web`), `06` (o endpoint da P5.7), `09` (Etapa 9 e renumeração da P0), `10-DECISIONS.md` (D-087 a D-093), `README` (screenshots).

@@ -2,14 +2,15 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { messages } from '../src/messages';
 
-// Palette and shortcuts (F3 of Etapa 9); F10 adds the sidebar, the trail and reloads.
+// Palette and shortcuts (F3 of Etapa 9); sidebar, trail and reloads (F10).
 const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 
 const created: { workspaceId?: string; projectId?: string } = {};
+const WORKSPACE = `E2E navegação ${Date.now()}`;
 
 test.beforeAll(async ({ request }) => {
   const workspace = await request.post('/api/v1/workspaces', {
-    data: { name: `E2E navegação ${Date.now()}` },
+    data: { name: WORKSPACE },
   });
   created.workspaceId = (await workspace.json()).id;
   const roots = await (await request.get('/api/v1/local-roots')).json();
@@ -127,5 +128,72 @@ test('command palette and keyboard shortcuts, with the page scroll locked under 
   expect(
     await page.evaluate(() => (window as unknown as { cspViolations: string[] }).cspViolations),
   ).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
+test('the sidebar and the trail follow the route, and every route survives a reload', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  const nav = page.getByRole('navigation', { name: messages.shell.mainNav });
+  const trail = page.getByRole('navigation', { name: messages.breadcrumbs.label });
+  const project = `/projects/${created.projectId}`;
+
+  await test.step('sidebar and trail inside a project', async () => {
+    await page.goto(`${project}/history`);
+    await expect(
+      page.getByRole('heading', { level: 1, name: messages.pages.history }),
+    ).toBeVisible();
+    await expect(nav.getByRole('link', { name: /^sample-shop/ })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+    await expect(trail.getByRole('link', { name: WORKSPACE })).toHaveAttribute(
+      'href',
+      `/workspaces/${created.workspaceId}`,
+    );
+    await expect(trail.getByRole('link', { name: 'sample-shop' })).toHaveAttribute('href', project);
+    await expect(trail).toContainText(messages.pages.history);
+
+    await trail.getByRole('link', { name: WORKSPACE }).click();
+    await expect(page).toHaveURL(new RegExp(`/workspaces/${created.workspaceId}$`));
+    await nav.getByRole('link', { name: /^sample-shop/ }).click();
+    await expect(page).toHaveURL(new RegExp(`${project}$`));
+    await expect(nav.getByRole('link', { name: /^sample-shop/ })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+  });
+
+  await test.step('the collapsed sidebar is remembered', async () => {
+    await nav.getByRole('button', { name: messages.shell.collapse }).click();
+    await page.reload();
+    await expect(nav.getByRole('button', { name: messages.shell.expand })).toBeVisible();
+    await nav.getByRole('button', { name: messages.shell.expand }).click();
+    await expect(nav.getByRole('button', { name: messages.shell.collapse })).toBeVisible();
+  });
+
+  await test.step('each route reloads in place with its heading and title', async () => {
+    const routes: [string, RegExp][] = [
+      ['/', /^Workspaces · Codebase Copilot$/],
+      [`/workspaces/${created.workspaceId}`, new RegExp(`^${WORKSPACE}`)],
+      [`/workspaces/${created.workspaceId}/new`, new RegExp(`^${messages.pages.newProject}`)],
+      [project, new RegExp(`^${messages.pages.overview} · sample-shop`)],
+      [`${project}/ask`, new RegExp(`^${messages.pages.ask} · sample-shop`)],
+      [`${project}/files`, new RegExp(`^${messages.pages.files} · sample-shop`)],
+      [`${project}/history`, new RegExp(`^${messages.pages.history} · sample-shop`)],
+      [`${project}/settings`, new RegExp(`^${messages.pages.settings} · sample-shop`)],
+      ['/system', new RegExp(`^${messages.pages.system}`)],
+      ['/nao-existe', new RegExp(`^${messages.notFound.title}`)],
+    ];
+    for (const [url, title] of routes) {
+      await page.goto(url);
+      await page.reload();
+      await expect(page.getByRole('heading', { level: 1 }), url).toBeAttached();
+      await expect(page, url).toHaveTitle(title);
+    }
+  });
+
   expect(errors).toEqual([]);
 });

@@ -421,8 +421,11 @@
     font-weight: var(--weight-medium);
   }
 
+  /* One column below 64rem; minmax(0, …) lets wide content (tables, paths) shrink instead of
+     pushing the page sideways. */
   .review {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--space-6);
   }
 
