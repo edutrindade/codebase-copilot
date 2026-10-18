@@ -39,6 +39,68 @@ export const messages = {
       remote: 'Remoto',
       label: (mode: string) => `Provedores: ${mode}. Ver para onde vão os dados`,
     },
+    palette: 'Buscar',
+    paletteLabel: 'Buscar na paleta de comandos',
+  },
+  palette: {
+    title: 'Paleta de comandos',
+    label: 'Buscar telas, projetos, conversas e ações',
+    placeholder: 'Buscar telas, projetos e ações…',
+    empty: 'Nada encontrado.',
+    loading: 'Carregando…',
+    loadFailed: 'Parte da lista não pôde ser carregada.',
+    groups: {
+      project: (name: string) => `Neste projeto · ${name}`,
+      conversations: 'Conversas recentes',
+      projects: (workspace: string) => `Projetos · ${workspace}`,
+      workspaces: 'Workspaces',
+      actions: 'Ações',
+    },
+    reindex: 'Indexar de novo',
+    newProject: 'Novo projeto neste workspace',
+    allWorkspaces: 'Todos os workspaces',
+    system: 'Sistema e privacidade',
+    shortcuts: 'Mostrar os atalhos de teclado',
+    themes: {
+      light: 'Usar o tema claro',
+      dark: 'Usar o tema escuro',
+      system: 'Seguir o tema do sistema',
+    },
+    current: 'atual',
+    hints: {
+      navigate: 'navegar',
+      open: 'abrir',
+      close: 'fechar',
+    },
+    reindexDialog: {
+      title: 'Indexar o projeto de novo?',
+      detail: (name: string) =>
+        `O projeto ${name} será lido e indexado de novo. O snapshot atual continua em uso nas perguntas até a nova indexação terminar.`,
+      confirm: 'Indexar de novo',
+    },
+  },
+  shortcuts: {
+    title: 'Atalhos de teclado',
+    then: 'depois',
+    or: 'ou',
+    actions: {
+      openPalette: 'Abrir a paleta de comandos',
+      showShortcuts: 'Mostrar os atalhos de teclado',
+      focusQuestion: 'Ir para o campo da pergunta',
+      send: 'Enviar a pergunta',
+      evidence: 'Abrir a evidência anterior ou a próxima',
+      close: 'Fechar a paleta, menus e diálogos',
+      goOverview: 'Ir para a visão geral do projeto',
+      goAsk: 'Ir para Perguntar',
+      goHistory: 'Ir para o histórico do projeto',
+    },
+    singleKey: 'Atalhos de uma tecla',
+    singleKeyHint:
+      'Teclas sem Ctrl ou ⌘, como /, ?, [, ] e g. Desligue se elas atrapalharem o leitor de tela ou a digitação por voz; os atalhos com Ctrl ou ⌘ continuam.',
+    singleKeyOff: 'Desligado',
+    manage: 'Ligar ou desligar os atalhos de uma tecla',
+    detail:
+      'Nenhum atalho de uma tecla age dentro de campos de texto. Os atalhos do projeto valem dentro de um projeto, e os da pergunta, na tela Perguntar.',
   },
   theme: {
     label: (current: string) => `Tema: ${current}`,
@@ -604,6 +666,8 @@ export const messages = {
       empty: 'Escolha uma resposta para ver as evidências enviadas ao modelo.',
       none: 'Nenhuma evidência foi enviada ao modelo nesta resposta.',
       forAnswer: (question: string) => `Da pergunta “${question}”`,
+      opened: (label: string, path: string, lines: string) =>
+        `Evidência ${label} aberta: ${path}, ${lines}.`,
       status: {
         CITED: 'Citada',
         INVALID_RANGE: 'Citada com linhas fora do trecho; a citação foi removida da resposta',

@@ -614,4 +614,51 @@ describe('ChatPage', () => {
     ).toBeInTheDocument();
     expect(await axeViolations()).toEqual([]);
   });
+
+  test('keyboard: / goes to the question and [ ] walk the evidence in the list order', async () => {
+    const user = userEvent.setup();
+    const fees = {
+      id: '0192f5c4-0000-7000-8000-000000000702',
+      citationLabel: 'E2',
+      path: 'src/billing/Fees.java',
+      citedStartLine: 3,
+      citedEndLine: 5,
+      rank: 2,
+    };
+    const answers = [
+      answer({ answer: 'Total [E1] menos a taxa [E2].', evidence: [evidence(), evidence(fees)] }),
+    ];
+    server.use(
+      ...handlers({ answers }),
+      http.get(`${projectUrl}/evidence/:evidenceId`, ({ params }) =>
+        HttpResponse.json(evidenceDetail(params.evidenceId === fees.id ? fees : {})),
+      ),
+      http.get(`/api/v1/snapshots/${answeredSnapshot}/files/content`, () =>
+        HttpResponse.json(fileContent()),
+      ),
+    );
+    renderRoute(`/projects/${base.id}/conversations/${conversationId}`);
+    await screen.findByRole('heading', { level: 1, name: answers[0]?.question });
+    const panel = screen.getByRole('region', { name: text.evidence.title });
+    const selected = () =>
+      panel.querySelector('[aria-current="true"] .viewer__label')?.textContent ?? null;
+
+    await user.keyboard(']');
+    await waitFor(() => expect(selected()).toBe('E1'));
+    await user.keyboard(']');
+    await waitFor(() => expect(selected()).toBe('E2'));
+    expect(
+      screen.getByText(text.evidence.opened('E2', 'src/billing/Fees.java', 'linhas 3–5')),
+    ).toBeInTheDocument();
+    await user.keyboard(']');
+    expect(selected()).toBe('E2');
+    // [ opens a key descriptor in user-event; [[ types it.
+    await user.keyboard('[[');
+    await waitFor(() => expect(selected()).toBe('E1'));
+
+    await user.keyboard('/');
+    expect(questionBox()).toHaveFocus();
+    await user.keyboard('/');
+    expect(questionBox()).toHaveValue('/');
+  });
 });

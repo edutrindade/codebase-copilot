@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
 import { defineConfig, type Plugin, type ProxyOptions } from 'vite';
 import { configDefaults } from 'vitest/config';
@@ -57,6 +58,14 @@ function preloadUiFont(): Plugin {
 
 export default defineConfig({
   plugins: [react(), cspMetaTag(), preloadUiFont()],
+  resolve: {
+    alias: {
+      // Its <style> element breaks the CSP; the replacement uses a constructed stylesheet.
+      'react-style-singleton': fileURLToPath(
+        new URL('./src/vendor/styleSingleton.ts', import.meta.url),
+      ),
+    },
+  },
   server: { port: 5173, strictPort: true, proxy },
   preview: { port: 4173, strictPort: true, proxy },
   test: {

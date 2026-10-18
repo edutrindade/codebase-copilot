@@ -3,6 +3,7 @@ import { Dialog as RadixDialog } from 'radix-ui';
 import type { ReactElement, ReactNode } from 'react';
 import { messages } from '../../messages';
 import { IconButton } from './IconButton';
+import { useReturnFocus } from './returnFocus';
 import './Dialog.css';
 
 interface DialogProps {
@@ -24,6 +25,7 @@ export function Dialog({
   children,
   footer,
 }: DialogProps) {
+  const returnFocus = useReturnFocus();
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
       {trigger && <RadixDialog.Trigger asChild>{trigger}</RadixDialog.Trigger>}
@@ -31,6 +33,7 @@ export function Dialog({
         <RadixDialog.Overlay className="dialog-overlay" />
         <RadixDialog.Content
           className="dialog"
+          {...(trigger ? {} : returnFocus)}
           // Without a description, Radix expects the attribute to be cleared explicitly.
           {...(description ? {} : { 'aria-describedby': undefined })}
         >

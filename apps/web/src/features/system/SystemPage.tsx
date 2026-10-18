@@ -1,9 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { useId } from 'react';
+import { setSingleKeyShortcuts, useSingleKeyShortcuts } from '../../app/shortcuts';
 import { setThemePreference, useThemePreference, type ThemePreference } from '../../app/theme';
 import { usePageTitle } from '../../app/title';
 import { Loading } from '../../components/Loading';
 import { ProblemAlert } from '../../components/ProblemAlert';
+import { ShortcutList } from '../../components/shortcuts/ShortcutList';
 import { Card } from '../../components/ui/Card';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { StatusBadge } from '../../components/ui/StatusBadge';
@@ -52,6 +54,12 @@ export function SystemPage() {
       <Card as="section" className="stack" aria-labelledby="appearance-title">
         <h2 id="appearance-title">{text.appearanceTitle}</h2>
         <ThemeChoice />
+      </Card>
+      <Card as="section" className="stack" aria-labelledby="shortcuts-title">
+        <h2 id="shortcuts-title">{messages.shortcuts.title}</h2>
+        <SingleKeyToggle />
+        <ShortcutList />
+        <p className="muted">{messages.shortcuts.detail}</p>
       </Card>
     </section>
   );
@@ -161,5 +169,27 @@ function ThemeChoice() {
         </label>
       ))}
     </fieldset>
+  );
+}
+
+function SingleKeyToggle() {
+  const hint = useId();
+  const enabled = useSingleKeyShortcuts();
+  const text = messages.shortcuts;
+  return (
+    <div>
+      <label className="checkbox">
+        <input
+          type="checkbox"
+          checked={enabled}
+          aria-describedby={hint}
+          onChange={(event) => setSingleKeyShortcuts(event.target.checked)}
+        />
+        {text.singleKey}
+      </label>
+      <p id={hint} className="field__hint muted">
+        {text.singleKeyHint}
+      </p>
+    </div>
   );
 }

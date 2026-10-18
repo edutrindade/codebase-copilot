@@ -7,12 +7,16 @@ import { Button } from './ui/Button';
 import './ui/Dialog.css';
 
 interface ConfirmDialogProps {
-  trigger: string;
-  triggerLabel: string;
+  // Without a trigger, the dialog is controlled through open and onOpenChange.
+  trigger?: string;
+  triggerLabel?: string;
   triggerIcon?: LucideIcon;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   title: string;
   description: ReactNode;
   confirmLabel: string;
+  confirmVariant?: 'danger' | 'primary';
   dismissLabel?: string;
   workingLabel?: string;
   onConfirm: () => Promise<unknown>;
@@ -22,14 +26,18 @@ export function ConfirmDialog({
   trigger,
   triggerLabel,
   triggerIcon = Trash,
+  open: controlledOpen,
+  onOpenChange,
   title,
   description,
   confirmLabel,
+  confirmVariant = 'danger',
   dismissLabel = messages.confirm.cancel,
   workingLabel = messages.confirm.working,
   onConfirm,
 }: ConfirmDialogProps) {
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = controlledOpen ?? uncontrolledOpen;
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<unknown>(null);
 
@@ -41,6 +49,11 @@ export function ConfirmDialog({
     if (next) {
       setError(null);
     }
+  }
+
+  function setOpen(next: boolean) {
+    setUncontrolledOpen(next);
+    onOpenChange?.(next);
   }
 
   async function confirm(event: MouseEvent) {
@@ -60,11 +73,13 @@ export function ConfirmDialog({
 
   return (
     <AlertDialog.Root open={open} onOpenChange={changeOpen}>
-      <AlertDialog.Trigger asChild>
-        <Button variant="danger-ghost" size="sm" icon={triggerIcon} aria-label={triggerLabel}>
-          {trigger}
-        </Button>
-      </AlertDialog.Trigger>
+      {trigger && (
+        <AlertDialog.Trigger asChild>
+          <Button variant="danger-ghost" size="sm" icon={triggerIcon} aria-label={triggerLabel}>
+            {trigger}
+          </Button>
+        </AlertDialog.Trigger>
+      )}
       <AlertDialog.Portal>
         <AlertDialog.Overlay className="dialog-overlay" />
         <AlertDialog.Content className="dialog">
@@ -78,7 +93,7 @@ export function ConfirmDialog({
               <Button disabled={pending}>{dismissLabel}</Button>
             </AlertDialog.Cancel>
             <AlertDialog.Action asChild>
-              <Button variant="danger" pending={pending} onClick={confirm}>
+              <Button variant={confirmVariant} pending={pending} onClick={confirm}>
                 {pending ? workingLabel : confirmLabel}
               </Button>
             </AlertDialog.Action>

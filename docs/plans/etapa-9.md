@@ -384,6 +384,22 @@ Barra lateral, barra superior, trilha, área do projeto com abas, rotas `/projec
 ### F3 — Paleta de comandos e atalhos
 P4, com a lista de atalhos em `/system`. Registro: D-090.
 
+**Como foi entregue (17/10/2026)**
+- **Paleta** (`components/shell/CommandPalette.tsx`, chunk próprio carregado no primeiro uso): abre com ⌘K/Ctrl+K ou pelo botão "Buscar" da barra superior. Lista as seções do projeto aberto, "Indexar de novo" (com confirmação que diz para onde vão os trechos), as conversas recentes do projeto, os projetos do workspace com o estado, os workspaces e as ações (novo projeto, todos os workspaces, sistema, atalhos e tema). O filtro do `cmdk` olha só o texto visível. Ao navegar, o foco vai para o `<h1>` da tela nova; ao fechar sem navegar, volta para onde estava.
+- **Atalhos** (`app/shortcuts.ts`): um único ouvinte na casca e um registro por ação, em que a tela registrada por último vence. `?` mostra a lista num diálogo; `g` seguido de `o`, `p` ou `h` vai para Visão geral, Perguntar ou Histórico; `/` foca o campo da pergunta; `[` e `]` abrem a evidência anterior e a próxima, na ordem da lista, com anúncio para leitores de tela. Teclas sem modificador não agem em campos de texto nem dentro de diálogos e menus, e podem ser desligadas em `/system`, que também lista todos os atalhos.
+- **Rolagem travada sob a CSP:** o achado da F2 foi resolvido trocando, por um alias no Vite, o `react-style-singleton` (que o Radix usa para travar a rolagem atrás de diálogos e menus) por uma versão própria que usa uma folha de estilo construída (CSSOM), que o `style-src 'self'` não bloqueia. A CSP não muda; o erro de console sumiu e a rolagem do fundo passou a travar.
+- **Verificação:** `npm run check` com 184 testes (eram 163); `npm run e2e` e `npm run e2e:jar` passam, com o `e2e/navigation.spec.ts` novo (paleta, atalhos, rolagem travada e nenhum erro de console ou violação de CSP; axe WCAG 2.2 AA na paleta nos dois temas e no diálogo de atalhos). Sem o substituto do `react-style-singleton`, esse spec falha. Casca: 165,7 kB com gzip (era 163,6; teto de 175 kB); a paleta tem 19,0 kB (7,0 kB com gzip) e o diálogo de atalhos, 1,4 kB, ambos fora dela.
+
+**Desvios:**
+- **"Abrir arquivo" e `g a` ficam para a F8**, junto com o endpoint `GET /snapshots/{id}/tree` e a aba Arquivos, que ainda não existem.
+- **Sem busca pela API:** a API não tem busca por nome, e a única mudança de backend da etapa é a da P5.7. A paleta lista a primeira página de workspaces, os projetos do workspace atual e as conversas do projeto aberto (as mesmas consultas da casca, do cache); o que está além disso continua nas telas, pela paginação.
+- **Só os atalhos de uma tecla são desligáveis**, não "todos": a WCAG 2.1.4 trata das teclas sem modificador, e ⌘K, ⌘Enter e Esc não disparam por acidente nem atrapalham leitores de tela.
+- **"Indexar de novo" pela paleta** mostra, na confirmação, o mesmo texto de privacidade do painel de indexação; confirmar vale como o "Entendi" daquele painel. O `ConfirmDialog` ganhou um modo controlado (sem gatilho) e a variante primária do botão.
+- **Foco ao fechar diálogos sem gatilho:** o Radix devolve o foco ao `Trigger`; sem ele (paleta, diálogo de atalhos e a gaveta da F2), o foco caía no `<body>`. O `useReturnFocus` devolve o foco ao elemento de origem, a menos que outro elemento já o tenha recebido (o `<h1>` depois de uma navegação). Corrige também a gaveta, que tinha o problema desde a F2.
+- **Dica de teclas fora do botão "Buscar":** o axe (`label-content-name-mismatch`, WCAG 2.5.3) conta o texto visível do `⌘ K` dentro do botão; a dica fica sobreposta, fora dele, sem receber cliques.
+- **Paleta montada sobre o diálogo do Radix**, com o `Command` do `cmdk` dentro, em vez do `Command.Dialog`: assim ela tem título para leitores de tela e o mesmo tratamento de foco dos outros diálogos.
+- **Testes instáveis sob carga:** numa execução do `npm run check` com a máquina muito carregada (load 22), dez testes antigos estouraram o tempo de 1 s das buscas do Testing Library; repetidos, todos passam. Não foi mudado nada por isso.
+
 ### F4 — Início e workspace
 P5.1 e P5.2.
 

@@ -3,6 +3,16 @@ import { cleanup } from '@testing-library/react';
 import { afterAll, afterEach, beforeAll } from 'vitest';
 import { server } from './server';
 
+// jsdom lacks both; cmdk (the command palette) calls them.
+if (typeof window !== 'undefined') {
+  window.ResizeObserver ??= class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+  Element.prototype.scrollIntoView ??= function scrollIntoView() {};
+}
+
 beforeAll(() => server.listen({ onUnhandledFrame: 'error' }));
 afterEach(() => {
   cleanup();

@@ -1410,6 +1410,20 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Consequências:** a casca passa a fazer até quatro consultas leves (workspace, projetos, conversas e provedores), compartilhando o cache com as telas. O JavaScript da casca foi de 150,27 kB para 163,6 kB com gzip (teto de 175 kB), agora em dois arquivos (o principal e um chunk comum com o Radix, pré-carregado), nenhum acima de 500 kB. Essa divisão fez o CSS dos componentes carregar antes do `index.css` e inverteu a ordem das camadas no build, o que motivou o `layers.css`.  
 **O que levaria à revisão:** workspaces com mais projetos do que cabem na barra (hoje mostra a primeira página e "Ver todos"), ou um tamanho de casca acima do teto.
 
+### D-090 — Paleta de comandos e atalhos de teclado (P4 da Etapa 9)
+**Status:** Aceita (17/10/2026; F3 da Etapa 9)  
+**Contexto:** chegar a um projeto, a uma conversa ou a uma seção exigia passar pela barra lateral ou pelas abas, e não havia atalho nenhum além do ⌘Enter da pergunta. O Radix também não travava a rolagem atrás de diálogos e menus, porque o `<style>` que ele injeta é bloqueado pela CSP (achado da F2).  
+**Opções consideradas:** `cmdk` ou um componente próprio com o padrão ARIA de combobox; para a rolagem, relaxar a CSP (`'unsafe-inline'` ou nonce fixo), desligar o modo modal do Radix, ou substituir o injetor de estilo.  
+**Decisão:**
+- **Paleta** com o `cmdk` 1.1.1 (D-087, critério dos 14 dias) dentro do diálogo do Radix, num chunk carregado no primeiro uso. Abre com ⌘K/Ctrl+K e pelo botão "Buscar" da barra superior. Itens: seções do projeto aberto, "Indexar de novo" (com confirmação e o texto de privacidade), conversas recentes do projeto, projetos do workspace, workspaces e ações (novo projeto, todos os workspaces, sistema, atalhos, tema). O filtro considera só o texto visível. Sem busca pela API (não existe; a etapa não muda o backend além da P5.7).
+- **Atalhos:** um ouvinte global na casca e um registro por ação (`useShortcut`), em que a tela registrada por último vence. ⌘K/Ctrl+K (paleta, inclusive em campos), `?` (lista), `g` + `o`/`p`/`h` (seções do projeto, em até 1,5 s), `/` (campo da pergunta), `[`/`]` (evidência anterior e próxima, na ordem da lista, com anúncio), ⌘Enter (enviar) e Esc (fechar, pelo Radix). As teclas sem modificador não agem em campos de texto, diálogos e menus, e podem ser desligadas em `/system` (`localStorage`, chave `single-key-shortcuts`), onde fica também a lista. `g a` (Arquivos) e "abrir arquivo" entram com a F8.
+- **Rolagem travada sob a CSP:** um alias no Vite troca o `react-style-singleton` (usado pelo `react-remove-scroll`, que o Radix usa) por `src/vendor/styleSingleton.ts`, com a mesma API, que aplica o estilo como folha construída (`new CSSStyleSheet()` + `document.adoptedStyleSheets`). Manipular o CSSOM por script não é bloqueado pelo `style-src`, assim como os estilos que o floating-ui já aplica.
+- **Foco:** diálogos sem gatilho (paleta, atalhos, gaveta) devolvem o foco ao elemento de origem ao fechar (`useReturnFocus`), salvo quando outro elemento já o recebeu, como o `<h1>` depois de uma navegação.
+
+**Motivo:** a paleta e os atalhos dão um caminho de um passo para qualquer lugar já carregado, sem pesar na casca; o substituto do injetor resolve a rolagem sem relaxar a CSP.  
+**Consequências:** a casca foi de 163,6 kB para 165,7 kB com gzip (teto de 175 kB); a paleta tem 7,0 kB com gzip, à parte. O alias depende da API interna do `react-style-singleton` (três funções); uma atualização do Radix que a mude quebra a trava de rolagem, e o `e2e/navigation.spec.ts` confere que ela continua funcionando sem erro de CSP. O `cmdk` está sem release desde março de 2025 (F0); se quebrar com o React, o componente próprio com o mesmo padrão ARIA é a saída.  
+**O que levaria à revisão:** um endpoint de busca (para achar projetos e conversas fora da primeira página), o fim do suporte a folhas construídas num navegador suportado, ou pedidos de atalhos configuráveis.
+
 ---
 
 ## Decisões em aberto

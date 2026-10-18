@@ -1,6 +1,7 @@
 import { useId, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { SendHorizontal, Sparkles } from 'lucide-react';
 import { Link } from 'react-router';
+import { useShortcut } from '../../app/shortcuts';
 import { Button } from '../../components/ui/Button';
 import { Callout } from '../../components/ui/Callout';
 import { messages } from '../../messages';
@@ -45,6 +46,7 @@ export function AskForm({
   const remote = providers.generation.remote;
   const mode: RetrievalMode = vectorAvailable ? (chosenMode ?? 'HYBRID') : 'LEXICAL';
   const blocked = pending || (remote && !remembered && !acknowledged);
+  useShortcut('focusQuestion', () => document.getElementById(ids.question)?.focus());
 
   async function submit() {
     const question = draft.trim();

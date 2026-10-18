@@ -3,6 +3,7 @@ import { SquarePen } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router';
 import { ApiError } from '../../api/errors';
+import { useShortcut } from '../../app/shortcuts';
 import { usePageTitle } from '../../app/title';
 import { Loading } from '../../components/Loading';
 import { ProblemAlert } from '../../components/ProblemAlert';
@@ -29,6 +30,7 @@ import { AnswerTurn, Question } from './AnswerTurn';
 import { AskForm } from './AskForm';
 import { CodeViewer } from './CodeViewer';
 import { EvidencePanel } from './EvidencePanel';
+import { highlightedRange, sortEvidence } from './evidence';
 
 const WIDE_LAYOUT = '(min-width: 64rem)';
 // An answer is PENDING only while another request generates it, or until the server marks it interrupted.
@@ -121,6 +123,7 @@ function Chat({ title, project, providers, conversation }: ChatProps) {
   const [selectedAnswerId, setSelectedAnswerId] = useState<string | null>(null);
   const [selectedEvidence, setSelectedEvidence] = useState<Evidence | null>(null);
   const [pane, setPane] = useState<Pane>('conversation');
+  const [announcement, setAnnouncement] = useState('');
   const selectedAnswer =
     answers.find((answer) => answer.answerId === selectedAnswerId) ?? answers.at(-1) ?? null;
 
@@ -153,6 +156,36 @@ function Chat({ title, project, providers, conversation }: ChatProps) {
     setSelectedEvidence(evidence);
     setPane('code');
   }
+
+  // Same order as the evidence list; stops at both ends.
+  function stepEvidence(step: 1 | -1) {
+    const ordered = selectedAnswer ? sortEvidence(selectedAnswer.evidence) : [];
+    if (!selectedAnswer || ordered.length === 0) {
+      return;
+    }
+    const index = ordered.findIndex((evidence) => evidence.id === selectedEvidence?.id);
+    const next =
+      index === -1
+        ? step === 1
+          ? 0
+          : ordered.length - 1
+        : Math.min(ordered.length - 1, Math.max(0, index + step));
+    const evidence = ordered[next];
+    if (index === next || !evidence) {
+      return;
+    }
+    openEvidence(selectedAnswer, evidence);
+    const range = highlightedRange(evidence);
+    setAnnouncement(
+      text.evidence.opened(
+        evidence.citationLabel,
+        evidence.path,
+        messages.ask.lines(range.start, range.end),
+      ),
+    );
+  }
+  useShortcut('previousEvidence', () => stepEvidence(-1));
+  useShortcut('nextEvidence', () => stepEvidence(1));
 
   const activeSnapshot = project.activeSnapshot;
   const generationAvailable = providers.generation.provider !== 'none';
@@ -242,6 +275,9 @@ function Chat({ title, project, providers, conversation }: ChatProps) {
   return (
     <section className="stack chat">
       <ChatHeader title={title} project={project} inConversation={conversation !== null} />
+      <div className="visually-hidden" aria-live="polite" aria-atomic="true">
+        {announcement}
+      </div>
       {wide ? (
         <div className="chat__columns">
           {conversationPane}

@@ -3,6 +3,7 @@ import { Dialog as RadixDialog } from 'radix-ui';
 import type { ReactNode } from 'react';
 import { messages } from '../../messages';
 import { IconButton } from '../ui/IconButton';
+import { useReturnFocus } from '../ui/returnFocus';
 
 interface NavDrawerProps {
   open: boolean;
@@ -11,11 +12,12 @@ interface NavDrawerProps {
 }
 
 export function NavDrawer({ open, onOpenChange, children }: NavDrawerProps) {
+  const returnFocus = useReturnFocus();
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
       <RadixDialog.Portal>
         <RadixDialog.Overlay className="drawer-overlay" />
-        <RadixDialog.Content className="drawer" aria-describedby={undefined}>
+        <RadixDialog.Content className="drawer" aria-describedby={undefined} {...returnFocus}>
           <RadixDialog.Title className="visually-hidden">
             {messages.shell.navTitle}
           </RadixDialog.Title>

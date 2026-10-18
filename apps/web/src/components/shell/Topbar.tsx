@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import { Cloud, HardDrive, PanelLeft } from 'lucide-react';
+import { Cloud, HardDrive, PanelLeft, Search } from 'lucide-react';
 import { Link } from 'react-router';
 import type { RouteContext, RouteSection } from '../../app/routeContext';
+import { isApplePlatform } from '../../app/shortcuts';
 import { askKeys, getConversation } from '../../features/ask/api';
 import { getProject, getProviders, importKeys } from '../../features/import/api';
 import { getWorkspace, workspaceKeys } from '../../features/workspaces/api';
@@ -10,14 +11,16 @@ import { ThemeMenu } from '../ThemeMenu';
 import { Breadcrumbs, type Crumb } from '../ui/Breadcrumbs';
 import { cx } from '../ui/cx';
 import { IconButton } from '../ui/IconButton';
+import { Kbd } from '../ui/Kbd';
 
 interface TopbarProps {
   context: RouteContext;
   workspaceId: string | null;
   onOpenNav?: () => void;
+  onOpenPalette: () => void;
 }
 
-export function Topbar({ context, workspaceId, onOpenNav }: TopbarProps) {
+export function Topbar({ context, workspaceId, onOpenNav, onOpenPalette }: TopbarProps) {
   const crumbs = useCrumbs(context, workspaceId);
   return (
     <header className="topbar">
@@ -31,10 +34,34 @@ export function Topbar({ context, workspaceId, onOpenNav }: TopbarProps) {
       )}
       <Breadcrumbs items={crumbs} />
       <div className="topbar__actions">
+        <PaletteButton onClick={onOpenPalette} />
         <ProviderIndicator />
         <ThemeMenu />
       </div>
     </header>
+  );
+}
+
+// The key hint sits outside the button: its name must contain all of its visible text (WCAG 2.5.3).
+function PaletteButton({ onClick }: { onClick: () => void }) {
+  const text = messages.shell;
+  return (
+    <div className="palette-button">
+      <button
+        type="button"
+        className="palette-button__trigger"
+        aria-label={text.paletteLabel}
+        aria-keyshortcuts="Meta+K Control+K"
+        onClick={onClick}
+      >
+        <Search aria-hidden="true" className="palette-button__icon" />
+        <span className="palette-button__text">{text.palette}</span>
+      </button>
+      <span className="palette-button__keys" aria-hidden="true">
+        <Kbd>{isApplePlatform() ? '⌘' : 'Ctrl'}</Kbd>
+        <Kbd>K</Kbd>
+      </span>
+    </div>
   );
 }
 
