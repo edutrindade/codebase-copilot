@@ -182,6 +182,9 @@ describe('ProjectPage', () => {
         snapshotCalls++;
         return HttpResponse.json(page(snapshotCalls > 1 ? [snapshotDetail()] : []));
       }),
+      http.get(`/api/v1/workspaces/${base.workspaceId}/projects`, () =>
+        HttpResponse.json(page([current])),
+      ),
       ...handlers(() => current, { providerNone: true }),
     );
     renderRoute(`/projects/${base.id}`);
@@ -204,9 +207,18 @@ describe('ProjectPage', () => {
       screen.queryByRole('button', { name: messages.project.indexTitle }),
     ).not.toBeInTheDocument();
     expect(await screen.findByText(messages.project.snapshots.empty)).toBeInTheDocument();
+    expect(document.title).toMatch(/^\(40%\) /);
     expect(await axeViolations()).toEqual([]);
 
-    current = project({ activeSnapshot: readySnapshot() });
+    current = project({
+      activeSnapshot: readySnapshot(),
+      lastJob: {
+        id: '0192f5c4-0000-7000-8000-000000000301',
+        status: 'COMPLETED',
+        errorCode: null,
+        finishedAt: '2026-10-16T12:10:00Z',
+      },
+    });
 
     expect(
       await screen.findByRole(
@@ -219,6 +231,8 @@ describe('ProjectPage', () => {
       screen.queryByRole('region', { name: messages.project.progress.title }),
     ).not.toBeInTheDocument();
     await waitFor(() => expect(snapshotCalls).toBeGreaterThan(1));
+    expect(document.title).not.toMatch(/^\(/);
+    expect((await screen.findAllByText(messages.toast.indexed)).length).toBeGreaterThan(0);
   });
 
   test('explains the last failed job with its message and the action for its code', async () => {
@@ -379,5 +393,30 @@ describe('ProjectPage', () => {
     expect(
       within(alert).queryByRole('button', { name: messages.errors.retry }),
     ).not.toBeInTheDocument();
+  });
+
+  test('a ready project starts with suggested questions that fill the question without sending', async () => {
+    let asked = false;
+    server.use(
+      http.post(`${projectUrl}/questions`, () => {
+        asked = true;
+        return HttpResponse.json({});
+      }),
+      ...handlers(() => project({ activeSnapshot: readySnapshot() })),
+    );
+    renderRoute(`/projects/${base.id}`);
+
+    const start = await screen.findByRole('region', { name: messages.project.startHere.title });
+    expect(
+      await screen.findByRole('button', { name: messages.project.reindexTitle }),
+    ).toBeEnabled();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(await axeViolations()).toEqual([]);
+
+    const [suggestion] = messages.ask.suggestions;
+    await userEvent.click(within(start).getByRole('link', { name: suggestion }));
+
+    expect(await screen.findByLabelText(messages.ask.form.label)).toHaveValue(suggestion);
+    expect(asked).toBe(false);
   });
 });

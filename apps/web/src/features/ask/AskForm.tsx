@@ -1,6 +1,7 @@
 import { useId, useState, type FormEvent, type KeyboardEvent } from 'react';
+import { draftFromState } from './draft';
 import { SendHorizontal, Sparkles } from 'lucide-react';
-import { Link } from 'react-router';
+import { Link, useLocation } from 'react-router';
 import { useShortcut } from '../../app/shortcuts';
 import { Button } from '../../components/ui/Button';
 import { Callout } from '../../components/ui/Callout';
@@ -36,7 +37,8 @@ export function AskForm({
 }: AskFormProps) {
   const text = messages.ask.form;
   const ids = { question: useId(), hint: useId(), error: useId(), maxEvidence: useId() };
-  const [draft, setDraft] = useState('');
+  const location = useLocation();
+  const [draft, setDraft] = useState(() => draftFromState(location.state));
   const [emptyError, setEmptyError] = useState(false);
   const [chosenMode, setChosenMode] = useState<RetrievalMode | null>(null);
   const [maxEvidence, setMaxEvidence] = useState(String(DEFAULT_MAX_EVIDENCE));

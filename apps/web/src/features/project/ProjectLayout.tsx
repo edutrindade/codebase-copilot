@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { SquarePen } from 'lucide-react';
-import { useEffect, useRef } from 'react';
-import { Link, Outlet, useOutletContext, useParams } from 'react-router';
+import { useEffect, useLayoutEffect, useRef } from 'react';
+import { Link, Outlet, useLocation, useOutletContext, useParams } from 'react-router';
 import { ApiError } from '../../api/errors';
 import { forgetProject, rememberProject } from '../../app/recentProjects';
 import { useRouteContext, type RouteSection } from '../../app/routeContext';
@@ -13,6 +13,7 @@ import { StatusBadge } from '../../components/ui/StatusBadge';
 import { formatDateTime } from '../../format';
 import { messages } from '../../messages';
 import { getProject, importKeys } from '../import/api';
+import type { Indexing } from './api';
 import { workspaceKeys, type Project } from '../workspaces/api';
 import { PROJECT_STATUS_TONE, projectSource, projectStatus } from '../workspaces/projectStatus';
 import './ProjectLayout.css';
@@ -28,6 +29,7 @@ export function ProjectLayout() {
   });
   const notFound = project.error instanceof ApiError && project.error.code === 'PROJECT_NOT_FOUND';
   useRefreshWhenJobChanges(projectId, project.data?.indexing?.id ?? null);
+  useIndexingTitle(project.data?.indexing ?? null);
   usePageTitle([messages.pages.project], !project.isSuccess);
   useEffect(() => {
     if (project.isSuccess) {
@@ -147,5 +149,35 @@ function ProjectHeader({ project }: { project: Project }) {
         </ul>
       </nav>
     </header>
+  );
+}
+
+function indexingPercent({ progress }: Indexing): number | null {
+  return progress && progress.total > 0
+    ? Math.floor((progress.completed / progress.total) * 100)
+    : null;
+}
+
+// Prefixes whatever title the screen set, and is applied after it (parents' effects run last).
+function useIndexingTitle(indexing: Indexing | null) {
+  const location = useLocation();
+  const applied = useRef<string | null>(null);
+  const prefix = indexing ? messages.project.progress.titlePrefix(indexingPercent(indexing)) : null;
+  useLayoutEffect(() => {
+    const current = document.title;
+    const base =
+      applied.current && current.startsWith(`${applied.current} `)
+        ? current.slice(applied.current.length + 1)
+        : current;
+    document.title = prefix ? `${prefix} ${base}` : base;
+    applied.current = prefix;
+  }, [prefix, location.key]);
+  useEffect(
+    () => () => {
+      if (applied.current && document.title.startsWith(`${applied.current} `)) {
+        document.title = document.title.slice(applied.current.length + 1);
+      }
+    },
+    [],
   );
 }

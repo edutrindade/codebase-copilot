@@ -1,10 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useState, type FormEvent } from 'react';
+import { FileArchive, Upload } from 'lucide-react';
 import { Loading } from '../../components/Loading';
-import { Upload } from 'lucide-react';
 import { ProblemAlert } from '../../components/ProblemAlert';
 import { Button } from '../../components/ui/Button';
 import { Callout } from '../../components/ui/Callout';
+import { Dropzone } from '../../components/ui/Dropzone';
+import { Progress } from '../../components/ui/Progress';
+import { formatBytes } from '../../format';
 import { messages } from '../../messages';
 import { getLatestImport, importKeys, uploadZip, type ImportJob } from './api';
 import { StepIndicator } from './StepIndicator';
@@ -16,9 +19,10 @@ function isActive(job: ImportJob | null | undefined): boolean {
 }
 
 export function ZipUploadStep({ projectId }: { projectId: string }) {
-  const fileId = useId();
+  const text = messages.newProject.upload;
+  const errorId = useId();
   const [file, setFile] = useState<File | null>(null);
-  const [missingFile, setMissingFile] = useState(false);
+  const [fileError, setFileError] = useState<'missing' | 'notZip' | null>(null);
   const queryClient = useQueryClient();
   const latest = useQuery({
     queryKey: importKeys.latestImport(projectId),
@@ -42,7 +46,7 @@ export function ZipUploadStep({ projectId }: { projectId: string }) {
   function submit(event: FormEvent) {
     event.preventDefault();
     if (file === null) {
-      setMissingFile(true);
+      setFileError((error) => error ?? 'missing');
       return;
     }
     upload.mutate(file);
@@ -61,21 +65,38 @@ export function ZipUploadStep({ projectId }: { projectId: string }) {
       )}
       {job && <ImportStatus job={job} />}
       <form className="stack" onSubmit={submit}>
-        <div className="field">
-          <label htmlFor={fileId}>{messages.newProject.upload.fileLabel}</label>
-          <input
-            id={fileId}
-            type="file"
-            accept=".zip,application/zip"
-            disabled={busy}
-            aria-invalid={missingFile || undefined}
-            onChange={(event) => {
-              setFile(event.target.files?.[0] ?? null);
-              setMissingFile(false);
-            }}
-          />
-          {missingFile && <p className="field-error">{messages.newProject.upload.chooseFile}</p>}
-        </div>
+        <Dropzone
+          label={text.fileLabel}
+          prompt={text.dropPrompt}
+          hint={text.limit}
+          accept=".zip,application/zip"
+          disabled={busy}
+          invalid={fileError !== null}
+          errorId={errorId}
+          onFile={(chosen) => {
+            const zip = chosen.name.toLowerCase().endsWith('.zip');
+            setFile(zip ? chosen : null);
+            setFileError(zip ? null : 'notZip');
+          }}
+        >
+          {file && (
+            <p className="dropzone__file">
+              <FileArchive aria-hidden="true" className="browser__icon" />
+              {text.chosen(file.name, formatBytes(file.size))}
+            </p>
+          )}
+          {fileError && (
+            <p id={errorId} className="field-error">
+              {fileError === 'missing' ? text.chooseFile : text.notZip}
+            </p>
+          )}
+        </Dropzone>
+        {upload.isPending && file && (
+          <div className="stack">
+            <Progress value={null} label={text.sending(file.name, formatBytes(file.size))} />
+            <p className="muted">{text.sending(file.name, formatBytes(file.size))}</p>
+          </div>
+        )}
         {upload.isError && <ProblemAlert error={upload.error} />}
         <div>
           <Button

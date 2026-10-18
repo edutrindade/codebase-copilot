@@ -20,6 +20,8 @@ interface IndexPanelProps {
   reviewHref: string;
   ready: boolean;
   blockedReason: string | null;
+  // Inside another card: a lower heading and no card of its own.
+  embedded?: boolean;
 }
 
 export function IndexPanel({
@@ -29,6 +31,7 @@ export function IndexPanel({
   reviewHref,
   ready,
   blockedReason,
+  embedded = false,
 }: IndexPanelProps) {
   const reasonId = useId();
   const [acknowledged, setAcknowledged] = useState(() => hasAcknowledgedPrivacy(projectId));
@@ -59,10 +62,13 @@ export function IndexPanel({
     (remote && !acknowledged) ||
     mutation.isPending;
 
+  const Heading = embedded ? 'h3' : 'h2';
+  const Container = embedded ? 'section' : Card;
   return (
-    <Card as="section" className="stack" aria-labelledby="index-panel-title">
-      <h2 id="index-panel-title">{title}</h2>
+    <Container className="stack index-panel" aria-labelledby="index-panel-title">
+      <Heading id="index-panel-title">{title}</Heading>
       {providers.isPending && <Loading />}
+      {providers.isSuccess && <IndexSummary providers={providers.data} />}
       {providers.isError && (
         <ProblemAlert error={providers.error} onRetry={() => void providers.refetch()} />
       )}
@@ -92,7 +98,32 @@ export function IndexPanel({
           {mutation.isPending ? messages.indexing.starting : startLabel}
         </Button>
       </div>
-    </Card>
+    </Container>
+  );
+}
+
+function IndexSummary({ providers }: { providers: Providers }) {
+  const text = messages.indexing;
+  const { embeddings } = providers;
+  const none = embeddings.provider === 'none';
+  const provider = none
+    ? text.noProvider
+    : [providerName(embeddings.provider), embeddings.model].filter(Boolean).join(' · ');
+  return (
+    <dl className="index-summary">
+      <div>
+        <dt>{text.provider}</dt>
+        <dd>{provider}</dd>
+      </div>
+      <div>
+        <dt>{text.leaves}</dt>
+        <dd>{embeddings.remote ? text.leavesChunks : text.leavesNothing}</dd>
+      </div>
+      <div>
+        <dt>{text.cost}</dt>
+        <dd>{embeddings.remote ? text.costUnknown : text.costNone}</dd>
+      </div>
+    </dl>
   );
 }
 

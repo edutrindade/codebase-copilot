@@ -422,8 +422,34 @@ P5.1 e P5.2.
 ### F5 — Assistente e pré-análise
 P5.3, incluindo a área de ZIP e a pré-análise em duas colunas.
 
+**Como foi entregue (17/10/2026)**
+- **Indicador de passos** com marcador numerado (concluído com ✓, atual destacado) e o passo atual anunciado ("Etapa 2 de 4, atual:"). Pasta local: Origem e pasta · Pré-análise · Indexar; ZIP: Origem · Envio do ZIP · Pré-análise · Indexar.
+- **Origem em dois cartões** de escolha (rádios com o cartão inteiro clicável): pasta local marcada como recomendada, cada um com o que acontece em seguida.
+- **Navegador de pastas** com ícones, a pasta escolhida destacada e as setas: ↑/↓ (e Home/End) percorrem, → abre, ← volta; ao abrir ou voltar, o foco vai para a primeira pasta da lista nova.
+- **ZIP:** `Dropzone` (`components/ui/`) com arrastar e soltar e o botão "Escolher o arquivo ZIP" (WCAG 2.5.7), nome e tamanho do arquivo, o limite e a recusa de quem não é `.zip`. Durante o envio, progresso indeterminado com o nome e o tamanho (conclusão da F0).
+- **Pré-análise em duas colunas** a partir de 64rem: à esquerda, os totais, a barra empilhada de linguagens (com a tabela equivalente e as cores na tabela), as pastas com barras proporcionais e as exclusões em acordeões; à direita, fixo, "O que acontece ao indexar" (provedor, o que sai da máquina e custo) com o botão principal.
+- **Verificação:** `npm run check` com 191 testes (eram 188); `npm run e2e` e `npm run e2e:jar` passam.
+
+**Desvios:**
+- **Pasta local em três passos, não quatro:** a pasta é escolhida na mesma tela da origem, então "Origem e pasta" é um passo só.
+- **Limite do ZIP como texto fixo** ("100 MB por padrão"): a API não expõe o `app.import.max-zip-bytes`, e a única mudança de backend da etapa é a da P5.7. O servidor continua recusando com `UPLOAD_TOO_LARGE`.
+- **Custo ao indexar:** "nenhum" com provedor local e "não estimado antes de indexar" com remoto; a API não tem estimativa prévia, e o número não é inventado (`01` F-09).
+
 ### F6 — Visão geral do projeto
 P5.4, com o cartão de estado único, "Comece por aqui", uso e snapshots; toasts de indexação e o progresso no título da aba (P6).
+
+**Como foi entregue (17/10/2026)**
+- **Um só cartão de estado** (`ProjectStateCard`), na ordem: indexando (linha do tempo das etapas com progresso e "Cancelar"), falhou (motivo, ação e indexar de novo), desatualizado (motivos e indexar de novo), aguardando ZIP, nunca indexado e cancelado. Projeto pronto não tem cartão: "Indexar de novo" fica no cartão do snapshot ativo, com o diálogo da paleta.
+- **"Comece por aqui":** as quatro perguntas sugeridas (D-077) como cartões; o link leva a pergunta no estado do histórico e o campo abre preenchido, sem enviar.
+- **Duas colunas** a partir de 64rem: sugestões, arquivos não indexados e uso à esquerda; snapshot ativo e snapshots recentes em linha do tempo à direita.
+- **Toasts** (Radix, `type="background"`, educados) para indexação concluída ou com falha, detectadas na transição da lista de projetos do workspace (a mesma consulta da barra lateral, observada na casca, então funciona também no celular). Cancelamento não gera toast.
+- **Título da aba** com o progresso durante a indexação: "(40%) Visão geral · sample-shop · Codebase Copilot", ou "(indexando)" sem contagem.
+- **Verificação:** os mesmos números da F5 (as duas fatias foram verificadas juntas). Casca: 171,5 kB com gzip (era 166,3; teto de 175 kB); o aumento vem do Toast do Radix.
+
+**Desvios:**
+- **"Arquivos não indexados" continua na visão geral** até a aba Arquivos existir (F8); lá, a visão geral fica só com a contagem e o link.
+- **Uso continua com os três grupos** (indexações, perguntas, tokens e custo) em `Stat`, na coluna principal: na lateral estreita, as grades ficavam com uma coluna e empurravam os snapshots para baixo.
+- **Toasts só de indexação** nesta fatia; projeto criado, conversa excluída e configurações salvas entram com as telas que os disparam (F7 e F8).
 
 ### F7 — Perguntar
 P5.5 e a formatação da P7: divisor, campo fixo, cartões de resposta, `HoverCard` das citações, evidências agrupadas, cabeçalho do visualizador. Registro: D-091 (revê a D-075 na formatação).

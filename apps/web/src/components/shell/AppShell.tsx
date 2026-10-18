@@ -7,7 +7,9 @@ import { readStorage, writeStorage } from '../../app/storage';
 import { getProject, importKeys } from '../../features/import/api';
 import { messages } from '../../messages';
 import { cx } from '../ui/cx';
+import { ToastProvider } from '../ui/Toast';
 import { useMediaQuery } from '../useMediaQuery';
+import { IndexingToasts } from './IndexingToasts';
 import { RouteAnnouncer } from './RouteAnnouncer';
 import { Sidebar } from './Sidebar';
 import { LAST_WORKSPACE_KEY, SIDEBAR_COLLAPSED_KEY } from './storageKeys';
@@ -58,7 +60,10 @@ export function AppShell() {
   }
 
   return (
-    <>
+    <ToastProvider>
+      {sidebarWorkspaceId && (
+        <IndexingToasts key={sidebarWorkspaceId} workspaceId={sidebarWorkspaceId} />
+      )}
       <a className="skip-link" href="#content">
         {messages.app.skipToContent}
       </a>
@@ -112,7 +117,7 @@ export function AppShell() {
           <ShortcutsDialog open onOpenChange={setShortcutsOpen} />
         </Suspense>
       )}
-    </>
+    </ToastProvider>
   );
 }
 

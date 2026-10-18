@@ -1,5 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { RefreshCw } from 'lucide-react';
 import { ProblemAlert } from '../../components/ProblemAlert';
+import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Stat, StatGrid } from '../../components/ui/Stat';
 import { StatusBadge } from '../../components/ui/StatusBadge';
@@ -8,6 +11,7 @@ import { messages } from '../../messages';
 import { LanguagesTable } from '../import/InventorySummary';
 import type { Project } from '../workspaces/api';
 import { getSnapshot, projectKeys } from './api';
+import { ReindexDialog } from './ReindexDialog';
 
 const COUNTS = [
   'files',
@@ -20,8 +24,15 @@ const COUNTS = [
 
 type ActiveSnapshotData = NonNullable<Project['activeSnapshot']>;
 
-export function ActiveSnapshot({ snapshot }: { snapshot: ActiveSnapshotData }) {
+interface ActiveSnapshotProps {
+  snapshot: ActiveSnapshotData;
+  // Given when the project can be re-indexed from here.
+  project?: Project;
+}
+
+export function ActiveSnapshot({ snapshot, project }: ActiveSnapshotProps) {
   const text = messages.project.snapshot;
+  const [reindexing, setReindexing] = useState(false);
   const detail = useQuery({
     queryKey: projectKeys.snapshot(snapshot.id),
     queryFn: ({ signal }) => getSnapshot(snapshot.id, signal),
@@ -29,7 +40,17 @@ export function ActiveSnapshot({ snapshot }: { snapshot: ActiveSnapshotData }) {
 
   return (
     <Card as="section" className="stack" aria-labelledby="active-snapshot-title">
-      <h2 id="active-snapshot-title">{text.title}</h2>
+      <div className="page-header">
+        <h2 id="active-snapshot-title">{text.title}</h2>
+        {project && (
+          <Button size="sm" icon={RefreshCw} onClick={() => setReindexing(true)}>
+            {messages.project.reindexTitle}
+          </Button>
+        )}
+      </div>
+      {project && reindexing && (
+        <ReindexDialog project={project} onClose={() => setReindexing(false)} />
+      )}
       <p>
         <StatusBadge tone={snapshot.status === 'READY' ? 'success' : 'warning'}>
           {text.status[snapshot.status]}
