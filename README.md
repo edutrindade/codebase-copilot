@@ -1,29 +1,12 @@
 <div align="center">
 
-# Codebase Copilot
-
-**Pergunte qualquer coisa sobre um repositório e receba respostas com evidências: o arquivo e as linhas de onde cada afirmação saiu.**
-
-Local-first · Busca híbrida (lexical + vetorial + caminhos) · Citações validadas · Nenhum código importado é executado
-
-![Java 25](https://img.shields.io/badge/Java-25-ED8B00?logo=openjdk&logoColor=white)
-![Spring Boot 4.1](https://img.shields.io/badge/Spring%20Boot-4.1-6DB33F?logo=springboot&logoColor=white)
-![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white)
-![PostgreSQL 17 + pgvector](https://img.shields.io/badge/PostgreSQL%2017-pgvector-4169E1?logo=postgresql&logoColor=white)
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/media/demo-dark.gif">
-  <img src="docs/media/demo-light.gif" alt="Demonstração: uma pergunta sobre o cálculo de reembolso é respondida com citações E1, E2 e E5, e a evidência abre no visualizador de código com as linhas destacadas" width="900">
-</picture>
-
-</div>
-
 ## Por que existe
 
 Entrar num projeto desconhecido significa descobrir onde estão as regras de negócio, como um fluxo atravessa as camadas e quais módulos fazem o quê. Perguntar a um modelo de linguagem sem contexto controlado produz respostas convincentes, mas sem como conferir.
 
 O Codebase Copilot indexa o repositório na sua máquina, recupera os trechos relevantes para cada pergunta e só aceita uma resposta cujas citações apontem para trechos que o modelo de fato recebeu. Toda afirmação pode ser conferida no código com um clique, e quando não há evidência suficiente a ferramenta diz que não sabe.
+
+Por trás disso está o **RAG** (*Retrieval-Augmented Generation*, ou Geração Aumentada por Recuperação), uma técnica de inteligência artificial que conecta grandes modelos de linguagem (LLMs) a bases de dados externas e confiáveis. Em vez de responder só com o que aprendeu no treino, o modelo recebe a cada pergunta os trechos recuperados dessa base e responde a partir deles. Foi para aplicar o RAG de ponta a ponta a um problema real que criei este projeto. Aqui a base confiável é o próprio repositório, e cada etapa (indexação, recuperação, montagem do contexto e validação das citações) é implementada de forma explícita, testada e medida.
 
 ## Recursos
 
@@ -74,7 +57,7 @@ O Codebase Copilot indexa o repositório na sua máquina, recupera os trechos re
   </tr>
 </table>
 
-## Como funciona
+## Como funciona o pipeline RAG
 
 ```mermaid
 flowchart LR
@@ -107,14 +90,14 @@ Mais em [Segurança, privacidade e custos](docs/07-SECURITY-PRIVACY-COSTS.md).
 
 ## Stack
 
-| Camada | Tecnologias |
-|---|---|
-| Backend | Java 25, Spring Boot 4.1, Spring Data JDBC + JdbcClient, Flyway, monólito modular |
-| Busca e dados | PostgreSQL 17, pgvector, `tsvector`, `pg_trgm` |
-| IA | SDK oficial `openai-java`, encapsulado atrás de portas internas e substituível |
-| Frontend | React 19, Vite, TypeScript, TanStack Query, Radix UI, Lezer (realce de sintaxe em Web Worker) |
-| Qualidade | JUnit + Testcontainers, Vitest + Testing Library, Playwright com regressão visual e axe |
-| Contrato | REST + OpenAPI, com tipos do frontend gerados do contrato |
+| Camada        | Tecnologias                                                                                   |
+| ------------- | --------------------------------------------------------------------------------------------- |
+| Backend       | Java 25, Spring Boot 4.1, Spring Data JDBC + JdbcClient, Flyway, monólito modular            |
+| Busca e dados | PostgreSQL 17, pgvector, `tsvector`, `pg_trgm`                                            |
+| IA            | SDK oficial `openai-java`, encapsulado atrás de portas internas e substituível            |
+| Frontend      | React 19, Vite, TypeScript, TanStack Query, Radix UI, Lezer (realce de sintaxe em Web Worker) |
+| Qualidade     | JUnit + Testcontainers, Vitest + Testing Library, Playwright com regressão visual e axe      |
+| Contrato      | REST + OpenAPI, com tipos do frontend gerados do contrato                                     |
 
 ## Início rápido
 
@@ -133,16 +116,16 @@ cd apps/backend
 java -jar target/backend-0.0.1-SNAPSHOT.jar
 ```
 
-Abra <http://localhost:8080>, crie um workspace, importe um projeto e faça a primeira pergunta.
+Abra [http://localhost:8080](http://localhost:8080), crie um workspace, importe um projeto e faça a primeira pergunta.
 
 ### Principais variáveis do `.env`
 
-| Variável | Uso |
-|---|---|
-| `DB_PASSWORD` | Senha do banco (troque o valor de exemplo). |
-| `PROJECTS_ROOT` | Pasta sob a qual ficam os repositórios que podem ser importados. Sem ela, só a importação por ZIP fica disponível. |
-| `EMBEDDING_PROVIDER` / `EMBEDDING_API_KEY` | Provedor de embeddings: `none` (padrão), `openai` ou `fake` (demonstração local). |
-| `GENERATION_PROVIDER` / `GENERATION_API_KEY` | Provedor das respostas: `none` (padrão), `openai` ou `fake` (demonstração local). |
+| Variável                                        | Uso                                                                                                                     |
+| ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| `DB_PASSWORD`                                  | Senha do banco (troque o valor de exemplo).                                                                             |
+| `PROJECTS_ROOT`                                | Pasta sob a qual ficam os repositórios que podem ser importados. Sem ela, só a importação por ZIP fica disponível. |
+| `EMBEDDING_PROVIDER` / `EMBEDDING_API_KEY`   | Provedor de embeddings: `none` (padrão), `openai` ou `fake` (demonstração local).                              |
+| `GENERATION_PROVIDER` / `GENERATION_API_KEY` | Provedor das respostas: `none` (padrão), `openai` ou `fake` (demonstração local).                              |
 
 Todas as variáveis e propriedades, o modo de desenvolvimento com hot reload e a execução dos testes estão em [Configuração e desenvolvimento](docs/12-DEVELOPMENT.md).
 
@@ -158,16 +141,16 @@ A busca e as respostas também têm harnesses de avaliação próprios (Recall@k
 
 ## Documentação
 
-| Documento | Conteúdo |
-|---|---|
-| [Resumo executivo](docs/RESUMO-EXECUTIVO.md) | Visão, problema e proposta de valor |
-| [PRD](docs/01-PRD.md) | Requisitos do produto |
-| [Arquitetura](docs/02-ARCHITECTURE.md) | Módulos, fronteiras e decisões de design |
-| [Pipeline RAG](docs/04-RAG-PIPELINE.md) | Indexação, busca híbrida, contexto e validação |
-| [Modelo de dados](docs/05-DATA-MODEL.md) | Esquema do PostgreSQL |
-| [Contratos da API](docs/06-API-CONTRACTS.md) | Endpoints, formatos e códigos de erro |
-| [Segurança, privacidade e custos](docs/07-SECURITY-PRIVACY-COSTS.md) | O que sai da máquina, quando e quanto custa |
-| [Avaliação](docs/08-EVALUATION.md) | Métricas e metodologia |
-| [Decisões](docs/10-DECISIONS.md) | Registro das decisões técnicas |
-| [Operação](docs/11-OPERATIONS.md) | Backup, recuperação de falhas e limites |
-| [Configuração e desenvolvimento](docs/12-DEVELOPMENT.md) | Referência completa de configuração e testes |
+| Documento                                                            | Conteúdo                                           |
+| -------------------------------------------------------------------- | --------------------------------------------------- |
+| [Resumo executivo](docs/RESUMO-EXECUTIVO.md)                          | Visão, problema e proposta de valor                |
+| [PRD](docs/01-PRD.md)                                                 | Requisitos do produto                               |
+| [Arquitetura](docs/02-ARCHITECTURE.md)                                | Módulos, fronteiras e decisões de design          |
+| [Pipeline RAG](docs/04-RAG-PIPELINE.md)                               | Indexação, busca híbrida, contexto e validação |
+| [Modelo de dados](docs/05-DATA-MODEL.md)                              | Esquema do PostgreSQL                               |
+| [Contratos da API](docs/06-API-CONTRACTS.md)                          | Endpoints, formatos e códigos de erro              |
+| [Segurança, privacidade e custos](docs/07-SECURITY-PRIVACY-COSTS.md) | O que sai da máquina, quando e quanto custa        |
+| [Avaliação](docs/08-EVALUATION.md)                                  | Métricas e metodologia                             |
+| [Decisões](docs/10-DECISIONS.md)                                     | Registro das decisões técnicas                    |
+| [Operação](docs/11-OPERATIONS.md)                                   | Backup, recuperação de falhas e limites           |
+| [Configuração e desenvolvimento](docs/12-DEVELOPMENT.md)            | Referência completa de configuração e testes     |
