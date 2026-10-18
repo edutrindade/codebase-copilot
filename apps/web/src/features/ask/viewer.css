@@ -55,7 +55,8 @@
     gap: var(--space-1);
   }
 
-  .viewer__info {
+  .viewer__info,
+  .viewer__notice {
     font-size: var(--text-sm);
   }
 

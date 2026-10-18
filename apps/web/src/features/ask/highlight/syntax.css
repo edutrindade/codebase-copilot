@@ -1,0 +1,61 @@
+@layer components {
+  /* Classes from @lezer/highlight's classHighlighter; anything not listed keeps the text color. */
+  .tok-keyword,
+  .tok-heading {
+    color: var(--color-syntax-keyword);
+  }
+
+  .tok-string,
+  .tok-string2,
+  .tok-inserted,
+  .tok-url {
+    color: var(--color-syntax-string);
+  }
+
+  .tok-comment {
+    font-style: italic;
+    color: var(--color-syntax-comment);
+  }
+
+  .tok-number,
+  .tok-bool,
+  .tok-atom,
+  .tok-literal {
+    color: var(--color-syntax-number);
+  }
+
+  .tok-typeName,
+  .tok-className,
+  .tok-namespace {
+    color: var(--color-syntax-type);
+  }
+
+  .tok-definition,
+  .tok-link {
+    color: var(--color-syntax-definition);
+  }
+
+  .tok-meta,
+  .tok-macroName,
+  .tok-labelName,
+  .tok-deleted {
+    color: var(--color-syntax-meta);
+  }
+
+  .tok-heading,
+  .tok-strong {
+    font-weight: var(--weight-semibold);
+  }
+
+  .tok-emphasis {
+    font-style: italic;
+  }
+
+  .tok-link {
+    text-decoration: underline;
+  }
+
+  .tok-invalid {
+    text-decoration: underline wavy var(--color-danger);
+  }
+}

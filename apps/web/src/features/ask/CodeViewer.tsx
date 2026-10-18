@@ -11,9 +11,9 @@ import { SegmentedControl } from '../../components/ui/SegmentedControl';
 import { formatBytes } from '../../format';
 import { messages } from '../../messages';
 import { askKeys, getEvidence, getFileContent, type Evidence, type EvidenceDetail } from './api';
-import { CodeLines } from './CodeLines';
-import { highlightedRange, splitLines } from './evidence';
+import { highlightedRange } from './evidence';
 import { FileIcon } from './FileIcon';
+import { FileCode } from './highlight/FileCode';
 import { PathTrail } from './PathTrail';
 
 type Version = 'answered' | 'current';
@@ -223,9 +223,9 @@ function FileView({ snapshotId, detail, highlight, caption, scrollRequest }: Fil
         {caption && <span>{caption} </span>}
         {text.fileInfo(file.language, file.lineCount, formatBytes(file.sizeBytes))}
       </p>
-      <CodeLines
-        lines={splitLines(file.content)}
-        firstLine={1}
+      <FileCode
+        path={file.path}
+        content={file.content}
         highlight={highlight ? highlightedRange(detail) : null}
         label={text.codeLabel(file.path)}
         scrollRequest={scrollRequest}
@@ -245,8 +245,9 @@ function Snippet({
   return (
     <div className="stack">
       <h3>{text.snippetTitle}</h3>
-      <CodeLines
-        lines={splitLines(evidence.snippet)}
+      <FileCode
+        path={evidence.path}
+        content={evidence.snippet}
         firstLine={evidence.startLine}
         highlight={highlightedRange(evidence)}
         label={text.codeLabel(evidence.path)}

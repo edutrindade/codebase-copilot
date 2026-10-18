@@ -5,6 +5,9 @@ import { messages } from '../../messages';
 import type { Evidence } from './api';
 import { formatAnswer, type Block, type Inline } from './answerFormat';
 import { highlightedRange, splitLines } from './evidence';
+import { languageForName } from './highlight/languages';
+import { LineText } from './highlight/LineText';
+import { useHighlight } from './highlight/useHighlight';
 
 const PREVIEW_LINES = 4;
 
@@ -109,6 +112,8 @@ function CitationPreview({ evidence }: { evidence: Evidence }) {
 
 function CodeBlock({ language, code }: { language: string | null; code: string }) {
   const text = messages.ask;
+  const state = useHighlight(languageForName(language), code);
+  const highlighting = state.status === 'ready' ? state.highlighting : null;
   return (
     <div className="answer-code">
       <div className="answer-code__header">
@@ -117,7 +122,16 @@ function CodeBlock({ language, code }: { language: string | null; code: string }
       </div>
       {/* Focusable so a long line can be scrolled by keyboard. */}
       <pre className="answer-code__body" tabIndex={0}>
-        <code>{code}</code>
+        <code>
+          {highlighting
+            ? splitLines(code).map((line, index) => (
+                <Fragment key={index}>
+                  {index > 0 && '\n'}
+                  <LineText text={line} highlighting={highlighting} line={index} />
+                </Fragment>
+              ))
+            : code}
+        </code>
       </pre>
     </div>
   );

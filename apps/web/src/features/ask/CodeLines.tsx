@@ -2,6 +2,8 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { useEffect, useRef } from 'react';
 import { messages } from '../../messages';
 import type { LineRange } from './evidence';
+import type { Highlighting } from './highlight/Highlighting';
+import { LineText } from './highlight/LineText';
 import './viewer.css';
 
 // Must match the row height in .code-view__line; rows never wrap, so every row has this height.
@@ -12,6 +14,7 @@ interface CodeLinesProps {
   firstLine: number;
   highlight: LineRange | null;
   label: string;
+  highlighting?: Highlighting | null;
   // Changing it scrolls back to the highlight.
   scrollRequest?: number;
 }
@@ -22,6 +25,7 @@ export function CodeLines({
   firstLine,
   highlight,
   label,
+  highlighting = null,
   scrollRequest = 0,
 }: CodeLinesProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -62,7 +66,13 @@ export function CodeLines({
                 {cited ? '▶' : ''}
               </span>
               {cited && <span className="visually-hidden">{messages.ask.viewer.citedMarker}</span>}
-              <span className="code-view__text">{lines[item.index]}</span>
+              <span className="code-view__text">
+                <LineText
+                  text={lines[item.index] ?? ''}
+                  highlighting={highlighting}
+                  line={item.index}
+                />
+              </span>
             </div>
           );
         })}

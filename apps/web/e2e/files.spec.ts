@@ -73,6 +73,13 @@ test('explores the snapshot by keyboard, opens a file and asks about it', async 
     }
   });
   page.on('pageerror', (error) => errors.push(error.message));
+  await page.addInitScript(() => {
+    const violations: string[] = [];
+    Object.assign(window, { cspViolations: violations });
+    document.addEventListener('securitypolicyviolation', (event) => {
+      violations.push(`${event.violatedDirective} ${event.blockedURI}`);
+    });
+  });
   const tree = page.getByRole('list', { name: messages.files.treeLabel });
 
   await test.step('g then a opens the tab', async () => {
@@ -104,6 +111,10 @@ test('explores the snapshot by keyboard, opens a file and asks about it', async 
     await tree.getByRole('link', { name: 'RefundService.java' }).click();
     await expect(page.locator('.code-view')).toContainText('class RefundService');
     expect(new URL(page.url()).searchParams.get('file')).toBe(FILE);
+    // The highlight worker runs under the build's CSP (F9).
+    await expect(page.locator('.code-view .tok-keyword').first()).toHaveText(
+      /^(package|import|public|final|class)$/,
+    );
     await expectAccessible(page, 'file open');
     await page.emulateMedia({ colorScheme: 'dark' });
     await expectAccessible(page, 'file open, dark theme');
@@ -127,4 +138,7 @@ test('explores the snapshot by keyboard, opens a file and asks about it', async 
   });
 
   expect(errors).toEqual([]);
+  expect(
+    await page.evaluate(() => (window as unknown as { cspViolations: string[] }).cspViolations),
+  ).toEqual([]);
 });

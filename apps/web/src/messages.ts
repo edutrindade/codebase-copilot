@@ -789,6 +789,7 @@ export const messages = {
       copySnippet: 'Copiar o trecho',
       goToCited: 'Ir para o trecho',
       openInFiles: 'Abrir em Arquivos',
+      highlightTimedOut: 'Sem realce neste arquivo: a análise passou do limite de tempo.',
       currentVersion: 'Versão do snapshot ativo; as linhas da evidência podem não corresponder.',
       answeredVersion: 'Versão do snapshot usado na resposta.',
       fileInfo: (language: string, lines: number, size: string) =>

@@ -66,6 +66,8 @@ export default defineConfig({
       ),
     },
   },
+  // The highlight worker loads each language as its own chunk, which IIFE workers cannot do.
+  worker: { format: 'es' },
   server: { port: 5173, strictPort: true, proxy },
   preview: { port: 4173, strictPort: true, proxy },
   test: {

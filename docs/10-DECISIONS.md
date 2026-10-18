@@ -1194,6 +1194,7 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Consequências:** a espera é de até 60 s sem texto parcial; arquivos sem realce.  
 **O que levaria à revisão:** latência medida ruim (Etapa 8), legibilidade pedir realce, ou respostas com formatação rica.
 **Etapa 9 (17/10/2026):** a resposta passou a ter formatação leve e segura, e a tela, o layout em colunas com o divisor (D-091); continuam o envio síncrono, o visualizador virtualizado e os marcadores só para evidências da própria resposta.
+**Etapa 9 (18/10/2026):** o visualizador e os blocos de código da resposta ganharam realce de sintaxe, num worker e sem gerar marcação (D-093).
 
 ### D-076 — Como a UI chega ao backend e como `apps/web` se organiza (P2 e P11 da Etapa 7)
 **Status:** Aceita (17/10/2026; F1, F2 e fechamento da Etapa 7)  
@@ -1370,6 +1371,7 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Motivo:** manter o escopo no que tem evidência e não gastar o corpus de avaliação em mudanças que só ele poderia justificar.  
 **Consequências:** a Etapa 9 começa com a F3 da Etapa 8 como pré-requisito para qualquer mudança de ranking (reranking, AST), pela regra da D-081.  
 **O que levaria à revisão:** pedidos de uso (acompanhamento, realce), ou a avaliação real mostrando abstenção indevida ou um teto do `lines-v1`.
+**Etapa 9 (18/10/2026):** o realce de sintaxe entrou, pedido como parte da interface premium (D-093); o resto da lista continua de fora.
 
 
 ### D-087 — Direção visual, sistema de design e dependências da interface (P1, P2 e P12 da Etapa 9)
@@ -1457,6 +1459,21 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Motivo:** é a única forma de o explorador funcionar igual em qualquer tamanho de projeto, com uma consulta pequena por pasta aberta e as regras do projeto (SQL explícito, teste de integração com Testcontainers, contrato versionado).  
 **Consequências:** a única mudança de backend da Etapa 9; o contrato (`openapi.json`) e os tipos do frontend foram regenerados. O `06` recebe o endpoint no fechamento (F11). Cada pasta aberta é uma consulta que agrupa as linhas do snapshot sob o prefixo. O chunk da aba tem 3,1 kB com gzip; a casca ficou em 171,2 kB com gzip (teto de 175 kB).  
 **O que levaria à revisão:** diretórios com milhares de filhos imediatos (pediria paginação ou virtualização da árvore), ou busca por nome de arquivo em todo o snapshot.
+
+### D-093 — Realce de sintaxe (P8 da Etapa 9; revê a D-075 e a D-086)
+**Status:** Aceita (18/10/2026; F9 da Etapa 9)  
+**Contexto:** o visualizador e os blocos de código da resposta eram texto monocromático (D-075); a D-086 adiou o realce por falta de pedido, e a interface premium da Etapa 9 é esse pedido. O conteúdo é não confiável, e a CSP não permite `eval`, WebAssembly nem estilos inline.  
+**Opções consideradas:** Shiki (gera HTML e usa WebAssembly), Prism ou highlight.js (API pública devolve HTML), e o Lezer, cujo `highlightTree` entrega só intervalos e nomes de classe.  
+**Decisão:**
+- **Lezer num Web Worker** (`features/ask/highlight/`), na própria origem (`script-src 'self'`, sem mudança na CSP), com o `classHighlighter` (classes `tok-*`, coloridas por CSS). O worker devolve um `Int32Array` (início, fim e índice da classe) transferido, e a tabela de classes; nada do arquivo vira marcação. A tela monta, por linha visível, `<span>`s com texto, cortando tokens que atravessam linhas.
+- **Linguagens:** Java, JavaScript/JSX, TypeScript/TSX, Python, Go, Rust, JSON, YAML, XML, HTML e Markdown, uma por chunk, carregada no primeiro uso; escolhidas pela extensão do arquivo ou pelo nome depois das crases na resposta. SQL e as demais ficam em texto puro (não há `@lezer/sql`, F0).
+- **Texto primeiro:** o visualizador mostra o texto puro na hora e aplica as cores quando o worker responde. Sem limite de tamanho além do `max-file-bytes` (1 MB); um limite de tempo de 1,5 s encerra o worker (a única forma de parar um parse) e deixa o arquivo em texto puro, com um aviso discreto. Sem `Worker` (testes em jsdom), tudo fica em texto puro.
+- **Cores como tokens** (`--color-syntax-*`), com contraste de pelo menos 4,5:1 sobre o fundo do código, a superfície e o fundo das linhas citadas, nos dois temas (conferido por script); com "Aumentar contraste", os comentários usam a cor do texto. O destaque das linhas citadas continua por cima.
+- **Dependências:** `@lezer/highlight` 1.2.5, `common` 1.5.3, `lr` 1.4.10 e os parsers da tabela da F0 (MIT), com `--save-exact` e sem duplicação.
+
+**Motivo:** é o único caminho que dá cores sem HTML gerado, sem WebAssembly e sem relaxar a CSP, e mantém a thread principal livre.  
+**Consequências:** arquivo de 1 MB (34 mil linhas de Java): texto em 103 a 113 ms, como na linha de base da F0 (~110 ms), e cores em cerca de 285 ms, sem tarefa longa na thread principal. O worker tem 27,9 kB (com o núcleo do Lezer); cada linguagem vem num chunk à parte, fora da casca (171,2 kB com gzip). O build usa `worker.format: 'es'`, porque o worker divide o código por linguagem.  
+**O que levaria à revisão:** um parser de SQL sem o CodeMirror inteiro, linguagens pedidas que o Lezer não tenha, ou arquivos reais que passem do limite de tempo com frequência.
 
 ---
 

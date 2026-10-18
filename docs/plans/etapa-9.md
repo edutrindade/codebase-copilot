@@ -495,6 +495,17 @@ P5.6 a P5.9. Primeiro o endpoint `GET /snapshots/{id}/tree` (backend, contrato, 
 ### F9 — Realce de sintaxe (cortável)
 P8, com os limites medidos na F0. Registro: D-093 (revê a D-075 e a D-086).
 
+**Como foi entregue (18/10/2026)**
+- **Worker do Lezer** (`features/ask/highlight/`): `tokenize.ts` (carrega o parser da linguagem e devolve intervalos e classes, testável fora do worker), `highlight.worker.ts`, `Highlighting.ts` (fatia os tokens por linha), `useHighlight.ts` (um worker compartilhado, limite de 1,5 s) e `FileCode.tsx`, usado pelo visualizador da pergunta, pelo trecho de evidência e pela aba Arquivos. Os blocos de código da resposta usam o mesmo hook, pelo nome depois das crases.
+- **Cores** como tokens `--color-syntax-*`, com 4,5:1 ou mais sobre o fundo do código e das linhas citadas, nos dois temas; com "Aumentar contraste", os comentários usam a cor do texto.
+- **Testes:** todas as linguagens carregam e devolvem o texto intacto; tokens que atravessam linhas; HTML hostil volta só como intervalos; texto puro primeiro e cores depois, linguagem desconhecida sem worker e o limite de tempo (com um `Worker` falso). No E2E, o `files.spec.ts` confere as cores no navegador real e nenhuma violação de CSP.
+- **Medida (1 MB, três execuções):** texto em 113, 103 e 103 ms (linha de base da F0: ~110 ms); cores em 294, 282 e 281 ms; nenhuma tarefa longa na thread principal.
+- **Verificação:** `npm run check` com 223 testes (eram 215); `npm run e2e` passa. Casca: 171,2 kB com gzip; o worker tem 27,9 kB, e cada linguagem, um chunk.
+
+**Desvios:**
+- **Trecho da evidência também colorido** (quando o snapshot foi podado ou o arquivo não abre): o Lezer se recupera de trechos incompletos, e o texto continua o mesmo.
+- **Sem aviso para linguagem sem parser:** ela simplesmente fica em texto puro, como antes; só o limite de tempo avisa, porque aí o arquivo poderia ter cores.
+
 ### F10 — Responsividade, acessibilidade e regressão visual
 Passadas nas três larguras e nos dois temas, os specs novos da P13, as imagens de referência, o orçamento de desempenho medido contra a linha de base e a passada manual (roteiro abaixo).
 

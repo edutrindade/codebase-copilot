@@ -8,10 +8,10 @@ import { CopyButton } from '../../components/ui/CopyButton';
 import { formatBytes } from '../../format';
 import { messages } from '../../messages';
 import { askKeys, getFileContent } from '../ask/api';
-import { CodeLines } from '../ask/CodeLines';
 import { askDraftState } from '../ask/draft';
-import { splitLines, type LineRange } from '../ask/evidence';
+import type { LineRange } from '../ask/evidence';
 import { FileIcon } from '../ask/FileIcon';
+import { FileCode } from '../ask/highlight/FileCode';
 import { PathTrail } from '../ask/PathTrail';
 import { filesKeys, getFileInfo } from './api';
 
@@ -92,9 +92,9 @@ export function FilePreview({ projectId, snapshotId, path, lines }: FilePreviewP
         <ProblemAlert error={content.error} onRetry={() => void content.refetch()} />
       )}
       {content.isSuccess && (
-        <CodeLines
-          lines={splitLines(content.data.content)}
-          firstLine={1}
+        <FileCode
+          path={path}
+          content={content.data.content}
           highlight={lines}
           label={messages.ask.viewer.codeLabel(path)}
         />

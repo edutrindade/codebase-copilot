@@ -101,6 +101,15 @@
     --color-highlight: var(--amber-evidence);
     --color-highlight-marker: var(--amber-11);
 
+    /* Syntax: each keeps 4.5:1 on the code background and on cited lines, in both themes. */
+    --color-syntax-keyword: light-dark(oklch(0.48 0.18 300), oklch(0.82 0.11 300));
+    --color-syntax-string: light-dark(oklch(0.48 0.12 150), oklch(0.83 0.13 150));
+    --color-syntax-comment: light-dark(oklch(0.5 0.015 265), oklch(0.76 0.012 265));
+    --color-syntax-number: light-dark(oklch(0.5 0.13 50), oklch(0.84 0.1 60));
+    --color-syntax-type: light-dark(oklch(0.48 0.09 200), oklch(0.83 0.09 200));
+    --color-syntax-definition: light-dark(oklch(0.48 0.15 255), oklch(0.82 0.09 255));
+    --color-syntax-meta: light-dark(oklch(0.5 0.16 20), oklch(0.82 0.09 20));
+
     /* Typography */
     --font-sans:
       'Inter Variable', 'Inter Fallback', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -164,6 +173,7 @@
       --color-text-muted: var(--gray-12);
       --color-border: var(--gray-8);
       --color-border-subtle: var(--gray-8);
+      --color-syntax-comment: var(--gray-12);
     }
   }
 
