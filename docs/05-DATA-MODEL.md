@@ -153,7 +153,7 @@ Imutáveis, ligados à versão do conteúdo (D-039).
 Chave natural única `(project_id, content_hash, chunking_version, ordinal)`: inserts idempotentes com `ON CONFLICT DO NOTHING`. Caminho e linguagem vêm de `snapshot_files`; a busca de um snapshot faz `JOIN` por `(project_id, content_hash)` e pela `chunking_version` do snapshot.
 
 Colunas que entram em etapas posteriores:
-- Etapa 9 (D-027): `chunk_type` e `symbol_name`, preenchidos por AST, com índice `pg_trgm` em `symbol_name`.
+- Etapa 10 (D-027): `chunk_type` e `symbol_name`, preenchidos por AST, com índice `pg_trgm` em `symbol_name`.
 
 Os termos lexicais não ficam em `chunks`, e sim em `chunk_lexical` (D-056): a tokenização é da aplicação e tem versão própria, e assim mudá-la não reescreve chunks imutáveis.
 
@@ -261,7 +261,7 @@ Answer    1---N AnswerEvidence (cópia; referências soltas a Snapshot e Chunk)
 Baseline definido na D-017 e implementado na Etapa 5 (comparação final em O-005):
 - full-text do PostgreSQL com configuração `simple` (sem stemming), sobre `chunk_lexical.tsv` da versão atual do tokenizador (D-056, D-057);
 - identificadores pré-tokenizados em `chunk_lexical.identifier_terms`, com peso A, acima do conteúdo (peso B);
-- `pg_trgm` para caminhos (`snapshot_files.relative_path`, D-058) e, na Etapa 9, para símbolos (`chunks.symbol_name`).
+- `pg_trgm` para caminhos (`snapshot_files.relative_path`, D-058) e, na Etapa 10, para símbolos (`chunks.symbol_name`).
 
 A implementação deve preservar termos como `getUserById`, `HTTPClient` e nomes de arquivos. A recuperação devolve cada chunk uma vez, mesmo quando o conteúdo aparece em mais de um caminho do snapshot (D-039).
 

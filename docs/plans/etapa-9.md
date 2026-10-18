@@ -1,6 +1,6 @@
 # Plano — Etapa 9: Interface premium
 
-**Status:** plano aprovado em 17/10/2026 com todas as recomendações (branch `etapa-9`, a partir do `main` com a Etapa 8). F0 concluída no mesmo dia, com os ajustes registrados nela. As propostas P0 a P13 viram D-087 em diante, registradas em `10-DECISIONS.md` na fatia indicada em cada uma.
+**Status:** plano aprovado em 17/10/2026 com todas as recomendações (branch `etapa-9`, a partir do `main` com a Etapa 8). F0 concluída no mesmo dia, com os ajustes registrados nela. As propostas P0 a P13 viram D-087 em diante, registradas em `10-DECISIONS.md` na fatia indicada em cada uma. **Etapa concluída em 18/10/2026** (F0 a F11; resultado no fim deste plano).
 **Referências:** `01-PRD.md` (F-01 a F-09), `03-UX-ONBOARDING.md` (todo), `06-API-CONTRACTS.md` §5, §7 a §10 e §12, `07-SECURITY-PRIVACY-COSTS.md` §2, `11-OPERATIONS.md` §2 e §5, `docs/plans/etapa-7.md` (P7 a P10 e pendências), D-025, D-070, D-075, D-076, D-077, D-078, D-084, D-085, D-086.
 
 ## Por que esta etapa
@@ -533,6 +533,8 @@ Passadas nas três larguras e nos dois temas, os specs novos da P13, as imagens 
 - **Imagens de referência só para macOS:** em outro sistema, a renderização das fontes muda e o `visual.spec.ts` precisa gerar as próprias (`--update-snapshots`), como previsto na P13.
 
 ### F11 — Fechamento
+**Feito em 18/10/2026:** tudo o que a lista abaixo pede; detalhes em "Resultado e desvios".
+
 - `03-UX-ONBOARDING.md`: §2 (navegação), §4 (layout da pergunta) e §8 (identidade visual decidida).
 - `02-ARCHITECTURE.md` §3 e §6 (dependências e estrutura de `apps/web`), `06` (o endpoint da P5.7), `09` (Etapa 9 e renumeração da P0), `10-DECISIONS.md` (D-087 a D-093), `README` (screenshots).
 - "Resultado e desvios" neste plano.
@@ -576,4 +578,24 @@ Só com o teclado, depois com o VoiceOver (macOS):
 
 ## Resultado e desvios
 
-A preencher no fechamento.
+**Concluída em 18/10/2026**, com as doze fatias (F0 a F11) na branch `etapa-9`.
+
+**Aceite** (*todas as telas com a nova identidade, navegáveis pela barra lateral, pela paleta e pelo teclado; WCAG 2.2 AA nos dois temas; orçamento cumprido*):
+- **Cumprido:** as doze telas da regressão visual foram refeitas sobre o sistema de design (F1 a F8), com a casca, a paleta e os atalhos (F2, F3). O axe com WCAG 2.2 AA não acusa nada em nenhuma delas, nos dois temas e em 390, 1024 e 1440 px, e nenhuma rola na horizontal (F10). O orçamento da P13 fecha dentro dos limites: casca com 171,2 kB com gzip (teto de 175), nenhum chunk acima de 500 kB, duas fontes, o arquivo de 1 MB abrindo como na linha de base e a CSP igual à da Etapa 8.
+- **Parcial:** a passada manual com o VoiceOver e "Aumentar contraste" de verdade não foi feita (F10); os passos de teclado do roteiro estão cobertos pelos E2E.
+
+**Decisões:** D-087 a D-093, mais a atualização datada da D-027 (P0: os recursos pós-MVP passaram a ser a Etapa 10) e as notas na D-075 e na D-086.
+
+**Testes ao fim da etapa:** `./mvnw verify` (com o `SnapshotTreeApiIT` novo); `npm run check` com 223 testes (eram 100 no início da etapa); `npm run e2e` com 13 testes (aceite, arquivos, conteúdo hostil, navegação, tema e seis passadas visuais) e `npm run e2e:jar` com 15.
+
+**Desvios principais**, detalhados em cada fatia:
+- A única mudança de backend foi a da P5.7 (F8), como previsto.
+- Sem barra de bytes no envio do ZIP (F0): o `fetch` não informa o progresso de envio.
+- SQL sem realce (F0): não há parser do Lezer fora do CodeMirror.
+- Árvore de arquivos como listas aninhadas com setas, não `role="tree"` (F8).
+- `aria-hidden-focus` com um menu modal do Radix aberto tratado como falso positivo (F10).
+- Imagens de referência só para macOS (F10).
+
+**Fechamento (F11):** `03-UX-ONBOARDING.md` §2, §4 e §8; `02-ARCHITECTURE.md` §3 e §6; o endpoint da P5.7 no `06` §9; a Etapa 9 e a renumeração no `09` e nos documentos vivos (`01`, `04`, `05`, `11`, `RESUMO-EXECUTIVO`, `README`); screenshots no `README` (as referências da regressão visual, em `docs/screenshots/`).
+
+**Para depois:** a passada com o VoiceOver; as rodadas com o provedor real (pendentes desde a Etapa 4, D-086), que mostrarão respostas com formatação de verdade (D-091); e a Etapa 10.

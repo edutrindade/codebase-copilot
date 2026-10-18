@@ -342,6 +342,7 @@ Projetos ZIP não têm caminho; guardam uma referência ao import correspondente
 - O critério de reindexação do PRD passa a ser "somente arquivos novos ou alterados; arquivos removidos ou excluídos saem do índice ativo", já que não há grafo de dependências no MVP.
 
 **Motivo:** o roadmap prioriza validar o núcleo RAG antes de recursos de análise; manter os três documentos coerentes evita promessas que o MVP não cumpre.  
+**Atualização (18/10/2026, P0 da Etapa 9):** a interface premium entrou como Etapa 9, e os recursos posteriores ao MVP (AST, comparação entre snapshots, provedor local e o resto da lista) passaram a ser a **Etapa 10**. Os documentos vivos dizem "Etapa 10"; as decisões e os planos anteriores mantêm "Etapa 9" para esses recursos, como registro do que valia quando foram escritos.  
 **Consequências:** `RESUMO-EXECUTIVO.md` e `01-PRD.md` atualizados em 15/10/2026.  
 **O que levaria à revisão:** resultados da avaliação mostrarem que o chunking genérico é insuficiente para as linguagens prioritárias.
 

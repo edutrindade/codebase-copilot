@@ -126,7 +126,20 @@
 
 **Aceite:** resultados do conjunto de avaliação e riscos conhecidos são documentados.
 
-## Etapa 9 — Recursos posteriores ao MVP
+## Etapa 9 — Interface premium
+
+**Status:** concluída em 18/10/2026 (plano, medidas e desvios em `docs/plans/etapa-9.md`; decisões D-087 a D-093). Entrou depois da Etapa 8 para transformar a interface mínima do MVP num produto agradável de usar, sem perder evidências verificáveis, CSP estrita, WCAG AA e erros pelo `code`; os recursos posteriores ao MVP passaram a ser a Etapa 10 (D-027, atualização de 18/10/2026).
+
+- Sistema de design próprio (tokens, componentes, fontes auto-hospedadas) e tema claro, escuro ou do sistema.
+- Casca com barra lateral, trilha, paleta de comandos e atalhos de teclado.
+- Telas refeitas: início, workspace, assistente e pré-análise, visão geral, perguntar (colunas com divisor e formatação leve da resposta), histórico, configurações e sistema.
+- Aba Arquivos, com `GET /snapshots/{id}/tree` (a única mudança de backend).
+- Realce de sintaxe num worker, sem marcação gerada.
+- Regressão visual, tema e navegação no E2E, em três larguras e dois temas.
+
+**Aceite:** todas as telas do MVP com a nova identidade, navegáveis pela barra lateral, pela paleta e pelo teclado, com axe (WCAG 2.2 AA) sem violações nos dois temas e nas três larguras, e o orçamento de desempenho cumprido. A passada manual com o VoiceOver fica com quem usa (desvio da F10).
+
+## Etapa 10 — Recursos posteriores ao MVP
 
 Priorizar após validar o núcleo:
 

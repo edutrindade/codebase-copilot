@@ -52,7 +52,7 @@ Desenvolvedores que precisam compreender uma base existente, especialmente em on
 - Integrações OAuth com repositórios privados.
 - Produto hospedado multiusuário.
 - Promessa de análise semântica completa para todas as linguagens.
-- Adaptadores de análise estrutural (AST) e comparação entre snapshots (Etapa 9; D-027).
+- Adaptadores de análise estrutural (AST) e comparação entre snapshots (Etapa 10; D-027).
 - Geração definitiva e automática de `AGENTS.md` antes de validar o RAG central.
 
 ## Arquitetura aprovada
