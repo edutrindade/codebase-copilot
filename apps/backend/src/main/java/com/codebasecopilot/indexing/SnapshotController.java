@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 import org.springdoc.core.annotations.ParameterObject;
@@ -72,6 +73,39 @@ class SnapshotController {
                                         f.lineCount(),
                                         f.contentHash(),
                                         f.chunkCount()));
+    }
+
+    @GetMapping("/snapshots/{snapshotId}/tree")
+    @ApiErrors(ErrorCode.SNAPSHOT_NOT_FOUND)
+    @Operation(
+            operationId = "getSnapshotTree",
+            summary = "Lista os filhos imediatos de um diretório do snapshot")
+    TreeResponse tree(
+            @PathVariable UUID snapshotId,
+            @RequestParam(required = false) @Nullable FileStatus status,
+            @RequestParam(required = false) @Nullable String path) {
+        SnapshotService.TreeView view = service.tree(snapshotId, status, path);
+        String parent = view.path();
+        return new TreeResponse(
+                parent,
+                view.entries().stream()
+                        .map(
+                                e ->
+                                        new TreeEntryResponse(
+                                                e.name(),
+                                                parent.isEmpty()
+                                                        ? e.name()
+                                                        : parent + "/" + e.name(),
+                                                e.directory() ? "DIRECTORY" : "FILE",
+                                                e.files(),
+                                                e.indexedFiles(),
+                                                e.unsupportedFiles(),
+                                                e.failedFiles(),
+                                                e.sizeBytes(),
+                                                e.status() == null ? null : e.status().name(),
+                                                e.reason(),
+                                                e.language()))
+                        .toList());
     }
 
     @GetMapping("/snapshots/{snapshotId}/files/content")
@@ -204,6 +238,31 @@ class SnapshotController {
                             description =
                                     "Texto UTF-8 do arquivo, sem BOM e com as quebras de linha originais.")
                     String content) {}
+
+    record TreeResponse(
+            @Schema(description = "Diretório listado, normalizado; vazio na raiz.") String path,
+            List<TreeEntryResponse> entries) {}
+
+    record TreeEntryResponse(
+            String name,
+            String path,
+            @Schema(allowableValues = {"DIRECTORY", "FILE"}) String type,
+            @Schema(description = "Arquivos do diretório e dos subdiretórios; 1 para arquivo.")
+                    int files,
+            int indexedFiles,
+            int unsupportedFiles,
+            int failedFiles,
+            long sizeBytes,
+            @Schema(
+                            nullable = true,
+                            description = "Estado do arquivo; null para diretório.",
+                            allowableValues = {"INDEXED", "UNSUPPORTED", "FAILED"})
+                    @Nullable String status,
+            @Schema(
+                            nullable = true,
+                            description = "Motivo, como em GET /snapshots/{snapshotId}/files.")
+                    @Nullable String reason,
+            @Schema(nullable = true) @Nullable String language) {}
 
     record SnapshotFileResponse(
             String relativePath,

@@ -83,14 +83,17 @@ describe('shortcuts', () => {
     const user = userEvent.setup();
     const goAsk = vi.fn();
     const goHistory = vi.fn();
-    render(<Harness bindings={{ goAsk, goHistory }} />);
+    const goFiles = vi.fn();
+    render(<Harness bindings={{ goAsk, goHistory, goFiles }} />);
 
     await user.keyboard('gp');
     await user.keyboard('gxh');
     await user.keyboard('h');
+    await user.keyboard('ga');
 
     expect(goAsk).toHaveBeenCalledOnce();
     expect(goHistory).not.toHaveBeenCalled();
+    expect(goFiles).toHaveBeenCalledOnce();
   });
 
   test('turning single keys off keeps only the shortcuts with a modifier', async () => {

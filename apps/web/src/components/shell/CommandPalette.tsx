@@ -3,6 +3,7 @@ import { Command, defaultFilter } from 'cmdk';
 import {
   Boxes,
   FolderGit2,
+  FolderTree,
   History,
   Keyboard,
   LayoutDashboard,
@@ -187,6 +188,11 @@ function PaletteCommands({
             {current.activeSnapshot && (
               <Item id="section:ask" icon={SquarePen} onSelect={() => go(`${base}/ask`)}>
                 {sections.ask}
+              </Item>
+            )}
+            {current.activeSnapshot && (
+              <Item id="section:files" icon={FolderTree} onSelect={() => go(`${base}/files`)}>
+                {sections.files}
               </Item>
             )}
             <Item id="section:history" icon={History} onSelect={() => go(`${base}/history`)}>

@@ -2,6 +2,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { useEffect, useRef } from 'react';
 import { messages } from '../../messages';
 import type { LineRange } from './evidence';
+import './viewer.css';
 
 // Must match the row height in .code-view__line; rows never wrap, so every row has this height.
 const LINE_HEIGHT_PX = 20;

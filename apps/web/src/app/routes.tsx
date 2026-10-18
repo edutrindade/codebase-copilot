@@ -20,6 +20,7 @@ const NewProjectPage = screen(() => import('../features/import/NewProjectPage'),
 const ProjectPage = screen(() => import('../features/project/ProjectPage'), 'ProjectPage');
 const ChatPage = screen(() => import('../features/ask/ChatPage'), 'ChatPage');
 const HistoryPage = screen(() => import('../features/history/HistoryPage'), 'HistoryPage');
+const FilesPage = screen(() => import('../features/files/FilesPage'), 'FilesPage');
 const ProjectLayout = screen(() => import('../features/project/ProjectLayout'), 'ProjectLayout');
 const ProjectSettingsPage = screen(
   () => import('../features/project/ProjectSettingsPage'),
@@ -73,6 +74,7 @@ export const routes: RouteObject[] = [
                 element: page(<ChatPage />),
                 handle: section('conversation'),
               },
+              { path: 'files', element: page(<FilesPage />), handle: section('files') },
               { path: 'history', element: page(<HistoryPage />), handle: section('history') },
               {
                 path: 'settings',

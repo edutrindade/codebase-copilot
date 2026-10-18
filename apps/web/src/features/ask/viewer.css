@@ -1,0 +1,109 @@
+@layer screens {
+  .viewer__icon {
+    flex: none;
+    width: var(--icon);
+    height: var(--icon);
+    color: var(--color-text-muted);
+  }
+
+  .viewer__label {
+    font-weight: var(--weight-semibold);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .path-trail {
+    min-width: 0;
+    color: var(--color-text-muted);
+    overflow-wrap: anywhere;
+  }
+
+  .path-trail__separator {
+    padding: 0 1px;
+  }
+
+  .path-trail__name {
+    font-weight: var(--weight-semibold);
+    color: var(--color-text);
+  }
+
+  /* Viewer */
+  .viewer__header {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .viewer__path {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+
+  .viewer__toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-1) var(--space-2);
+    font-size: var(--text-sm);
+  }
+
+  .viewer__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
+
+  .viewer__info {
+    font-size: var(--text-sm);
+  }
+
+  .code-view {
+    height: min(32rem, 70vh);
+    overflow: auto;
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    font-variant-ligatures: none;
+    background: var(--color-sunken);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+  }
+
+  .code-view__lines {
+    width: max-content;
+    min-width: 100%;
+  }
+
+  /* The height must match LINE_HEIGHT_PX in CodeLines.tsx. */
+  .code-view__line {
+    display: flex;
+    height: 20px;
+    line-height: 20px;
+    white-space: pre;
+  }
+
+  .code-view__line--cited {
+    background: var(--color-highlight);
+  }
+
+  .code-view__number {
+    flex: none;
+    min-width: 4.5rem;
+    padding: 0 var(--space-2);
+    text-align: right;
+    color: var(--color-text-muted);
+    user-select: none;
+  }
+
+  .code-view__marker {
+    flex: none;
+    width: 1.25rem;
+    color: var(--color-highlight-marker);
+    user-select: none;
+  }
+
+  .code-view__text {
+    padding-right: var(--space-4);
+  }
+}

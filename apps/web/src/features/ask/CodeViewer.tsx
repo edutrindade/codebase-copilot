@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
-import { LocateFixed } from 'lucide-react';
+import { FolderTree, LocateFixed } from 'lucide-react';
 import { useState } from 'react';
 import { ApiError } from '../../api/errors';
 import { Loading } from '../../components/Loading';
 import { ProblemAlert } from '../../components/ProblemAlert';
-import { Button } from '../../components/ui/Button';
+import { Button, ButtonLink } from '../../components/ui/Button';
 import { Callout } from '../../components/ui/Callout';
 import { CopyButton } from '../../components/ui/CopyButton';
 import { SegmentedControl } from '../../components/ui/SegmentedControl';
@@ -58,6 +58,9 @@ export function CodeViewer({ projectId, evidence, activeSnapshotId }: CodeViewer
             )}
             <CopyButton text={evidence.path} label={text.copyPath} />
             <CopyButton text={evidence.snippet} label={text.copySnippet} />
+            {detail.data && activeSnapshotId && (
+              <OpenInFiles projectId={projectId} detail={detail.data} />
+            )}
           </div>
         </div>
       </div>
@@ -78,6 +81,28 @@ export function CodeViewer({ projectId, evidence, activeSnapshotId }: CodeViewer
         />
       )}
     </div>
+  );
+}
+
+// The active snapshot's file; its lines only match the evidence when the content is the same.
+function OpenInFiles({ projectId, detail }: { projectId: string; detail: EvidenceDetail }) {
+  if (detail.activeVersion !== 'SAME' && detail.activeVersion !== 'CHANGED') {
+    return null;
+  }
+  const search = new URLSearchParams({ file: detail.path });
+  if (detail.activeVersion === 'SAME') {
+    const range = highlightedRange(detail);
+    search.set('lines', `${range.start}-${range.end}`);
+  }
+  return (
+    <ButtonLink
+      to={`/projects/${projectId}/files?${search.toString()}`}
+      size="sm"
+      variant="ghost"
+      icon={FolderTree}
+    >
+      {messages.ask.viewer.openInFiles}
+    </ButtonLink>
   );
 }
 

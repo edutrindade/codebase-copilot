@@ -22,6 +22,7 @@ function rows(): ShortcutRow[] {
     { label: text.close, steps: [['Esc']], singleKey: false },
     { label: text.goOverview, steps: [['g'], ['o']], join: 'then', singleKey: true },
     { label: text.goAsk, steps: [['g'], ['p']], join: 'then', singleKey: true },
+    { label: text.goFiles, steps: [['g'], ['a']], join: 'then', singleKey: true },
     { label: text.goHistory, steps: [['g'], ['h']], join: 'then', singleKey: true },
     { label: text.focusQuestion, steps: [['/']], singleKey: true },
     { label: text.send, steps: [[mod, 'Enter']], singleKey: false },

@@ -11,6 +11,7 @@ export const messages = {
     ask: 'Perguntar',
     conversation: 'Conversa',
     history: 'Histórico',
+    files: 'Arquivos',
     overview: 'Visão geral',
     settings: 'Configurações',
     system: 'Sistema e privacidade',
@@ -92,6 +93,7 @@ export const messages = {
       close: 'Fechar a paleta, menus e diálogos',
       goOverview: 'Ir para a visão geral do projeto',
       goAsk: 'Ir para Perguntar',
+      goFiles: 'Ir para os arquivos do projeto',
       goHistory: 'Ir para o histórico do projeto',
     },
     singleKey: 'Atalhos de uma tecla',
@@ -392,6 +394,15 @@ export const messages = {
     maxProjectLabel: 'Tamanho máximo do projeto (MB)',
     limitHint: (effective: string) => `Vazio usa o padrão. Valor em vigor: ${effective}.`,
     save: 'Salvar e recalcular',
+    saveChanges: 'Salvar alterações',
+    unsaved: 'Alterações não salvas.',
+    barLabel: 'Alterações nas exclusões e limites',
+    applied: (applied: number, total: number) =>
+      total === 1
+        ? applied === 1
+          ? 'aplicada'
+          : 'desativada'
+        : `${applied} de ${total} aplicadas`,
     saving: 'Salvando…',
     discard: 'Descartar alterações',
     saved: 'Configurações salvas. A pré-análise foi recalculada.',
@@ -412,6 +423,7 @@ export const messages = {
     tabs: {
       overview: 'Visão geral',
       ask: 'Perguntar',
+      files: 'Arquivos',
       history: 'Histórico',
       settings: 'Configurações',
     },
@@ -423,8 +435,10 @@ export const messages = {
     detail: 'Exclusões e limites usados na próxima pré-análise e na próxima indexação.',
     outdatedWarning:
       'Ao salvar, o snapshot ativo fica desatualizado até você indexar o projeto de novo.',
+    outdated:
+      'As exclusões ou os limites mudaram depois do snapshot ativo; as respostas ainda usam as configurações antigas.',
     overviewLink: 'Indexar na visão geral',
-    saved: 'Configurações salvas. Indexe de novo para aplicá-las às respostas.',
+    saved: 'Indexe de novo para aplicá-las às respostas.',
   },
   system: {
     detail: 'O que está configurado no servidor, o que sai desta máquina e onde ficam os dados.',
@@ -575,13 +589,8 @@ export const messages = {
       title: 'Arquivos não indexados',
       detail:
         'Ficaram fora das buscas e das respostas. Arquivos com falha são tentados de novo na próxima indexação.',
-      filterLegend: 'Mostrar',
-      FAILED: (count: number) => `Com falha (${count})`,
-      UNSUPPORTED: (count: number) => `Não suportados (${count})`,
-      pathColumn: 'Arquivo',
-      reasonColumn: 'Motivo',
-      sizeColumn: 'Tamanho',
-      empty: 'Nenhum arquivo nesta situação.',
+      FAILED: (count: number) => (count === 1 ? '1 com falha' : `${count} com falha`),
+      UNSUPPORTED: (count: number) => (count === 1 ? '1 não suportado' : `${count} não suportados`),
       reasons: {
         BINARY: 'Binário',
         INVALID_ENCODING: 'Codificação de texto não suportada',
@@ -779,12 +788,50 @@ export const messages = {
       copyPath: 'Copiar o caminho',
       copySnippet: 'Copiar o trecho',
       goToCited: 'Ir para o trecho',
+      openInFiles: 'Abrir em Arquivos',
       currentVersion: 'Versão do snapshot ativo; as linhas da evidência podem não corresponder.',
       answeredVersion: 'Versão do snapshot usado na resposta.',
       fileInfo: (language: string, lines: number, size: string) =>
         `${language}, ${lines === 1 ? '1 linha' : `${lines} linhas`}, ${size}`,
       codeLabel: (path: string) => `Conteúdo de ${path}`,
     },
+  },
+  files: {
+    detail: (date: string) =>
+      `Arquivos do snapshot ativo, de ${date}, como foram lidos na indexação.`,
+    noSnapshotTitle: 'Ainda não há snapshot',
+    noSnapshotDetail: 'Indexe o projeto para explorar os arquivos lidos.',
+    openOverview: 'Ir para a visão geral',
+    treeTitle: 'Árvore de arquivos',
+    treeLabel: 'Pastas e arquivos do snapshot',
+    filterLabel: 'Mostrar',
+    filters: {
+      ALL: (count: number) => `Todos (${count})`,
+      INDEXED: (count: number) => `Indexados (${count})`,
+      UNSUPPORTED: (count: number) => `Não suportados (${count})`,
+      FAILED: (count: number) => `Com falha (${count})`,
+    },
+    emptyFilter: 'Nenhum arquivo nesta situação.',
+    emptyFolder: 'Pasta vazia.',
+    loadFailed: 'Não foi possível carregar esta pasta.',
+    retry: 'Tentar de novo',
+    unindexedCount: (count: number) => (count === 1 ? '1 não indexado' : `${count} não indexados`),
+    fileCount: (count: number) => (count === 1 ? '1 arquivo' : `${count} arquivos`),
+    status: {
+      INDEXED: 'Indexado',
+      UNSUPPORTED: 'Não suportado',
+      FAILED: 'Com falha',
+    },
+    viewerTitle: 'Arquivo',
+    viewerEmpty: 'Escolha um arquivo na árvore para ver o conteúdo.',
+    notFound: 'Este arquivo não está no snapshot ativo.',
+    notIndexed: (reason: string) => `Este arquivo não foi indexado: ${reason}.`,
+    notIndexedDetail: 'Ele fica fora das buscas e das respostas, e o conteúdo não foi guardado.',
+    copyPath: 'Copiar o caminho',
+    askAbout: 'Perguntar sobre este arquivo',
+    askDraft: (path: string) => `No arquivo ${path}, `,
+    lines: (start: number, end: number) =>
+      start === end ? `Linha ${start} destacada` : `Linhas ${start} a ${end} destacadas`,
   },
   history: {
     detail: 'Conversas deste projeto, da pergunta mais recente para a mais antiga.',
@@ -793,9 +840,15 @@ export const messages = {
       'As perguntas feitas sobre este projeto ficam guardadas aqui, com as respostas e as evidências.',
     ask: 'Fazer uma pergunta',
     questionCount: (count: number) => (count === 1 ? '1 pergunta' : `${count} perguntas`),
-    updatedAt: (date: string) => `Última pergunta em ${date}`,
-    createdAt: (date: string) => `Iniciada em ${date}`,
-    delete: (title: string) => `Excluir a conversa “${title}”`,
+    periods: {
+      today: 'Hoje',
+      yesterday: 'Ontem',
+      lastWeek: 'Últimos 7 dias',
+      older: 'Mais antigas',
+    },
+    actions: (title: string) => `Ações da conversa ${title}`,
+    open: 'Abrir',
+    deleteItem: 'Excluir…',
     deleteTitle: 'Excluir esta conversa?',
     deleteDetail:
       'Remove as perguntas, as respostas e as evidências guardadas desta conversa. Esta ação não pode ser desfeita.',
@@ -806,6 +859,9 @@ export const messages = {
     close: 'Fechar a notificação',
     indexed: 'Indexação concluída',
     indexFailed: 'A indexação falhou',
+    conversationDeleted: 'Conversa excluída',
+    settingsSaved: 'Configurações salvas',
+    projectCreated: 'Projeto criado',
   },
   indexing: {
     start: 'Indexar',

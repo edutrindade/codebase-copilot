@@ -21,6 +21,10 @@ const hostileAnswer = (label: string) =>
 
 const created: { workspaceId?: string; projectId?: string } = {};
 
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 async function post(request: APIRequestContext, url: string, data?: object) {
   const response = await request.post(url, { data });
   expect(response.ok(), `${url}: ${response.status()}`).toBe(true);
@@ -106,6 +110,17 @@ test('hostile content, names and question are rendered as text', async ({ page, 
     await expect(card.locator('a, img, b, script, iframe')).toHaveCount(0);
     await expect(card.getByRole('button', { name: /^Abrir a evidência E\d+/ })).toHaveCount(1);
     await page.unrouteAll();
+  });
+
+  await test.step('names in the file tree', async () => {
+    await page.goto(`/projects/${created.projectId}/files`);
+    const tree = page.getByRole('list', { name: messages.files.treeLabel });
+    await expect(tree.getByRole('link', { name: FILE_NAME })).toBeVisible();
+    await tree
+      .getByRole('button', { name: new RegExp(`^${escapeRegExp(DIRECTORY_NAME)}`) })
+      .click();
+    await tree.getByRole('link', { name: 'notes.md' }).click();
+    await expect(page.locator('.code-view')).toBeVisible();
   });
 
   await test.step('nothing ran', async () => {

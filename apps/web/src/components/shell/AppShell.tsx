@@ -127,6 +127,7 @@ function useProjectShortcuts(projectId: string | null) {
   const base = `/projects/${projectId ?? ''}`;
   useShortcut('goOverview', () => void navigate(base, { viewTransition: true }), enabled);
   useShortcut('goAsk', () => void navigate(`${base}/ask`, { viewTransition: true }), enabled);
+  useShortcut('goFiles', () => void navigate(`${base}/files`, { viewTransition: true }), enabled);
   useShortcut(
     'goHistory',
     () => void navigate(`${base}/history`, { viewTransition: true }),

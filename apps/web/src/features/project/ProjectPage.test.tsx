@@ -53,7 +53,6 @@ describe('ProjectPage', () => {
     const partial = readySnapshot('PARTIAL');
     partial.counts = { ...partial.counts, failedFiles: 2, unsupportedFiles: 1 };
     const current = project({ activeSnapshot: partial, outdatedReasons: ['SETTINGS_CHANGED'] });
-    const statuses: string[] = [];
     server.use(
       http.get(`/api/v1/snapshots/${snapshotId}`, () =>
         HttpResponse.json(
@@ -79,49 +78,6 @@ describe('ProjectPage', () => {
           ]),
         ),
       ),
-      http.get(`/api/v1/snapshots/${snapshotId}/files`, ({ request }) => {
-        const status = new URL(request.url).searchParams.get('status') ?? '';
-        statuses.push(status);
-        return HttpResponse.json(
-          page(
-            status === 'FAILED'
-              ? [
-                  {
-                    relativePath: 'src/Broken.java',
-                    status: 'FAILED',
-                    reason: 'READ_ERROR',
-                    language: 'java',
-                    sizeBytes: 100,
-                    lineCount: null,
-                    contentHash: null,
-                    chunkCount: 0,
-                  },
-                ]
-              : [
-                  {
-                    relativePath: 'data/dump.sql',
-                    status: 'UNSUPPORTED',
-                    reason: 'LINE_TOO_LONG',
-                    language: 'sql',
-                    sizeBytes: 524288,
-                    lineCount: null,
-                    contentHash: null,
-                    chunkCount: 0,
-                  },
-                  {
-                    relativePath: 'scripts/publish.sh',
-                    status: 'UNSUPPORTED',
-                    reason: 'SENSITIVE_CONTENT',
-                    language: 'shell',
-                    sizeBytes: 120,
-                    lineCount: null,
-                    contentHash: null,
-                    chunkCount: 0,
-                  },
-                ],
-          ),
-        );
-      }),
       ...handlers(() => current),
     );
     renderRoute(`/projects/${base.id}`);
@@ -145,17 +101,12 @@ describe('ProjectPage', () => {
     expect(screen.getByRole('button', { name: messages.project.reindexTitle })).toBeInTheDocument();
 
     const unindexed = screen.getByRole('region', { name: messages.project.unindexed.title });
-    expect(await within(unindexed).findByText('src/Broken.java')).toBeInTheDocument();
-    expect(unindexed).toHaveTextContent(messages.project.unindexed.reasons.READ_ERROR);
-    await userEvent.click(
-      within(unindexed).getByRole('radio', { name: messages.project.unindexed.UNSUPPORTED(1) }),
-    );
-    expect(await within(unindexed).findByText('data/dump.sql')).toBeInTheDocument();
-    expect(unindexed).toHaveTextContent(messages.project.unindexed.reasons.LINE_TOO_LONG);
-    expect(within(unindexed).getByRole('row', { name: /scripts\/publish\.sh/ })).toHaveTextContent(
-      messages.project.unindexed.reasons.SENSITIVE_CONTENT,
-    );
-    expect(statuses).toEqual(['FAILED', 'UNSUPPORTED']);
+    expect(
+      within(unindexed).getByRole('link', { name: messages.project.unindexed.FAILED(2) }),
+    ).toHaveAttribute('href', `/projects/${base.id}/files?status=FAILED`);
+    expect(
+      within(unindexed).getByRole('link', { name: messages.project.unindexed.UNSUPPORTED(1) }),
+    ).toHaveAttribute('href', `/projects/${base.id}/files?status=UNSUPPORTED`);
 
     const history = screen.getByRole('region', { name: messages.project.snapshots.title });
     expect(

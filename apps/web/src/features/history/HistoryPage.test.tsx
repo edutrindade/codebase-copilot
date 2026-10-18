@@ -9,6 +9,7 @@ import { conversation, page, project, readySnapshot } from '../../test/fixtures'
 import { problem } from '../../test/problems';
 import { renderRoute } from '../../test/render';
 import { server } from '../../test/server';
+import { groupByPeriod } from './periods';
 
 const text = messages.history;
 const base = project({ activeSnapshot: readySnapshot() });
@@ -38,9 +39,9 @@ describe('HistoryPage', () => {
     expect(link).toHaveAttribute('href', `/projects/${base.id}/conversations/${summary.id}`);
     const card = link.closest('li') as HTMLElement;
     expect(within(card).getByText(new RegExp(text.questionCount(3)))).toBeInTheDocument();
-    expect(
-      within(card).getByText(new RegExp(text.updatedAt(formatDateTime(summary.updatedAt)))),
-    ).toBeInTheDocument();
+    expect(card).toHaveTextContent(formatDateTime(summary.updatedAt));
+    const period = groupByPeriod([summary])[0]?.period ?? 'older';
+    expect(within(main).getByRole('region', { name: text.periods[period] })).toContainElement(card);
     expect(screen.getByRole('link', { name: text.ask })).toHaveAttribute(
       'href',
       `/projects/${base.id}/ask`,
@@ -69,7 +70,7 @@ describe('HistoryPage', () => {
     );
     renderRoute(`/projects/${base.id}/history`);
 
-    await userEvent.click(await screen.findByRole('button', { name: text.delete(summary.title) }));
+    await openDelete();
     const dialog = await screen.findByRole('alertdialog', { name: text.deleteTitle });
     expect(dialog).toHaveTextContent(summary.title);
     expect(await axeViolations()).toEqual([]);
@@ -77,6 +78,7 @@ describe('HistoryPage', () => {
 
     expect(await screen.findByRole('heading', { name: text.emptyTitle })).toBeInTheDocument();
     expect(deleted).toEqual([summary.id]);
+    expect(await screen.findByText(messages.toast.conversationDeleted)).toBeInTheDocument();
   });
 
   test('a failed deletion keeps the dialog open with the problem', async () => {
@@ -89,7 +91,7 @@ describe('HistoryPage', () => {
     );
     renderRoute(`/projects/${base.id}/history`);
 
-    await userEvent.click(await screen.findByRole('button', { name: text.delete(summary.title) }));
+    await openDelete();
     const dialog = await screen.findByRole('alertdialog', { name: text.deleteTitle });
     await userEvent.click(within(dialog).getByRole('button', { name: text.deleteConfirm }));
 
@@ -137,3 +139,8 @@ describe('HistoryPage', () => {
     expect(screen.queryByRole('button', { name: messages.errors.retry })).not.toBeInTheDocument();
   });
 });
+
+async function openDelete() {
+  await userEvent.click(await screen.findByRole('button', { name: text.actions(summary.title) }));
+  await userEvent.click(await screen.findByRole('menuitem', { name: text.deleteItem }));
+}

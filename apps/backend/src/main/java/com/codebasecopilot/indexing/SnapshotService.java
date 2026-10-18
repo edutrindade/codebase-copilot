@@ -49,12 +49,21 @@ class SnapshotService {
             @Nullable FileStatus status,
             @Nullable String pathPrefix,
             PageRequestParams params) {
-        String prefix = prefix(pathPrefix);
+        String prefix = prefix(pathPrefix, "pathPrefix", "validation.snapshot.path-prefix");
         Snapshot snapshot = find(id);
         return PageResponse.of(
                 snapshots.findFiles(snapshot, status, prefix, params),
                 params,
                 snapshots.countFiles(id, status, prefix));
+    }
+
+    record TreeView(String path, List<SnapshotRepository.TreeEntry> entries) {}
+
+    @Transactional(readOnly = true)
+    TreeView tree(UUID id, @Nullable FileStatus status, @Nullable String rawPath) {
+        String path = prefix(rawPath, "path", "validation.snapshot.tree-path");
+        find(id);
+        return new TreeView(path, snapshots.findTree(id, status, path));
     }
 
     record ContentView(
@@ -121,7 +130,7 @@ class SnapshotService {
         return path;
     }
 
-    private static String prefix(@Nullable String raw) {
+    private static String prefix(@Nullable String raw, String field, String message) {
         if (raw == null) {
             return "";
         }
@@ -133,7 +142,6 @@ class SnapshotService {
             // A leading "/" or a ".." segment.
         }
         throw new ApiException(
-                ErrorCode.VALIDATION_FAILED,
-                List.of(new FieldViolation("pathPrefix", "validation.snapshot.path-prefix")));
+                ErrorCode.VALIDATION_FAILED, List.of(new FieldViolation(field, message)));
     }
 }

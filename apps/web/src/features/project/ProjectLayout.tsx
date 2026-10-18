@@ -85,12 +85,13 @@ function useRefreshWhenJobChanges(projectId: string, indexingId: string | null) 
   }, [indexingId, projectId, queryClient]);
 }
 
-const TABS = ['overview', 'ask', 'history', 'settings'] as const;
+const TABS = ['overview', 'ask', 'files', 'history', 'settings'] as const;
 type Tab = (typeof TABS)[number];
 
 const TAB_PATHS: Record<Tab, string> = {
   overview: '',
   ask: '/ask',
+  files: '/files',
   history: '/history',
   settings: '/settings',
 };

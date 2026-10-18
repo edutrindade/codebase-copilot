@@ -1442,6 +1442,22 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Consequências:** a casca foi de 171,5 kB para 171,7 kB com gzip (teto de 175 kB); o chunk da tela de pergunta tem 25,1 kB com gzip (21,1 kB na linha de base da F0). Listas aninhadas viram uma lista só; negrito não atravessa linhas. "Abrir em Arquivos" entra com a F8, e o realce dos blocos de código com a F9.  
 **O que levaria à revisão:** respostas reais (com saldo) que usem tabelas ou listas aninhadas com frequência, ou pedidos de links para arquivos do próprio projeto.
 
+### D-092 — Explorador de arquivos e `GET /snapshots/{id}/tree` (P5.7 da Etapa 9)
+**Status:** Aceita (17/10/2026; F8 da Etapa 9)  
+**Contexto:** não havia como ver o que um snapshot contém além das evidências de uma resposta e da tabela de arquivos não indexados da visão geral. `GET /snapshots/{id}/files` filtra por prefixo, mas devolve todos os descendentes, de 100 em 100: montar a árvore de um projeto com 10 mil arquivos exigiria 100 chamadas.  
+**Opções consideradas:** (a) só frontend, carregando a lista inteira até um teto e caindo numa busca por prefixo acima dele; (b) um endpoint com os filhos imediatos de um diretório.  
+**Decisão:**
+- **`GET /snapshots/{snapshotId}/tree?path=&status=`** (módulo `indexing`, SQL explícito com `JdbcClient`): devolve `{ path, entries }`, os filhos imediatos de `path` (vazio na raiz), diretórios primeiro e depois arquivos, cada grupo por nome em `COLLATE "C"`, como a listagem. Cada entrada traz `name`, `path`, `type` (`DIRECTORY` ou `FILE`), as contagens `files`, `indexedFiles`, `unsupportedFiles` e `failedFiles` (do diretório e dos subdiretórios; 1 para arquivo) e `sizeBytes`; arquivos trazem também `status`, `reason` e `language`. Diretórios não são guardados: saem do agrupamento dos caminhos de `snapshot_files`.
+- **Filtro `status`** como no `/files`: só aparecem arquivos nesse estado e os diretórios que têm algum, com as contagens do filtro.
+- **Sem paginação:** o tamanho é o de um diretório, não o do projeto. Diretório inexistente, caminho de arquivo e snapshot podado devolvem `entries` vazio, como o `/files` com um prefixo que não casa. Erros: `400 VALIDATION_FAILED` (`path` com `/` inicial, `..`, `\` ou controle; `status` inválido), antes de `404 SNAPSHOT_NOT_FOUND`.
+- **Aba Arquivos** (`/projects/:id/files`, `g a`, item da paleta): árvore do snapshot ativo à esquerda, carregada pasta a pasta (botões de abrir com `aria-expanded`, arquivos como links; ↑/↓, Home/End, → abre ou entra, ← fecha ou volta à pasta de cima) e o visualizador da tela de pergunta à direita, fixos na altura da janela a partir de 64rem. Filtro por estado com as contagens do snapshot; arquivos não indexados mostram o motivo, sem conteúdo. O arquivo, o filtro e as linhas destacadas ficam na URL (`?file=&status=&lines=`), então o voltar do navegador e o recarregar funcionam. "Perguntar sobre este arquivo" abre a pergunta com o caminho no campo, sem enviar.
+- **"Abrir em Arquivos"** no visualizador da pergunta, quando o arquivo existe no snapshot ativo; com o mesmo conteúdo (`activeVersion = SAME`), leva também as linhas citadas.
+- **Visão geral:** "Arquivos não indexados" fica só com as contagens, como links para a aba já filtrada.
+
+**Motivo:** é a única forma de o explorador funcionar igual em qualquer tamanho de projeto, com uma consulta pequena por pasta aberta e as regras do projeto (SQL explícito, teste de integração com Testcontainers, contrato versionado).  
+**Consequências:** a única mudança de backend da Etapa 9; o contrato (`openapi.json`) e os tipos do frontend foram regenerados. O `06` recebe o endpoint no fechamento (F11). Cada pasta aberta é uma consulta que agrupa as linhas do snapshot sob o prefixo. O chunk da aba tem 3,1 kB com gzip; a casca ficou em 171,2 kB com gzip (teto de 175 kB).  
+**O que levaria à revisão:** diretórios com milhares de filhos imediatos (pediria paginação ou virtualização da árvore), ou busca por nome de arquivo em todo o snapshot.
+
 ---
 
 ## Decisões em aberto

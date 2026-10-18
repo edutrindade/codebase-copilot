@@ -97,6 +97,8 @@ function sectionLabel(section: RouteSection | null, conversationTitle?: string):
       return messages.pages.ask;
     case 'conversation':
       return conversationTitle ?? messages.pages.conversation;
+    case 'files':
+      return messages.pages.files;
     case 'history':
       return messages.pages.history;
     case 'settings':

@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { Cpu, Database, Keyboard, Palette, ShieldCheck, type LucideIcon } from 'lucide-react';
 import { useId } from 'react';
 import { setSingleKeyShortcuts, useSingleKeyShortcuts } from '../../app/shortcuts';
 import { setThemePreference, useThemePreference, type ThemePreference } from '../../app/theme';
@@ -12,6 +13,7 @@ import { StatusBadge } from '../../components/ui/StatusBadge';
 import { TableScroll } from '../../components/ui/TableScroll';
 import { messages } from '../../messages';
 import { getProviders, importKeys, type Providers } from '../import/api';
+import './SystemPage.css';
 
 const THEMES: ThemePreference[] = ['system', 'light', 'dark'];
 
@@ -26,42 +28,71 @@ export function SystemPage() {
   return (
     <section className="stack">
       <PageHeader title={messages.pages.system} description={text.detail} />
-      <Card as="section" className="stack" aria-labelledby="providers-title">
-        <h2 id="providers-title">{text.providersTitle}</h2>
-        <p className="muted">{text.providersDetail}</p>
-        {providers.isPending && <Loading />}
-        {providers.isError && (
-          <ProblemAlert error={providers.error} onRetry={() => void providers.refetch()} />
-        )}
-        {providers.isSuccess && <ProviderTable providers={providers.data} />}
-      </Card>
-      <Card as="section" className="stack" aria-labelledby="privacy-title">
-        <h2 id="privacy-title">{text.privacyTitle}</h2>
-        <p>{text.privacySummary}</p>
-        <ul>
-          <li>{text.neverExecuted}</li>
-          {providers.isSuccess && <PrivacyItems providers={providers.data} />}
-        </ul>
-      </Card>
-      <Card as="section" className="stack" aria-labelledby="data-title">
-        <h2 id="data-title">{text.dataTitle}</h2>
-        <ul>
-          {text.data.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
-      </Card>
-      <Card as="section" className="stack" aria-labelledby="appearance-title">
-        <h2 id="appearance-title">{text.appearanceTitle}</h2>
-        <ThemeChoice />
-      </Card>
-      <Card as="section" className="stack" aria-labelledby="shortcuts-title">
-        <h2 id="shortcuts-title">{messages.shortcuts.title}</h2>
-        <SingleKeyToggle />
-        <ShortcutList />
-        <p className="muted">{messages.shortcuts.detail}</p>
-      </Card>
+      <div className="system__grid">
+        <Card as="section" className="stack system__wide" aria-labelledby="providers-title">
+          <CardTitle id="providers-title" icon={Cpu}>
+            {text.providersTitle}
+          </CardTitle>
+          <p className="muted">{text.providersDetail}</p>
+          {providers.isPending && <Loading />}
+          {providers.isError && (
+            <ProblemAlert error={providers.error} onRetry={() => void providers.refetch()} />
+          )}
+          {providers.isSuccess && <ProviderTable providers={providers.data} />}
+        </Card>
+        <Card as="section" className="stack" aria-labelledby="privacy-title">
+          <CardTitle id="privacy-title" icon={ShieldCheck}>
+            {text.privacyTitle}
+          </CardTitle>
+          <p>{text.privacySummary}</p>
+          <ul>
+            <li>{text.neverExecuted}</li>
+            {providers.isSuccess && <PrivacyItems providers={providers.data} />}
+          </ul>
+        </Card>
+        <Card as="section" className="stack" aria-labelledby="data-title">
+          <CardTitle id="data-title" icon={Database}>
+            {text.dataTitle}
+          </CardTitle>
+          <ul>
+            {text.data.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </Card>
+        <Card as="section" className="stack" aria-labelledby="appearance-title">
+          <CardTitle id="appearance-title" icon={Palette}>
+            {text.appearanceTitle}
+          </CardTitle>
+          <ThemeChoice />
+        </Card>
+        <Card as="section" className="stack system__wide" aria-labelledby="shortcuts-title">
+          <CardTitle id="shortcuts-title" icon={Keyboard}>
+            {messages.shortcuts.title}
+          </CardTitle>
+          <SingleKeyToggle />
+          <ShortcutList />
+          <p className="muted">{messages.shortcuts.detail}</p>
+        </Card>
+      </div>
     </section>
+  );
+}
+
+function CardTitle({
+  id,
+  icon: Icon,
+  children,
+}: {
+  id: string;
+  icon: LucideIcon;
+  children: string;
+}) {
+  return (
+    <h2 id={id} className="system__title">
+      <Icon aria-hidden="true" className="system__icon" />
+      {children}
+    </h2>
   );
 }
 

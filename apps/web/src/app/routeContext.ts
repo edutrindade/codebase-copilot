@@ -7,6 +7,7 @@ export type RouteSection =
   | 'overview'
   | 'ask'
   | 'conversation'
+  | 'files'
   | 'history'
   | 'settings'
   | 'system'

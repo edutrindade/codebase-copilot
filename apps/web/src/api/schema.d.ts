@@ -409,6 +409,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/snapshots/{snapshotId}/tree": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lista os filhos imediatos de um diretório do snapshot */
+        get: operations["getSnapshotTree"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system/providers": {
         parameters: {
             query?: never;
@@ -1306,6 +1323,38 @@ export interface components {
             unreadableFiles: number;
             /** Format: int64 */
             unsupportedFiles: number;
+        };
+        TreeEntryResponse: {
+            /** Format: int32 */
+            failedFiles: number;
+            /**
+             * Format: int32
+             * @description Arquivos do diretório e dos subdiretórios; 1 para arquivo.
+             */
+            files: number;
+            /** Format: int32 */
+            indexedFiles: number;
+            language: string | null;
+            name: string;
+            path: string;
+            /** @description Motivo, como em GET /snapshots/{snapshotId}/files. */
+            reason: string | null;
+            /** Format: int64 */
+            sizeBytes: number;
+            /**
+             * @description Estado do arquivo; null para diretório.
+             * @enum {string|null}
+             */
+            status: "INDEXED" | "UNSUPPORTED" | "FAILED" | null;
+            /** @enum {string} */
+            type: "DIRECTORY" | "FILE";
+            /** Format: int32 */
+            unsupportedFiles: number;
+        };
+        TreeResponse: {
+            entries: components["schemas"]["TreeEntryResponse"][];
+            /** @description Diretório listado, normalizado; vazio na raiz. */
+            path: string;
         };
         UpdateSettingsRequest: {
             disabledDefaultRules?: string[] | null;
@@ -2769,6 +2818,58 @@ export interface operations {
             };
             /** @description Erro (ProblemDetail). Códigos: SNAPSHOT_PRUNED, FILE_NOT_INDEXED. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Erro (ProblemDetail). Códigos: INTERNAL_ERROR. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getSnapshotTree: {
+        parameters: {
+            query?: {
+                status?: "INDEXED" | "UNSUPPORTED" | "FAILED";
+                path?: string;
+            };
+            header?: never;
+            path: {
+                snapshotId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TreeResponse"];
+                };
+            };
+            /** @description Erro (ProblemDetail). Códigos: VALIDATION_FAILED. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Erro (ProblemDetail). Códigos: SNAPSHOT_NOT_FOUND. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

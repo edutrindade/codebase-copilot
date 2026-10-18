@@ -71,7 +71,7 @@ function ProjectSummary({ project }: { project: Project }) {
           {activeSnapshot &&
             activeSnapshot.counts.failedFiles + activeSnapshot.counts.unsupportedFiles > 0 && (
               <UnindexedFiles
-                snapshotId={activeSnapshot.id}
+                projectId={project.id}
                 failedFiles={activeSnapshot.counts.failedFiles}
                 unsupportedFiles={activeSnapshot.counts.unsupportedFiles}
               />

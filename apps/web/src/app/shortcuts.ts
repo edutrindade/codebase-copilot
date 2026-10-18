@@ -8,6 +8,7 @@ export type ShortcutAction =
   | 'nextEvidence'
   | 'goOverview'
   | 'goAsk'
+  | 'goFiles'
   | 'goHistory';
 
 type Handler = () => void;
@@ -25,6 +26,7 @@ const SINGLE_KEYS: Record<string, ShortcutAction> = {
 const AFTER_G: Record<string, ShortcutAction> = {
   o: 'goOverview',
   p: 'goAsk',
+  a: 'goFiles',
   h: 'goHistory',
 };
 

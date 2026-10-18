@@ -477,6 +477,21 @@ P5.5 e a formatação da P7: divisor, campo fixo, cartões de resposta, `HoverCa
 ### F8 — Arquivos, histórico, configurações e sistema
 P5.6 a P5.9. Primeiro o endpoint `GET /snapshots/{id}/tree` (backend, contrato, teste de integração, tipos regenerados), depois a tela. Registro: D-092 (explorador e endpoint).
 
+**Como foi entregue (17/10/2026)**
+- **Endpoint `GET /snapshots/{id}/tree?path=&status=`** (D-092): filhos imediatos de um diretório, com as contagens por estado, em SQL explícito no `SnapshotRepository`; `SnapshotTreeApiIT` cobre a raiz, subpastas sem misturar irmãos de prefixo parecido (`src` e `srcx`), nomes acentuados, o filtro, pasta inexistente e a validação antes da busca. `openapi.json` e `schema.d.ts` regenerados.
+- **Aba Arquivos** (P5.7): árvore pasta a pasta com navegação pelas setas, filtro por estado com as contagens, visualizador com o caminho em trilha, copiar caminho e "Perguntar sobre este arquivo"; arquivos não indexados mostram o motivo. Arquivo, filtro e linhas na URL. Entram também `g a`, o item da paleta e "Abrir em Arquivos" no visualizador da pergunta (com as linhas citadas quando o arquivo não mudou). Os estilos do visualizador saíram do `ChatPage.css` para `features/ask/viewer.css`, compartilhado.
+- **Visão geral:** "Arquivos não indexados" virou um cartão com as contagens como links para a aba filtrada.
+- **Histórico** (P5.6): conversas agrupadas em Hoje, Ontem, Últimos 7 dias e Mais antigas (dias do calendário local), com quantidade de perguntas, tempo relativo (data exata na dica) e menu "⋯" (abrir, excluir). Toast "Conversa excluída".
+- **Configurações** (P5.8): regras padrão agrupadas por categoria em acordeões (abertos de início quando há regra desativada) e uma barra fixa embaixo, só com mudanças, com "Salvar alterações", "Descartar alterações" e o aviso de que o snapshot ficará desatualizado. Ao salvar, toast "Configurações salvas" e o foco vai para o título do formulário; com `SETTINGS_CHANGED`, um aviso no topo leva à visão geral para indexar. O assistente continua com o formulário de antes.
+- **Sistema e privacidade** (P5.9): cartões com ícone em duas colunas a partir de 64rem; o conteúdo já vinha da F2 e da F3.
+- **Toast "Projeto criado"** no assistente, que faltava desde a F6.
+- **Verificação:** `./mvnw verify` passa; `npm run check` com 215 testes (eram 205); `npm run e2e` com o `e2e/files.spec.ts` novo (teclado, filtro, voltar do navegador, axe nos dois temas) e o passo da árvore no `hostile-content.spec.ts`. Casca: 171,2 kB com gzip; chunk da aba Arquivos: 3,1 kB com gzip.
+
+**Desvios:**
+- **Árvore como listas aninhadas, não `role="tree"`:** botões de abrir com `aria-expanded` e arquivos como links (abrem em nova aba, entram no histórico do navegador). As setas funcionam como numa árvore, mas cada linha continua na ordem do Tab. O padrão completo de `tree` exigiria foco itinerante sobre níveis carregados sob demanda.
+- **Contagem do filtro sempre do snapshot inteiro:** as contagens por pasta vêm do endpoint; as do filtro, de `activeSnapshot.counts`, sem chamada a mais.
+- **Configurações no assistente sem a barra fixa:** lá o botão "Salvar e recalcular" fica ao lado do painel de indexação (F5), e a barra cobriria o painel.
+
 ### F9 — Realce de sintaxe (cortável)
 P8, com os limites medidos na F0. Registro: D-093 (revê a D-075 e a D-086).
 

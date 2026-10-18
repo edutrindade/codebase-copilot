@@ -6,6 +6,7 @@ import { ProblemAlert } from '../../components/ProblemAlert';
 import { Button } from '../../components/ui/Button';
 import { Callout } from '../../components/ui/Callout';
 import { StatusBadge } from '../../components/ui/StatusBadge';
+import { useToast } from '../../components/ui/Toast';
 import { messages } from '../../messages';
 import { workspaceKeys } from '../workspaces/api';
 import { createProject, importKeys, listLocalRoots, type LocalRoot, type NewProject } from './api';
@@ -52,11 +53,13 @@ function SourceForm({ roots, workspaceId, onCreated }: SourceFormProps) {
   const [folder, setFolder] = useState<FolderSelection>({ rootKey: roots[0]?.key ?? '', path: '' });
   const [typedName, setTypedName] = useState<string | null>(null);
   const queryClient = useQueryClient();
+  const notify = useToast();
   const mutation = useMutation({
     mutationFn: (project: NewProject) => createProject(workspaceId, project),
     onSuccess: async (project) => {
       queryClient.setQueryData(importKeys.project(project.id), project);
       await queryClient.invalidateQueries({ queryKey: workspaceKeys.all });
+      notify({ tone: 'success', title: messages.toast.projectCreated, description: project.name });
       onCreated(project.id);
     },
   });

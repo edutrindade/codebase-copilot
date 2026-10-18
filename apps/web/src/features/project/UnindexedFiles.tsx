@@ -1,87 +1,36 @@
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
-import { Loading } from '../../components/Loading';
-import { Pagination } from '../../components/Pagination';
-import { ProblemAlert } from '../../components/ProblemAlert';
+import { FileWarning } from 'lucide-react';
+import { Link } from 'react-router';
 import { Card } from '../../components/ui/Card';
-import { TableScroll } from '../../components/ui/TableScroll';
-import { formatBytes } from '../../format';
 import { messages } from '../../messages';
-import { listUnindexedFiles, projectKeys, type UnindexedStatus } from './api';
 
 interface UnindexedFilesProps {
-  snapshotId: string;
+  projectId: string;
   failedFiles: number;
   unsupportedFiles: number;
 }
 
-export function UnindexedFiles({ snapshotId, failedFiles, unsupportedFiles }: UnindexedFilesProps) {
+// Only the counts: the list itself lives in the Files tab, with the filter applied.
+export function UnindexedFiles({ projectId, failedFiles, unsupportedFiles }: UnindexedFilesProps) {
   const text = messages.project.unindexed;
-  const [status, setStatus] = useState<UnindexedStatus>(failedFiles > 0 ? 'FAILED' : 'UNSUPPORTED');
-  const [page, setPage] = useState(0);
-  const files = useQuery({
-    queryKey: projectKeys.files(snapshotId, status, page),
-    queryFn: ({ signal }) => listUnindexedFiles(snapshotId, status, page, signal),
-    placeholderData: keepPreviousData,
-  });
-  const counts: Record<UnindexedStatus, number> = {
-    FAILED: failedFiles,
-    UNSUPPORTED: unsupportedFiles,
-  };
-
-  function choose(next: UnindexedStatus) {
-    setStatus(next);
-    setPage(0);
-  }
-
+  const counts = { FAILED: failedFiles, UNSUPPORTED: unsupportedFiles };
   return (
     <Card as="section" className="stack" aria-labelledby="unindexed-title">
-      <h2 id="unindexed-title">{text.title}</h2>
+      <h2 id="unindexed-title" className="unindexed__title">
+        <FileWarning aria-hidden="true" className="unindexed__icon" />
+        {text.title}
+      </h2>
       <p className="muted">{text.detail}</p>
-      <fieldset className="segmented">
-        <legend>{text.filterLegend}</legend>
-        {(['FAILED', 'UNSUPPORTED'] as const).map((option) => (
-          <label key={option} className="checkbox">
-            <input
-              type="radio"
-              name="unindexed-status"
-              checked={status === option}
-              onChange={() => choose(option)}
-            />
-            {text[option](counts[option])}
-          </label>
-        ))}
-      </fieldset>
-      {files.isPending && <Loading />}
-      {files.isError && <ProblemAlert error={files.error} onRetry={() => void files.refetch()} />}
-      {files.isSuccess && files.data.totalItems === 0 && <p className="muted">{text.empty}</p>}
-      {files.isSuccess && files.data.totalItems > 0 && (
-        <>
-          <TableScroll labelledBy="unindexed-title">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th scope="col">{text.pathColumn}</th>
-                  <th scope="col">{text.reasonColumn}</th>
-                  <th scope="col">{text.sizeColumn}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {files.data.items.map((file) => (
-                  <tr key={file.relativePath}>
-                    <th scope="row">
-                      <code>{file.relativePath}</code>
-                    </th>
-                    <td>{file.reason ? text.reasons[file.reason] : '—'}</td>
-                    <td>{formatBytes(file.sizeBytes)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </TableScroll>
-          <Pagination page={page} totalPages={files.data.totalPages} onChange={setPage} />
-        </>
-      )}
+      <ul className="unindexed__links">
+        {(['FAILED', 'UNSUPPORTED'] as const)
+          .filter((status) => counts[status] > 0)
+          .map((status) => (
+            <li key={status}>
+              <Link to={`/projects/${projectId}/files?status=${status}`}>
+                {text[status](counts[status])}
+              </Link>
+            </li>
+          ))}
+      </ul>
     </Card>
   );
 }

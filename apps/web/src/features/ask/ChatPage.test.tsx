@@ -243,6 +243,10 @@ describe('ChatPage', () => {
     expect(within(cited[0] as HTMLElement).getByText(text.viewer.citedMarker)).toBeInTheDocument();
     expect(code.querySelector('[data-line="11"]')).not.toHaveClass('code-view__line--cited');
     expect(screen.getByText(new RegExp(text.evidence.selected))).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: text.viewer.openInFiles })).toHaveAttribute(
+      'href',
+      `/projects/${base.id}/files?file=src%2Fbilling%2FRefund.java&lines=12-14`,
+    );
     expect(await axeViolations()).toEqual([]);
   });
 
@@ -325,6 +329,11 @@ describe('ChatPage', () => {
       within(version).getByRole('radio', { name: text.viewer.versions.current }),
     ).toBeChecked();
     expect(screen.queryByRole('button', { name: text.viewer.goToCited })).not.toBeInTheDocument();
+    // The lines of the answer do not apply to another version of the file.
+    expect(screen.getByRole('link', { name: text.viewer.openInFiles })).toHaveAttribute(
+      'href',
+      `/projects/${current.id}/files?file=src%2Fbilling%2FRefund.java`,
+    );
     expect(await axeViolations()).toEqual([]);
   });
 
