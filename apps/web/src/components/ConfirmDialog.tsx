@@ -4,6 +4,7 @@ import { useState, type MouseEvent, type ReactNode } from 'react';
 import { messages } from '../messages';
 import { ProblemAlert } from './ProblemAlert';
 import { Button } from './ui/Button';
+import { useReturnFocus } from './ui/returnFocus';
 import './ui/Dialog.css';
 
 interface ConfirmDialogProps {
@@ -40,6 +41,7 @@ export function ConfirmDialog({
   const open = controlledOpen ?? uncontrolledOpen;
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  const returnFocus = useReturnFocus();
 
   function changeOpen(next: boolean) {
     if (pending) {
@@ -82,7 +84,7 @@ export function ConfirmDialog({
       )}
       <AlertDialog.Portal>
         <AlertDialog.Overlay className="dialog-overlay" />
-        <AlertDialog.Content className="dialog">
+        <AlertDialog.Content className="dialog" {...(trigger ? {} : returnFocus)}>
           <AlertDialog.Title className="dialog__title">{title}</AlertDialog.Title>
           <AlertDialog.Description asChild>
             <div className="dialog__description">{description}</div>

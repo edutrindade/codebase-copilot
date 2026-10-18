@@ -35,6 +35,16 @@ test.afterAll(async ({ request }) => {
 });
 
 async function expectAccessible(page: Page, screen: string) {
+  // Contrast measured mid fade-in is lower than what stays on screen; skeleton shimmers never end.
+  await page.waitForFunction(() =>
+    document
+      .getAnimations()
+      .every(
+        (animation) =>
+          animation.effect?.getComputedTiming().iterations === Infinity ||
+          animation.playState === 'finished',
+      ),
+  );
   const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
   const violations = results.violations.map(
     (violation) => `${violation.id}: ${violation.nodes.map((node) => node.target).join(', ')}`,

@@ -72,12 +72,12 @@ export const messages = {
       open: 'abrir',
       close: 'fechar',
     },
-    reindexDialog: {
-      title: 'Indexar o projeto de novo?',
-      detail: (name: string) =>
-        `O projeto ${name} será lido e indexado de novo. O snapshot atual continua em uso nas perguntas até a nova indexação terminar.`,
-      confirm: 'Indexar de novo',
-    },
+  },
+  reindexDialog: {
+    title: 'Indexar o projeto de novo?',
+    detail: (name: string) =>
+      `O projeto ${name} será lido e indexado de novo. O snapshot atual continua em uso nas perguntas até a nova indexação terminar.`,
+    confirm: 'Indexar de novo',
   },
   shortcuts: {
     title: 'Atalhos de teclado',
@@ -183,12 +183,35 @@ export const messages = {
     newTitle: 'Novo workspace',
     nameLabel: 'Nome (opcional)',
     namePlaceholder: 'Meus projetos',
+    nameHint: 'Se ficar em branco, o workspace se chama “Meus projetos”. Dá para ter vários.',
+    steps: [
+      {
+        title: 'Crie um workspace',
+        detail: 'Ele agrupa os projetos de um cliente, de um time ou só os seus.',
+      },
+      {
+        title: 'Importe um projeto',
+        detail:
+          'Escolha uma pasta desta máquina ou envie um ZIP. Antes de indexar, você revê o que entra.',
+      },
+      {
+        title: 'Pergunte sobre o código',
+        detail: 'Cada resposta traz as evidências: o arquivo e as linhas de onde ela saiu.',
+      },
+    ],
+    stepsLabel: 'Como funciona',
+    privacyTitle: 'O código fica na sua máquina',
+    privacyDetail:
+      'Ele é só lido, nunca executado. Com um provedor remoto, saem daqui apenas os trechos enviados para indexar e, a cada pergunta, a pergunta e os trechos escolhidos como evidência. A tela avisa antes de enviar.',
+    listTitle: 'Todos os workspaces',
+    actions: (name: string) => `Ações do workspace ${name}`,
+    open: 'Abrir',
+    deleteItem: 'Excluir…',
+    created: 'Criação:',
     create: 'Criar workspace',
     creating: 'Criando…',
     projectCount: (count: number) =>
       count === 0 ? 'Nenhum projeto' : count === 1 ? '1 projeto' : `${count} projetos`,
-    createdAt: (date: string) => `Criado em ${date}`,
-    delete: (name: string) => `Excluir o workspace ${name}`,
     deleteTitle: (name: string) => `Excluir o workspace “${name}”?`,
     deleteDetail: 'Esta ação não pode ser desfeita.',
     deleteNotEmpty: (count: number) =>
@@ -199,6 +222,15 @@ export const messages = {
     newProject: 'Novo projeto',
     emptyTitle: 'Nenhum projeto ainda',
     emptyDetail: 'Importe uma pasta local ou envie um ZIP. O código é só lido, nunca executado.',
+    emptyAction: 'Importar o primeiro projeto',
+    actions: (name: string) => `Ações do projeto ${name}`,
+    open: 'Abrir',
+    ask: 'Perguntar',
+    reindex: 'Indexar de novo…',
+    deleteItem: 'Excluir…',
+    snapshot: 'Último snapshot:',
+    noSnapshot: 'Ainda sem snapshot',
+    progressLabel: (name: string) => `Progresso da indexação de ${name}`,
     sourceLocal: (rootKey: string, relativePath: string) =>
       `Pasta local: ${rootKey}/${relativePath}`,
     sourceZip: 'Arquivo ZIP',
@@ -212,7 +244,6 @@ export const messages = {
       READY: 'Pronto',
     },
     progress: (completed: number, total: number) => `${completed} de ${total}`,
-    delete: (name: string) => `Excluir o projeto ${name}`,
     deleteTitle: (name: string) => `Excluir o projeto “${name}”?`,
     deleteDetail:
       'Remove imports, índices, snapshots e histórico de conversas do projeto. Esta ação não pode ser desfeita.',

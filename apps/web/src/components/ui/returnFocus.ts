@@ -8,7 +8,8 @@ export function useReturnFocus(skip?: () => boolean) {
   return {
     onOpenAutoFocus: () => {
       const active = document.activeElement;
-      previous.current = active instanceof HTMLElement && active !== document.body ? active : null;
+      previous.current =
+        active instanceof HTMLElement && active !== document.body ? menuTriggerOf(active) : null;
     },
     onCloseAutoFocus: (event: Event) => {
       event.preventDefault();
@@ -18,4 +19,10 @@ export function useReturnFocus(skip?: () => boolean) {
       }
     },
   };
+}
+
+// A dialog opened from a menu item outlives the menu; focus goes back to what opened the menu.
+function menuTriggerOf(element: HTMLElement): HTMLElement {
+  const triggerId = element.closest('[role="menu"]')?.getAttribute('aria-labelledby');
+  return (triggerId && document.getElementById(triggerId)) || element;
 }

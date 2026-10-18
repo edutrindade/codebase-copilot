@@ -1,0 +1,124 @@
+@layer components {
+  .tile-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
+    gap: var(--space-3);
+    padding: 0;
+    list-style: none;
+  }
+
+  .tile {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    min-width: 0;
+    padding: var(--space-4);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-1);
+    transition:
+      border-color var(--duration-fast) var(--ease-out),
+      box-shadow var(--duration-fast) var(--ease-out);
+  }
+
+  .tile:hover {
+    border-color: var(--color-border-strong);
+    box-shadow: var(--shadow-2);
+  }
+
+  .tile:has(.tile__link:focus-visible) {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+
+  .tile__head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-width: 0;
+  }
+
+  .tile__icon {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    color: var(--color-accent-fg);
+    background: var(--color-accent-soft);
+    border-radius: var(--radius);
+  }
+
+  .tile__icon svg {
+    width: var(--icon);
+    height: var(--icon);
+  }
+
+  .tile__link {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    font-size: var(--text-md);
+    font-weight: var(--weight-semibold);
+    color: var(--color-text);
+    text-decoration: none;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Stretches the link over the card; the ring is drawn on the card instead. */
+  .tile__link::after {
+    position: absolute;
+    inset: 0;
+    content: '';
+    border-radius: inherit;
+  }
+
+  .tile__link:focus-visible {
+    outline: none;
+  }
+
+  .tile__raised,
+  .tile__body :is(time, button, a) {
+    position: relative;
+    z-index: 1;
+  }
+
+  .tile__body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-width: 0;
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  .tile__meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1-5);
+    min-width: 0;
+  }
+
+  .tile__meta > svg {
+    flex: none;
+    width: var(--icon-sm);
+    height: var(--icon-sm);
+  }
+
+  .tile__truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .tile__status {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    font-variant-numeric: tabular-nums;
+  }
+}

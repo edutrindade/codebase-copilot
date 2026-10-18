@@ -143,12 +143,12 @@ describe('CommandPalette', () => {
     await user.keyboard('{Control>}k{/Control}');
     await user.click(within(await palette()).getByRole('option', { name: text.reindex }));
 
-    const confirm = await screen.findByRole('alertdialog', { name: text.reindexDialog.title });
-    expect(within(confirm).getByText(text.reindexDialog.detail('api'))).toBeInTheDocument();
+    const confirm = await screen.findByRole('alertdialog', { name: messages.reindexDialog.title });
+    expect(within(confirm).getByText(messages.reindexDialog.detail('api'))).toBeInTheDocument();
     expect(within(confirm).getByText(messages.privacy.localOnly)).toBeInTheDocument();
     expect(started).toBe(0);
 
-    await user.click(within(confirm).getByRole('button', { name: text.reindexDialog.confirm }));
+    await user.click(within(confirm).getByRole('button', { name: messages.reindexDialog.confirm }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe(`/projects/${ready.id}`));
     expect(started).toBe(1);

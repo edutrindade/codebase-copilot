@@ -1,10 +1,10 @@
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { describe, expect, test } from 'vitest';
 import { messages } from '../../messages';
 import { axeViolations } from '../../test/axe';
-import { page, project, readySnapshot, workspace } from '../../test/fixtures';
+import { indexJob, page, project, readySnapshot, workspace } from '../../test/fixtures';
 import { problem } from '../../test/problems';
 import { renderRoute } from '../../test/render';
 import { server } from '../../test/server';
@@ -12,6 +12,11 @@ import { server } from '../../test/server';
 const ws = workspace({ name: 'Clientes', projectCount: 2 });
 const detail = `/api/v1/workspaces/${ws.id}`;
 const projects = `${detail}/projects`;
+
+async function chooseFromMenu(trigger: string, item: string) {
+  await userEvent.click(await screen.findByRole('button', { name: trigger }));
+  await userEvent.click(await screen.findByRole('menuitem', { name: item }));
+}
 
 describe('WorkspacePage', () => {
   test('lists the projects with their source and status, not only by color', async () => {
@@ -52,6 +57,11 @@ describe('WorkspacePage', () => {
     const api = (await screen.findByRole('link', { name: 'api' })).closest('li');
     expect(api).toHaveTextContent(messages.projects.status.INDEXING);
     expect(api).toHaveTextContent(messages.projects.progress(4, 10));
+    expect(
+      within(api as HTMLElement).getByRole('progressbar', {
+        name: messages.projects.progressLabel('api'),
+      }),
+    ).toHaveAttribute('aria-valuenow', '4');
     expect(api).toHaveTextContent(messages.projects.sourceLocal('default', 'codebase-copilot'));
     expect(screen.getByRole('link', { name: 'api' })).toHaveAttribute(
       'href',
@@ -60,9 +70,10 @@ describe('WorkspacePage', () => {
     const web = screen.getByRole('link', { name: 'web' }).closest('li');
     expect(web).toHaveTextContent(messages.projects.sourceZip);
     expect(web).toHaveTextContent(messages.projects.status.AWAITING_UPLOAD);
-    expect(screen.getByRole('link', { name: 'core' }).closest('li')).toHaveTextContent(
-      messages.projects.status.OUTDATED,
-    );
+    const core = screen.getByRole('link', { name: 'core' }).closest('li');
+    expect(core).toHaveTextContent(messages.projects.status.OUTDATED);
+    expect(core).toHaveTextContent(messages.projects.snapshot);
+    expect(web).toHaveTextContent(messages.projects.noSnapshot);
     expect(await axeViolations()).toEqual([]);
   });
 
@@ -77,7 +88,7 @@ describe('WorkspacePage', () => {
       await screen.findByRole('heading', { level: 2, name: messages.projects.emptyTitle }),
     ).toBeInTheDocument();
     const empty = screen.getByRole('heading', { level: 2 }).closest('div') as HTMLElement;
-    await userEvent.click(within(empty).getByRole('link', { name: messages.projects.newProject }));
+    await userEvent.click(within(empty).getByRole('link', { name: messages.projects.emptyAction }));
     expect(router.state.location.pathname).toBe(`/workspaces/${ws.id}/new`);
   });
 
@@ -109,9 +120,7 @@ describe('WorkspacePage', () => {
     );
     renderRoute(`/workspaces/${ws.id}`);
 
-    await userEvent.click(
-      await screen.findByRole('button', { name: messages.projects.delete('api') }),
-    );
+    await chooseFromMenu(messages.projects.actions('api'), messages.projects.deleteItem);
     const dialog = await screen.findByRole('alertdialog');
     expect(dialog).toHaveTextContent(messages.projects.deleteDetail);
     await userEvent.click(
@@ -131,9 +140,7 @@ describe('WorkspacePage', () => {
     );
     renderRoute(`/workspaces/${ws.id}`);
 
-    await userEvent.click(
-      await screen.findByRole('button', { name: messages.projects.delete('api') }),
-    );
+    await chooseFromMenu(messages.projects.actions('api'), messages.projects.deleteItem);
     const dialog = await screen.findByRole('alertdialog');
     await userEvent.click(
       within(dialog).getByRole('button', { name: messages.projects.deleteConfirm }),
@@ -142,6 +149,60 @@ describe('WorkspacePage', () => {
     expect(await within(dialog).findByRole('alert')).toHaveTextContent(
       messages.recovery.waitForJob,
     );
+  });
+
+  test('the menu offers asking and reindexing only for an indexed project', async () => {
+    const user = userEvent.setup();
+    let started = 0;
+    const ready = project({ name: 'core', activeSnapshot: readySnapshot() });
+    server.use(
+      http.get(detail, () => HttpResponse.json(ws)),
+      http.get(projects, () => HttpResponse.json(page([project({ name: 'api' }), ready]))),
+      http.post(`/api/v1/projects/${ready.id}/index-jobs`, () => {
+        started++;
+        return HttpResponse.json(indexJob(ready.id), { status: 202 });
+      }),
+    );
+    const { router } = renderRoute(`/workspaces/${ws.id}`);
+
+    await user.click(await screen.findByRole('button', { name: messages.projects.actions('api') }));
+    let menu = await screen.findByRole('menu');
+    expect(
+      within(menu).getByRole('menuitem', { name: messages.projects.open }),
+    ).toBeInTheDocument();
+    expect(
+      within(menu).queryByRole('menuitem', { name: messages.projects.ask }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(menu).queryByRole('menuitem', { name: messages.projects.reindex }),
+    ).not.toBeInTheDocument();
+    await user.keyboard('{Escape}');
+
+    await user.click(screen.getByRole('button', { name: messages.projects.actions('core') }));
+    menu = await screen.findByRole('menu');
+    expect(within(menu).getByRole('menuitem', { name: messages.projects.ask })).toBeInTheDocument();
+    await user.click(within(menu).getByRole('menuitem', { name: messages.projects.reindex }));
+
+    const confirm = await screen.findByRole('alertdialog', { name: messages.reindexDialog.title });
+    expect(within(confirm).getByText(messages.privacy.localOnly)).toBeInTheDocument();
+    expect(started).toBe(0);
+    await user.click(within(confirm).getByRole('button', { name: messages.reindexDialog.confirm }));
+
+    await waitFor(() => expect(router.state.location.pathname).toBe(`/projects/${ready.id}`));
+    expect(started).toBe(1);
+  });
+
+  test('asking from the menu opens the question screen of the project', async () => {
+    const ready = project({ name: 'core', activeSnapshot: readySnapshot() });
+    server.use(
+      http.get(detail, () => HttpResponse.json(ws)),
+      http.get(projects, () => HttpResponse.json(page([ready]))),
+    );
+    const { router } = renderRoute(`/workspaces/${ws.id}`);
+
+    await chooseFromMenu(messages.projects.actions('core'), messages.projects.ask);
+
+    await waitFor(() => expect(router.state.location.pathname).toBe(`/projects/${ready.id}/ask`));
   });
 
   test('a failed project list offers a retry', async () => {

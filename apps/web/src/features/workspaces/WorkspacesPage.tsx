@@ -1,15 +1,20 @@
 import { keepPreviousData, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { ArrowRight, Boxes, Clock, FolderGit2, ShieldCheck, Trash } from 'lucide-react';
+import { useId, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router';
 import { ApiError } from '../../api/errors';
 import { forgetProject, readRecentProjects } from '../../app/recentProjects';
 import { usePageTitle } from '../../app/title';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
-import { Loading } from '../../components/Loading';
 import { Pagination, pageFromSearch } from '../../components/Pagination';
 import { ProblemAlert } from '../../components/ProblemAlert';
-import { StatusBadge } from '../../components/ui/StatusBadge';
-import { formatDateTime } from '../../format';
+import { BrandMark } from '../../components/ui/BrandMark';
+import { Callout } from '../../components/ui/Callout';
+import { Card } from '../../components/ui/Card';
+import { MenuItem, MenuSeparator } from '../../components/ui/Menu';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { RelativeTime } from '../../components/ui/RelativeTime';
+import { Tile, TileGrid, TileGridSkeleton, TileMenu } from '../../components/ui/TileGrid';
 import { messages } from '../../messages';
 import { getProject } from '../import/api';
 import {
@@ -19,8 +24,12 @@ import {
   type Project,
   type Workspace,
 } from './api';
-import { PROJECT_STATUS_TONE, projectSource, projectStatus } from './projectStatus';
 import { CreateWorkspaceForm } from './CreateWorkspaceForm';
+import { AskIllustration, ImportIllustration, WorkspaceIllustration } from './illustrations';
+import { ProjectTile } from './ProjectTile';
+import './WorkspacesPage.css';
+
+const STEP_ILLUSTRATIONS = [WorkspaceIllustration, ImportIllustration, AskIllustration];
 
 export function WorkspacesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -32,19 +41,21 @@ export function WorkspacesPage() {
   });
   const firstUse = query.isSuccess && query.data.totalItems === 0;
   usePageTitle([firstUse ? messages.workspaces.firstUseTitle : messages.workspaces.title]);
+  const listId = useId();
+  const newId = useId();
 
   if (query.isPending) {
     return (
-      <section>
+      <section className="stack">
         <h1>{messages.workspaces.title}</h1>
-        <Loading />
+        <TileGridSkeleton />
       </section>
     );
   }
 
   if (query.isError) {
     return (
-      <section>
+      <section className="stack">
         <h1>{messages.workspaces.title}</h1>
         <ProblemAlert error={query.error} onRetry={() => void query.refetch()} />
       </section>
@@ -52,37 +63,85 @@ export function WorkspacesPage() {
   }
 
   if (query.data.totalItems === 0) {
-    return (
-      <section className="stack">
-        <h1>{messages.workspaces.firstUseTitle}</h1>
-        <p>{messages.workspaces.firstUseDetail}</p>
-        <CreateWorkspaceForm />
-      </section>
-    );
+    return <FirstUse />;
   }
 
   return (
-    <section className="stack">
-      <h1>{messages.workspaces.title}</h1>
-      <ul className="card-list">
-        {query.data.items.map((workspace) => (
-          <WorkspaceItem key={workspace.id} workspace={workspace} />
-        ))}
-      </ul>
-      <Pagination
-        page={page}
-        totalPages={query.data.totalPages}
-        onChange={(next) => setSearchParams({ page: String(next + 1) })}
-      />
+    <section className="home">
+      <PageHeader title={messages.workspaces.title} />
       <RecentProjects />
-      <h2>{messages.workspaces.newTitle}</h2>
-      <CreateWorkspaceForm />
+      <section className="stack" aria-labelledby={listId}>
+        <h2 id={listId}>{messages.workspaces.listTitle}</h2>
+        <TileGrid>
+          {query.data.items.map((workspace) => (
+            <WorkspaceTile key={workspace.id} workspace={workspace} />
+          ))}
+        </TileGrid>
+        <Pagination
+          page={page}
+          totalPages={query.data.totalPages}
+          onChange={(next) => setSearchParams({ page: String(next + 1) })}
+        />
+      </section>
+      <Card as="section" className="stack home__new" aria-labelledby={newId}>
+        <h2 id={newId}>{messages.workspaces.newTitle}</h2>
+        <CreateWorkspaceForm />
+      </Card>
     </section>
   );
 }
 
-function WorkspaceItem({ workspace }: { workspace: Workspace }) {
+function FirstUse() {
+  const text = messages.workspaces;
+  const formId = useId();
+  return (
+    <section className="welcome">
+      <header className="welcome__hero">
+        <span className="welcome__mark">
+          <BrandMark />
+        </span>
+        <h1>{text.firstUseTitle}</h1>
+        <p className="welcome__lead">{text.firstUseDetail}</p>
+      </header>
+      <ol className="welcome__steps" aria-label={text.stepsLabel}>
+        {text.steps.map((step, index) => {
+          const Illustration = STEP_ILLUSTRATIONS[index] ?? WorkspaceIllustration;
+          return (
+            <li key={step.title} className="welcome__step">
+              <Illustration />
+              <div className="welcome__step-text">
+                <span className="welcome__number" aria-hidden="true">
+                  {index + 1}
+                </span>
+                <h2 className="welcome__step-title">{step.title}</h2>
+                <p>{step.detail}</p>
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+      <Callout
+        tone="info"
+        icon={ShieldCheck}
+        title={text.privacyTitle}
+        className="welcome__privacy"
+      >
+        <p>{text.privacyDetail}</p>
+      </Callout>
+      <Card as="section" className="stack welcome__form" aria-labelledby={formId}>
+        <h2 id={formId}>{text.newTitle}</h2>
+        <CreateWorkspaceForm />
+      </Card>
+    </section>
+  );
+}
+
+function WorkspaceTile({ workspace }: { workspace: Workspace }) {
+  const text = messages.workspaces;
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const [deleting, setDeleting] = useState(false);
+  const to = `/workspaces/${workspace.id}`;
 
   async function remove() {
     await deleteWorkspace(workspace.id);
@@ -90,32 +149,51 @@ function WorkspaceItem({ workspace }: { workspace: Workspace }) {
   }
 
   return (
-    <li className="card">
-      <div className="card__main">
-        <Link to={`/workspaces/${workspace.id}`} className="card__title">
-          {workspace.name}
-        </Link>
-        <p className="muted">
-          {messages.workspaces.projectCount(workspace.projectCount)} ·{' '}
-          {messages.workspaces.createdAt(formatDateTime(workspace.createdAt))}
+    <>
+      <Tile
+        to={to}
+        title={workspace.name}
+        icon={Boxes}
+        menu={
+          <TileMenu label={text.actions(workspace.name)}>
+            <MenuItem
+              icon={ArrowRight}
+              onSelect={() => void navigate(to, { viewTransition: true })}
+            >
+              {text.open}
+            </MenuItem>
+            <MenuSeparator />
+            <MenuItem icon={Trash} tone="danger" onSelect={() => setDeleting(true)}>
+              {text.deleteItem}
+            </MenuItem>
+          </TileMenu>
+        }
+      >
+        <p className="tile__meta">
+          <FolderGit2 aria-hidden="true" />
+          <span>{text.projectCount(workspace.projectCount)}</span>
         </p>
-      </div>
+        <p className="tile__meta">
+          <Clock aria-hidden="true" />
+          <span>
+            {text.created} <RelativeTime iso={workspace.createdAt} />
+          </span>
+        </p>
+      </Tile>
       <ConfirmDialog
-        trigger={messages.confirm.deleteTrigger}
-        triggerLabel={messages.workspaces.delete(workspace.name)}
-        title={messages.workspaces.deleteTitle(workspace.name)}
+        open={deleting}
+        onOpenChange={setDeleting}
+        title={text.deleteTitle(workspace.name)}
         description={
           <>
-            <p>{messages.workspaces.deleteDetail}</p>
-            {workspace.projectCount > 0 && (
-              <p>{messages.workspaces.deleteNotEmpty(workspace.projectCount)}</p>
-            )}
+            <p>{text.deleteDetail}</p>
+            {workspace.projectCount > 0 && <p>{text.deleteNotEmpty(workspace.projectCount)}</p>}
           </>
         }
-        confirmLabel={messages.workspaces.deleteConfirm}
+        confirmLabel={text.deleteConfirm}
         onConfirm={remove}
       />
-    </li>
+    </>
   );
 }
 
@@ -134,6 +212,7 @@ async function getRecentProject(projectId: string, signal: AbortSignal): Promise
 
 function RecentProjects() {
   const text = messages.workspaces;
+  const headingId = useId();
   const [ids] = useState(readRecentProjects);
   const results = useQueries({
     queries: ids.map((id) => ({
@@ -148,29 +227,16 @@ function RecentProjects() {
     return null;
   }
   return (
-    <section className="stack" aria-labelledby="recent-projects-title">
+    <section className="stack" aria-labelledby={headingId}>
       <div>
-        <h2 id="recent-projects-title">{text.continueTitle}</h2>
+        <h2 id={headingId}>{text.continueTitle}</h2>
         <p className="muted">{text.continueDetail}</p>
       </div>
-      <ul className="card-list">
-        {projects.map((project) => {
-          const status = projectStatus(project);
-          return (
-            <li key={project.id} className="card">
-              <div className="card__main">
-                <Link to={`/projects/${project.id}`} className="card__title">
-                  {project.name}
-                </Link>
-                <p className="muted">{projectSource(project)}</p>
-              </div>
-              <StatusBadge tone={PROJECT_STATUS_TONE[status]}>
-                {messages.projects.status[status]}
-              </StatusBadge>
-            </li>
-          );
-        })}
-      </ul>
+      <TileGrid>
+        {projects.map((project) => (
+          <ProjectTile key={project.id} project={project} withActions={false} />
+        ))}
+      </TileGrid>
     </section>
   );
 }

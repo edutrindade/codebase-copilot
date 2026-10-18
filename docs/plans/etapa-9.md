@@ -403,6 +403,22 @@ P4, com a lista de atalhos em `/system`. Registro: D-090.
 ### F4 — Início e workspace
 P5.1 e P5.2.
 
+**Como foi entregue (17/10/2026)**
+- **Primeiro uso:** apresentação com a marca, os três passos ilustrados (criar workspace → importar projeto → perguntar), a frase de privacidade num `Callout` e o formulário com o nome opcional, que explica o padrão ("Meus projetos").
+- **Início com dados:** "Continuar de onde parou" em cartões de projeto, a grade de workspaces (nome, quantidade de projetos e criação em tempo relativo) com menu "⋯" (abrir, excluir) e o "Novo workspace" num cartão no fim.
+- **Workspace:** cabeçalho com contagem e criação; cartões de projeto com o ícone da origem (pasta ou ZIP), `StatusBadge` (inclui "falhou"), barra de progresso quando indexando, data do último snapshot e menu "⋯" (abrir, perguntar, indexar de novo, excluir). Estado vazio com ilustração e "Importar o primeiro projeto".
+- **Componentes novos:** `TileGrid`/`Tile`/`TileMenu`/`TileGridSkeleton` (cartão inteiro clicável pelo link do título, com o anel de foco no cartão; menu e dicas por cima) e as ilustrações em SVG inline sobre os tokens, que seguem o tema. O `EmptyState` aceita uma ilustração no lugar do ícone. Esqueletos no formato da grade no lugar de "Carregando…", com o texto para leitores de tela.
+- **Verificação:** `npm run check` com 188 testes (eram 184); `npm run e2e` e `npm run e2e:jar` passam. Passada descartável com axe (WCAG 2.2 AA, com contraste) no primeiro uso, no início com dados e no workspace (com projetos pronto, indexando, aguardando ZIP e com falha), nos dois temas, em 1440 e 390 px: **nenhuma violação**. Casca: 166,3 kB com gzip (era 165,7; teto de 175 kB).
+
+**Desvios:**
+- **Frase de privacidade mais precisa que a do plano:** com um provedor remoto de embeddings, a indexação também envia trechos, não só as perguntas. O texto diz as duas coisas.
+- **Nome sugerido como dica, não preenchido:** o campo continua vazio (o servidor assume "Meus projetos", `06` e D-032), e a dica diz isso; preencher o valor mudaria o que se envia sem a pessoa digitar.
+- **"Indexar de novo" pelo menu** segue a regra da paleta (projeto com snapshot e sem indexação em andamento) e usa o mesmo diálogo, que saiu da paleta para `features/project/ReindexDialog.tsx`; os textos passaram de `palette.reindexDialog` para `reindexDialog`.
+- **Cartões de "Continuar" sem menu:** são atalhos; as ações ficam no workspace.
+- **Foco ao fechar um diálogo aberto por um item de menu:** o diálogo abre enquanto o item ainda tem o foco, e o item some com o menu; o foco caía no `<body>`. O `useReturnFocus` passou a devolver o foco ao botão que abriu o menu, e o `ConfirmDialog` sem gatilho passou a usá-lo, como o `Dialog`.
+- **E2E de navegação falhando já no commit da F3:** o axe media o contraste do diálogo de atalhos durante a animação de entrada (as teclas ainda semitransparentes) e acusava `color-contrast`. Falhava de forma consistente também sem as mudanças da F4. O teste agora espera o fim das animações finitas antes do axe; a interface não mudou.
+- **Achado anterior à F4, não corrigido:** com um menu do Radix aberto, o axe acusa `aria-hidden-focus` no resto da página (o Radix a esconde dos leitores de tela enquanto o foco fica preso no menu). Acontece desde o menu de tema da F1. Proposta: tratar na passada de acessibilidade da F10.
+
 ### F5 — Assistente e pré-análise
 P5.3, incluindo a área de ZIP e a pré-análise em duas colunas.
 

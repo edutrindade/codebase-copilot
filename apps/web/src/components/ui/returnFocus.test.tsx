@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, test } from 'vitest';
 import { Dialog } from './Dialog';
+import { Menu, MenuItem } from './Menu';
 
 function Harness() {
   const [open, setOpen] = useState(false);
@@ -30,6 +31,18 @@ function Harness() {
   );
 }
 
+function MenuHarness() {
+  const [open, setOpen] = useState(false);
+  return (
+    <main>
+      <Menu trigger={<button type="button">Ações</button>}>
+        <MenuItem onSelect={() => setOpen(true)}>Detalhes</MenuItem>
+      </Menu>
+      <Dialog open={open} onOpenChange={setOpen} title="Aberto pelo menu" />
+    </main>
+  );
+}
+
 describe('dialog without a trigger', () => {
   test('returns focus to where it was when it opened', async () => {
     const user = userEvent.setup();
@@ -51,5 +64,17 @@ describe('dialog without a trigger', () => {
     await new Promise((resolve) => setTimeout(resolve, 10));
 
     expect(screen.getByRole('heading', { name: 'Título' })).toHaveFocus();
+  });
+
+  test('opened from a menu item, returns focus to the menu trigger', async () => {
+    const user = userEvent.setup();
+    render(<MenuHarness />);
+
+    await user.click(screen.getByRole('button', { name: 'Ações' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Detalhes' }));
+    await screen.findByRole('dialog', { name: 'Aberto pelo menu' });
+    await user.keyboard('{Escape}');
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Ações' })).toHaveFocus());
   });
 });
