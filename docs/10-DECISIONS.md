@@ -1193,6 +1193,7 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Motivo:** um streaming do texto mostraria marcadores ainda não validados; virtualizar sempre é um caminho só, testado com um arquivo sintético de 1 MB; texto puro fecha a porta a HTML e links injetados pelo modelo.  
 **Consequências:** a espera é de até 60 s sem texto parcial; arquivos sem realce.  
 **O que levaria à revisão:** latência medida ruim (Etapa 8), legibilidade pedir realce, ou respostas com formatação rica.
+**Etapa 9 (17/10/2026):** a resposta passou a ter formatação leve e segura, e a tela, o layout em colunas com o divisor (D-091); continuam o envio síncrono, o visualizador virtualizado e os marcadores só para evidências da própria resposta.
 
 ### D-076 — Como a UI chega ao backend e como `apps/web` se organiza (P2 e P11 da Etapa 7)
 **Status:** Aceita (17/10/2026; F1, F2 e fechamento da Etapa 7)  
@@ -1423,6 +1424,23 @@ O `GET /inventory` continua sob demanda, como pré-análise. A partir da Etapa 3
 **Motivo:** a paleta e os atalhos dão um caminho de um passo para qualquer lugar já carregado, sem pesar na casca; o substituto do injetor resolve a rolagem sem relaxar a CSP.  
 **Consequências:** a casca foi de 163,6 kB para 165,7 kB com gzip (teto de 175 kB); a paleta tem 7,0 kB com gzip, à parte. O alias depende da API interna do `react-style-singleton` (três funções); uma atualização do Radix que a mude quebra a trava de rolagem, e o `e2e/navigation.spec.ts` confere que ela continua funcionando sem erro de CSP. O `cmdk` está sem release desde março de 2025 (F0); se quebrar com o React, o componente próprio com o mesmo padrão ARIA é a saída.  
 **O que levaria à revisão:** um endpoint de busca (para achar projetos e conversas fora da primeira página), o fim do suporte a folhas construídas num navegador suportado, ou pedidos de atalhos configuráveis.
+
+### D-091 — Formatação leve da resposta e layout da pergunta (P7 e P5.5 da Etapa 9; revê parte da D-075)
+**Status:** Aceita (17/10/2026; F7 da Etapa 9)  
+**Contexto:** a D-075 mostrava a resposta como texto puro, para fechar a porta a HTML e links injetados pelo modelo. Respostas longas ficavam difíceis de ler, e o modelo usa naturalmente listas e `código`. Na tela, o visualizador ficava abaixo da dobra a 1440 px (F0).  
+**Opções consideradas:** manter o texto puro; uma biblioteca de markdown com sanitização; um formatador próprio que só conhece um subconjunto.  
+**Decisão:**
+- **Formatador próprio** (`features/ask/answerFormat.ts`), que transforma o texto em blocos e trechos tipados, renderizados como elementos React. Reconhece só parágrafos (linha em branco separa; quebra simples vira `<br>`), listas planas (`-`, `*`, `1.`, com o número inicial), `código inline`, blocos entre crases triplas (com a linguagem, se for uma palavra simples, e botão de copiar) e **negrito**. Títulos viram parágrafo, sem os `#`. Links, imagens, HTML e tabelas não têm tipo de nó, então só podem sair como texto. Os marcadores `[En]` viram botões apenas para evidências da própria resposta, também dentro do negrito; dentro de código ficam literais. A regra de lint contra `dangerouslySetInnerHTML` continua.
+- **Citação:** o botão mantém o nome com caminho e linhas; ao passar o mouse ou focar, um `HoverCard` (Radix) mostra o caminho, as linhas e as quatro primeiras linhas citadas do trecho. A prévia é só visual (`aria-hidden`), porque o nome do botão já diz tudo.
+- **Layout a partir de 64rem:** conversa à esquerda e, à direita, evidências em cima e o visualizador embaixo, fixos na altura da janela. Entre as colunas, um divisor feito à mão (`Splitter`, `role="separator"` com valor de 30% a 70%), por arraste, setas, Home/End ou dois botões "Estreitar/Alargar a conversa" (WCAG 2.5.7); a largura fica no `localStorage` (`ask-split`). Abaixo de 64rem, as abas continuam.
+- **Campo da pergunta** fixo embaixo da conversa, crescendo com o texto até 14rem; busca (`select`, com os modos indisponíveis desabilitados e o motivo na descrição) e máximo de evidências na barra do próprio campo, no lugar das "Opções avançadas". `scroll-padding-bottom` evita que ele cubra o foco (WCAG 2.4.11).
+- **Resposta como cartão:** estado, texto formatado, avisos e um rodapé com as métricas medidas ("1,8 s · 4 evidências · US$ 0,0004 estimado", sem custo quando não há estimativa), "Detalhes da resposta" num `Popover` e copiar a resposta. A espera é um esqueleto do cartão com "12 s de até 60 s".
+- **Evidências agrupadas por arquivo**, na ordem de `sortEvidence` (citadas primeiro), com ícone pelo tipo de arquivo, linhas e selo de estado; ↑/↓ percorrem os itens, e `[`/`]` seguem a mesma ordem.
+- **Visualizador:** caminho em trilha, "Ir para o trecho", copiar caminho e trecho, e "Da resposta / Atual" como `SegmentedControl` (Radix `ToggleGroup`, um grupo de rádios) quando o arquivo mudou.
+
+**Motivo:** um subconjunto pequeno e fechado dá a legibilidade que faltava sem parser de HTML, sanitizador ou URL; o que não é reconhecido aparece como o modelo escreveu. Os testes de conteúdo hostil (unitários e o `e2e/hostile-content.spec.ts`, com a resposta trocada na rede porque o provedor `fake` não escreve markdown) cobrem links `javascript:`, imagens, HTML e marcadores falsos.  
+**Consequências:** a casca foi de 171,5 kB para 171,7 kB com gzip (teto de 175 kB); o chunk da tela de pergunta tem 25,1 kB com gzip (21,1 kB na linha de base da F0). Listas aninhadas viram uma lista só; negrito não atravessa linhas. "Abrir em Arquivos" entra com a F8, e o realce dos blocos de código com a F9.  
+**O que levaria à revisão:** respostas reais (com saldo) que usem tabelas ou listas aninhadas com frequência, ou pedidos de links para arquivos do próprio projeto.
 
 ---
 

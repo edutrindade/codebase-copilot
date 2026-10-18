@@ -626,6 +626,7 @@ export const messages = {
       code: 'Código',
     },
     conversationTitle: 'Conversa',
+    emptyTitle: 'Pergunte sobre o código',
     empty:
       'Faça uma pergunta sobre o código. A resposta cita os arquivos e as linhas usados como evidência.',
     suggestionsTitle: 'Sugestões para começar',
@@ -637,13 +638,18 @@ export const messages = {
     ],
     form: {
       label: 'Sua pergunta',
+      placeholder: 'Pergunte sobre o código…',
       hint: (length: number, max: number) =>
         `${length} de ${max} caracteres. Ctrl+Enter ou ⌘+Enter envia.`,
       submit: 'Perguntar',
       submitting: 'Gerando…',
       empty: 'Escreva uma pergunta antes de enviar.',
-      advanced: 'Opções avançadas',
-      modeLegend: 'Busca das evidências',
+      modeLegend: 'Busca',
+      modeOptions: {
+        HYBRID: 'Híbrida',
+        LEXICAL: 'Lexical',
+        VECTOR: 'Vetorial',
+      },
       modes: {
         HYBRID: 'Híbrida (lexical e vetorial)',
         LEXICAL: 'Lexical (palavras e identificadores)',
@@ -651,7 +657,7 @@ export const messages = {
       },
       vectorUnavailable:
         'As buscas vetorial e híbrida estão indisponíveis: não há provedor de embeddings configurado ou o snapshot ativo não tem embeddings do modelo configurado.',
-      maxEvidenceLabel: 'Máximo de evidências (1 a 20)',
+      maxEvidenceLabel: 'Evidências (1 a 20)',
     },
     privacy: {
       remote: (provider: string, model: string | null) =>
@@ -663,8 +669,8 @@ export const messages = {
     },
     waiting: {
       status: 'Buscando evidências e gerando a resposta…',
-      elapsed: (seconds: number) => `${seconds} s`,
-      limit: 'A resposta chega de uma vez, quando estiver pronta; o limite é de 60 segundos.',
+      elapsed: (seconds: number) => `${seconds} s de até 60 s`,
+      limit: 'A resposta chega de uma vez, quando estiver pronta.',
     },
     question: 'Pergunta',
     answer: 'Resposta',
@@ -686,6 +692,15 @@ export const messages = {
     },
     citation: (label: string, path: string, lines: string) =>
       `Abrir a evidência ${label}: ${path}, ${lines}`,
+    copyAnswer: 'Copiar a resposta',
+    codeBlock: 'código',
+    copyCode: 'Copiar o código',
+    split: {
+      label: 'Divisor entre a conversa e as evidências',
+      value: (percent: number) => `Conversa com ${percent}% da largura`,
+      narrower: 'Estreitar a conversa',
+      wider: 'Alargar a conversa',
+    },
     showEvidence: 'Ver as evidências desta resposta',
     olderSnapshot: 'Respondida com um snapshot anterior ao ativo.',
     lines: (start: number, end: number) =>
@@ -708,18 +723,26 @@ export const messages = {
       noModel: 'Não consultado',
       mode: 'Busca usada',
       unavailable: 'Não medido',
+      evidenceShort: (count: number) => (count === 1 ? '1 evidência' : `${count} evidências`),
+      costShort: (value: string) => `${value} estimado`,
     },
     evidence: {
       title: 'Evidências',
+      count: (count: number) => (count === 1 ? '1 trecho' : `${count} trechos`),
       empty: 'Escolha uma resposta para ver as evidências enviadas ao modelo.',
       none: 'Nenhuma evidência foi enviada ao modelo nesta resposta.',
       forAnswer: (question: string) => `Da pergunta “${question}”`,
       opened: (label: string, path: string, lines: string) =>
         `Evidência ${label} aberta: ${path}, ${lines}.`,
-      status: {
+      badge: {
         CITED: 'Citada',
-        INVALID_RANGE: 'Citada com linhas fora do trecho; a citação foi removida da resposta',
-        NOT_CITED: 'Enviada ao modelo, mas não citada',
+        INVALID_RANGE: 'Intervalo inválido',
+        NOT_CITED: 'Não citada',
+      },
+      status: {
+        CITED: '',
+        INVALID_RANGE: 'Citada com linhas fora do trecho; a citação foi removida da resposta.',
+        NOT_CITED: 'Enviada ao modelo, mas não citada.',
       },
       otherPaths: (count: number) =>
         count === 1
@@ -729,7 +752,7 @@ export const messages = {
       rankLexical: (rank: number) => `lexical ${rank}ª`,
       rankVector: (rank: number) => `vetorial ${rank}ª`,
       rankPath: (rank: number) => `caminho ${rank}ª`,
-      open: (label: string) => `Abrir ${label} no visualizador`,
+      open: 'Abrir',
       selected: 'aberta no visualizador',
     },
     viewer: {
@@ -748,8 +771,14 @@ export const messages = {
         REMOVED: 'Este arquivo não existe mais no snapshot ativo.',
         NO_ACTIVE_SNAPSHOT: '',
       },
-      showCurrent: 'Ver a versão atual',
-      showAnswered: 'Ver a versão da resposta',
+      versionLabel: 'Versão do arquivo',
+      versions: {
+        answered: 'Da resposta',
+        current: 'Atual',
+      },
+      copyPath: 'Copiar o caminho',
+      copySnippet: 'Copiar o trecho',
+      goToCited: 'Ir para o trecho',
       currentVersion: 'Versão do snapshot ativo; as linhas da evidência podem não corresponder.',
       answeredVersion: 'Versão do snapshot usado na resposta.',
       fileInfo: (language: string, lines: number, size: string) =>

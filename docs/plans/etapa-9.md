@@ -454,6 +454,26 @@ P5.4, com o cartão de estado único, "Comece por aqui", uso e snapshots; toasts
 ### F7 — Perguntar
 P5.5 e a formatação da P7: divisor, campo fixo, cartões de resposta, `HoverCard` das citações, evidências agrupadas, cabeçalho do visualizador. Registro: D-091 (revê a D-075 na formatação).
 
+**Como foi entregue (17/10/2026)**
+- **Formatação leve (P7):** formatador próprio (`answerFormat.ts`) que gera blocos tipados, renderizados como elementos React: parágrafos, listas planas (`-`, `*`, `1.`), `código inline`, blocos entre crases triplas com a linguagem e botão de copiar, e **negrito**. Títulos viram parágrafo; links, imagens, HTML e tabelas saem como texto. Marcadores `[En]` só viram botão para evidências da resposta (também no negrito; em código ficam literais).
+- **Citações** com `HoverCard` (caminho, linhas e as quatro primeiras linhas citadas), só visual: o nome do botão continua com caminho e linhas.
+- **Duas colunas a partir de 64rem** com o `Splitter` entre elas (30% a 70%, arraste, setas, Home/End e os botões "Estreitar/Alargar a conversa"), largura lembrada no `localStorage`. À direita, evidências em cima e o visualizador embaixo, fixos na altura da janela. Abaixo de 64rem, as abas continuam. Ao abrir uma evidência, a página rola só o necessário para a coluna lateral caber inteira (antes de rolar, ela começa abaixo do cabeçalho e o visualizador passava da dobra).
+- **Campo fixo embaixo** que cresce com o texto; busca num `select` (modos indisponíveis desabilitados, com o motivo na descrição) e máximo de evidências na barra do campo, com ⌘↵/Ctrl ↵ ao lado do botão.
+- **Cartão de resposta:** selo de estado, texto formatado, avisos e rodapé com as métricas medidas ("1,8 s · 4 evidências · US$ 0,0004 estimado"), "Detalhes da resposta" num `Popover` e "Copiar a resposta". **Espera** como esqueleto do cartão com "12 s de até 60 s".
+- **Evidências agrupadas por arquivo** (ícone pelo tipo, caminho em trilha), cada item com rótulo, linhas e selo (citada, intervalo inválido, não citada); ↑/↓ percorrem, e `[`/`]` seguem a mesma ordem.
+- **Visualizador:** caminho em trilha com ícone, "Ir para o trecho", copiar caminho e trecho, e "Da resposta / Atual" como `SegmentedControl` quando o arquivo mudou.
+- **Conversa vazia** com as perguntas sugeridas em cartões, como na visão geral; o cartão preenche o campo, sem enviar.
+- **Componentes novos** em `components/ui/`: `HoverCard`, `Popover`, `SegmentedControl` e `Splitter`, com testes de componente (axe incluído) e entradas no catálogo.
+- **Testes:** formatador com conteúdo hostil (links `javascript:`, imagens, HTML, tabelas, marcadores falsos e não fechados); `e2e/hostile-content.spec.ts` ganhou o passo da resposta com markdown hostil, trocada na rede porque o provedor `fake` não escreve markdown.
+- **Verificação:** `npm run check` com 205 testes (eram 191); `npm run e2e` e `npm run e2e:jar` passam. Casca: 171,7 kB com gzip (era 171,5); chunk da tela de pergunta: 25,1 kB com gzip (21,1 na linha de base).
+
+**Desvios:**
+- **Divisor entre a conversa e a coluna lateral**, não entre evidências e visualizador: é a largura que a P5.5 manda lembrar. Evidências e visualizador dividem a altura sem divisor (a lista ocupa até 42%).
+- **Sem o filtro "citadas ▾" do esboço:** a lista já começa pelas citadas e o selo diz o estado de cada uma; o cabeçalho mostra a contagem de trechos.
+- **"Abrir em Arquivos"** fica para a F8, com a aba; o **realce** dos blocos de código e do visualizador, para a F9.
+- **Marcadores continuam `E1`, `E2`…** (o esboço mostrava `[1]`): é o rótulo da API e o que aparece nas evidências.
+- **Nenhum toast nesta fatia:** a tela de pergunta não tem confirmação a dar; "conversa excluída" e "configurações salvas" entram com a F8.
+
 ### F8 — Arquivos, histórico, configurações e sistema
 P5.6 a P5.9. Primeiro o endpoint `GET /snapshots/{id}/tree` (backend, contrato, teste de integração, tipos regenerados), depois a tela. Registro: D-092 (explorador e endpoint).
 

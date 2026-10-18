@@ -11,10 +11,18 @@ interface CodeLinesProps {
   firstLine: number;
   highlight: LineRange | null;
   label: string;
+  // Changing it scrolls back to the highlight.
+  scrollRequest?: number;
 }
 
 // Always virtualized (P7): files reach tens of thousands of lines.
-export function CodeLines({ lines, firstLine, highlight, label }: CodeLinesProps) {
+export function CodeLines({
+  lines,
+  firstLine,
+  highlight,
+  label,
+  scrollRequest = 0,
+}: CodeLinesProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   // The build has no React Compiler, so nothing memoizes around the virtualizer.
   // eslint-disable-next-line react-hooks/incompatible-library
@@ -30,7 +38,7 @@ export function CodeLines({ lines, firstLine, highlight, label }: CodeLinesProps
     if (scrollTarget !== null && scrollTarget >= 0 && scrollTarget < lines.length) {
       virtualizer.scrollToIndex(scrollTarget, { align: 'center' });
     }
-  }, [scrollTarget, lines.length, virtualizer]);
+  }, [scrollTarget, lines.length, virtualizer, scrollRequest]);
 
   const items = virtualizer.getVirtualItems();
   const before = items[0]?.start ?? 0;

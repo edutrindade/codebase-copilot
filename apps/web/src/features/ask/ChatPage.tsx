@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { SquarePen } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { Link, Navigate, useNavigate, useParams } from 'react-router';
+import { MessageSquare, SquarePen } from 'lucide-react';
+import { useEffect, useId, useRef, useState, type CSSProperties } from 'react';
+import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router';
 import { ApiError } from '../../api/errors';
 import { useShortcut } from '../../app/shortcuts';
+import { readStorage, writeStorage } from '../../app/storage';
 import { usePageTitle } from '../../app/title';
 import { Loading } from '../../components/Loading';
 import { ProblemAlert } from '../../components/ProblemAlert';
@@ -11,6 +12,8 @@ import { ButtonLink } from '../../components/ui/Button';
 import { Callout } from '../../components/ui/Callout';
 import { Card } from '../../components/ui/Card';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { Skeleton } from '../../components/ui/Skeleton';
+import { Splitter } from '../../components/ui/Splitter';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/Tabs';
 import { useMediaQuery } from '../../components/useMediaQuery';
 import { messages } from '../../messages';
@@ -29,10 +32,14 @@ import {
 import { AnswerTurn, Question } from './AnswerTurn';
 import { AskForm } from './AskForm';
 import { CodeViewer } from './CodeViewer';
+import { draftFromState } from './draft';
 import { EvidencePanel } from './EvidencePanel';
-import { highlightedRange, sortEvidence } from './evidence';
+import { highlightedRange, listOrder } from './evidence';
+import './ChatPage.css';
 
 const WIDE_LAYOUT = '(min-width: 64rem)';
+const SPLIT_KEY = 'ask-split';
+const SPLIT = { min: 30, max: 70, default: 50 };
 // An answer is PENDING only while another request generates it, or until the server marks it interrupted.
 const PENDING_POLL_MS = 2000;
 const VECTOR_BLOCKERS = new Set<Project['outdatedReasons'][number]>([
@@ -124,6 +131,12 @@ function Chat({ title, project, providers, conversation }: ChatProps) {
   const [selectedEvidence, setSelectedEvidence] = useState<Evidence | null>(null);
   const [pane, setPane] = useState<Pane>('conversation');
   const [announcement, setAnnouncement] = useState('');
+  const location = useLocation();
+  const [draft, setDraft] = useState(() => draftFromState(location.state));
+  const [split, setSplit] = useState(readSplit);
+  const columns = useRef<HTMLDivElement>(null);
+  const ids = { question: useId(), conversation: useId() };
+  useEffect(() => writeStorage(SPLIT_KEY, String(split)), [split]);
   const selectedAnswer =
     answers.find((answer) => answer.answerId === selectedAnswerId) ?? answers.at(-1) ?? null;
 
@@ -155,11 +168,18 @@ function Chat({ title, project, providers, conversation }: ChatProps) {
     setSelectedAnswerId(answer.answerId);
     setSelectedEvidence(evidence);
     setPane('code');
+    // The side column sticks only after the page scrolls past the header; until then the viewer
+    // runs below the fold, so scroll just enough for the whole column to fit.
+    const side = columns.current?.querySelector('.chat__side');
+    const overflow = side ? side.getBoundingClientRect().bottom - window.innerHeight + 16 : 0;
+    if (wide && overflow > 0) {
+      window.scrollBy({ top: overflow });
+    }
   }
 
   // Same order as the evidence list; stops at both ends.
   function stepEvidence(step: 1 | -1) {
-    const ordered = selectedAnswer ? sortEvidence(selectedAnswer.evidence) : [];
+    const ordered = selectedAnswer ? listOrder(selectedAnswer.evidence) : [];
     if (!selectedAnswer || ordered.length === 0) {
       return;
     }
@@ -194,13 +214,27 @@ function Chat({ title, project, providers, conversation }: ChatProps) {
     !project.outdatedReasons.some((reason) => VECTOR_BLOCKERS.has(reason));
   const review = `/workspaces/${project.workspaceId}/new?project=${project.id}`;
 
+  const empty = answers.length === 0 && !mutation.isPending;
+  const canAsk = generationAvailable && activeSnapshot !== null;
   const conversationPane = (
-    <section className="stack chat__conversation" aria-labelledby="conversation-title">
+    <section
+      id={ids.conversation}
+      className="chat__conversation"
+      aria-labelledby="conversation-title"
+    >
       <h2 id="conversation-title" className={wide ? 'visually-hidden' : undefined}>
         {text.conversationTitle}
       </h2>
-      {answers.length === 0 && !mutation.isPending && <p className="muted">{text.empty}</p>}
-      {(answers.length > 0 || mutation.isPending) && (
+      {empty && (
+        <EmptyConversation
+          suggestions={canAsk}
+          onSuggestion={(suggestion) => {
+            setDraft(suggestion);
+            document.getElementById(ids.question)?.focus();
+          }}
+        />
+      )}
+      {!empty && (
         <ol className="turns">
           {answers.map((answer) => (
             <AnswerTurn
@@ -227,12 +261,14 @@ function Chat({ title, project, providers, conversation }: ChatProps) {
         </Callout>
       ) : activeSnapshot ? (
         <AskForm
+          questionId={ids.question}
           projectId={project.id}
           conversationId={conversationId}
           providers={providers}
           vectorAvailable={vectorAvailable}
           reviewHref={review}
-          showSuggestions={answers.length === 0 && !mutation.isPending}
+          draft={draft}
+          onDraftChange={setDraft}
           pending={mutation.isPending}
           onAsk={(question) => mutation.mutateAsync(question)}
         />
@@ -246,9 +282,13 @@ function Chat({ title, project, providers, conversation }: ChatProps) {
       )}
     </section>
   );
+  const evidenceCount = selectedAnswer?.evidence.length ?? 0;
   const evidencePane = (
-    <Card as="section" className="stack" aria-labelledby="evidence-title">
-      <h2 id="evidence-title">{text.evidence.title}</h2>
+    <Card as="section" className="stack chat__evidence" aria-labelledby="evidence-title">
+      <div className="chat__pane-header">
+        <h2 id="evidence-title">{text.evidence.title}</h2>
+        {evidenceCount > 0 && <span className="muted">{text.evidence.count(evidenceCount)}</span>}
+      </div>
       <EvidencePanel
         answer={selectedAnswer}
         selectedEvidenceId={selectedEvidence?.id ?? null}
@@ -257,7 +297,7 @@ function Chat({ title, project, providers, conversation }: ChatProps) {
     </Card>
   );
   const codePane = (
-    <Card as="section" className="stack" aria-labelledby="viewer-title">
+    <Card as="section" className="stack chat__code" aria-labelledby="viewer-title">
       <h2 id="viewer-title">{text.viewer.title}</h2>
       {selectedEvidence ? (
         <CodeViewer
@@ -279,9 +319,25 @@ function Chat({ title, project, providers, conversation }: ChatProps) {
         {announcement}
       </div>
       {wide ? (
-        <div className="chat__columns">
+        <div
+          ref={columns}
+          className="chat__columns"
+          style={{ '--chat-split': `${split}%` } as CSSProperties}
+        >
           {conversationPane}
-          <div className="stack chat__side">
+          <Splitter
+            value={split}
+            min={SPLIT.min}
+            max={SPLIT.max}
+            onChange={setSplit}
+            containerRef={columns}
+            controls={ids.conversation}
+            label={text.split.label}
+            valueText={text.split.value}
+            decreaseLabel={text.split.narrower}
+            increaseLabel={text.split.wider}
+          />
+          <div className="chat__side">
             {evidencePane}
             {codePane}
           </div>
@@ -340,6 +396,50 @@ function ChatHeader({ title, project, inConversation }: ChatHeaderProps) {
   );
 }
 
+function readSplit(): number {
+  const stored = Number(readStorage(SPLIT_KEY));
+  return Number.isFinite(stored) && stored >= SPLIT.min && stored <= SPLIT.max
+    ? stored
+    : SPLIT.default;
+}
+
+function EmptyConversation({
+  suggestions,
+  onSuggestion,
+}: {
+  suggestions: boolean;
+  onSuggestion: (suggestion: string) => void;
+}) {
+  const text = messages.ask;
+  return (
+    <div className="stack chat__empty">
+      <div>
+        <h3>{text.emptyTitle}</h3>
+        <p className="muted">{text.empty}</p>
+      </div>
+      {suggestions && (
+        <section className="stack" aria-labelledby="suggestions-title">
+          <h4 id="suggestions-title">{text.suggestionsTitle}</h4>
+          <ul className="suggestion-grid">
+            {text.suggestions.map((suggestion) => (
+              <li key={suggestion}>
+                <button
+                  type="button"
+                  className="suggestion-card"
+                  onClick={() => onSuggestion(suggestion)}
+                >
+                  <MessageSquare aria-hidden="true" className="suggestion-card__icon" />
+                  {suggestion}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </div>
+  );
+}
+
 function WaitingTurn({ question, since }: { question: string; since: number }) {
   const text = messages.ask.waiting;
   const [now, setNow] = useState(() => Date.now());
@@ -351,11 +451,16 @@ function WaitingTurn({ question, since }: { question: string; since: number }) {
   return (
     <li className="turn">
       <Question question={question} />
-      <div className="turn__answer stack">
+      <div className="answer-card answer-card--waiting" aria-busy="true">
         <p>
           <span role="status">{text.status}</span>{' '}
-          <span className="muted">{text.elapsed(seconds)}</span>
+          <span className="muted tabular">{text.elapsed(seconds)}</span>
         </p>
+        <div className="answer-card__skeleton">
+          <Skeleton width="92%" />
+          <Skeleton width="85%" />
+          <Skeleton width="60%" />
+        </div>
         <p className="muted">{text.limit}</p>
       </div>
     </li>

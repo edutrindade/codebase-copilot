@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { evidence } from '../../test/fixtures';
 import { answerRecovery } from './answerRecovery';
-import { highlightedRange, sortEvidence, splitLines } from './evidence';
+import { groupByFile, highlightedRange, listOrder, sortEvidence, splitLines } from './evidence';
 
 describe('evidence', () => {
   test('lists cited evidence first, then invalid ranges, then the rest, each by rank', () => {
@@ -13,6 +13,22 @@ describe('evidence', () => {
     ]);
 
     expect(sorted.map((item) => item.citationLabel)).toEqual(['E4', 'E3', 'E2', 'E1']);
+  });
+
+  test('groups by file in the order of the first item of each file', () => {
+    const items = [
+      evidence({ citationLabel: 'E1', path: 'a/One.java', rank: 1, validationStatus: 'CITED' }),
+      evidence({ citationLabel: 'E2', path: 'b/Two.java', rank: 2, validationStatus: 'CITED' }),
+      evidence({ citationLabel: 'E3', path: 'a/One.java', rank: 3, validationStatus: 'NOT_CITED' }),
+    ];
+
+    expect(
+      groupByFile(items).map((group) => [group.path, group.evidence.map((e) => e.citationLabel)]),
+    ).toEqual([
+      ['a/One.java', ['E1', 'E3']],
+      ['b/Two.java', ['E2']],
+    ]);
+    expect(listOrder(items).map((item) => item.citationLabel)).toEqual(['E1', 'E3', 'E2']);
   });
 
   test('highlights the cited lines, or the whole chunk without them', () => {

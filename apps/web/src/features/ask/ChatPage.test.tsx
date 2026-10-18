@@ -189,15 +189,23 @@ describe('ChatPage', () => {
     ).toBeInTheDocument();
     const body = screen.getByText(/sem HTML/);
     expect(body.querySelector('b')).toBeNull();
-    expect(body).toHaveTextContent('Linha 1 <b>sem HTML</b> E2 Linha 2 E1 [E9]');
+    expect(body.querySelectorAll('br')).toHaveLength(1);
+    expect(body).toHaveTextContent('Linha 1 <b>sem HTML</b> E2Linha 2 E1 [E9]');
     expect(screen.getByText('1 citação inválida foi removida.')).toBeInTheDocument();
+    expect(screen.getByText('1,8 s · 4 evidências')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: text.copyAnswer })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: text.metrics.title }));
+    expect(screen.getByRole('dialog', { name: text.metrics.title })).toBeInTheDocument();
     expect(screen.getByText(text.metrics.costUnknown)).toBeInTheDocument();
     expect(screen.getByText(text.metrics.evidenceCount(4, 2))).toBeInTheDocument();
     expect(screen.getByText(text.metrics.tokensValue('4.210', '380'))).toBeInTheDocument();
-    expect(screen.getByText('1,8 s')).toBeInTheDocument();
+    expect(await axeViolations()).toEqual([]);
+    await userEvent.keyboard('{Escape}');
 
     const panel = screen.getByRole('region', { name: text.evidence.title });
-    const titles = [...panel.querySelectorAll('.evidence-list > li .viewer__label')].map(
+    expect(within(panel).getByText(text.evidence.count(4))).toBeInTheDocument();
+    const titles = [...panel.querySelectorAll('.evidence .viewer__label')].map(
       (label) => label.textContent,
     );
     expect(titles).toEqual(['E1', 'E2', 'E4', 'E3']);
@@ -299,7 +307,13 @@ describe('ChatPage', () => {
     expect(await screen.findByText(text.viewer.activeVersion.CHANGED)).toBeInTheDocument();
     expect(await screen.findByText(text.viewer.answeredVersion)).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole('button', { name: text.viewer.showCurrent }));
+    const version = screen.getByRole('radiogroup', { name: text.viewer.versionLabel });
+    expect(
+      within(version).getByRole('radio', { name: text.viewer.versions.answered }),
+    ).toBeChecked();
+    await userEvent.click(
+      within(version).getByRole('radio', { name: text.viewer.versions.current }),
+    );
 
     expect(await screen.findByText(text.viewer.currentVersion)).toBeInTheDocument();
     const code = screen.getByRole('region', {
@@ -307,10 +321,11 @@ describe('ChatPage', () => {
     });
     expect(within(code).getByText('novo')).toBeInTheDocument();
     expect(code.querySelector('.code-view__line--cited')).toBeNull();
-    expect(screen.getByRole('button', { name: text.viewer.showAnswered })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
+    expect(
+      within(version).getByRole('radio', { name: text.viewer.versions.current }),
+    ).toBeChecked();
+    expect(screen.queryByRole('button', { name: text.viewer.goToCited })).not.toBeInTheDocument();
+    expect(await axeViolations()).toEqual([]);
   });
 
   test('shows only the stored snippet when the snapshot was pruned', async () => {
@@ -385,7 +400,11 @@ describe('ChatPage', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(screen.getByText(text.status.ABSTAINED)).toBeInTheDocument();
     expect(screen.getByText(text.warningHints.NO_EVIDENCE)).toBeInTheDocument();
-    expect(screen.getAllByText(text.metrics.noModel)).toHaveLength(2);
+    expect(screen.getByText('80 ms · 0 evidências')).toBeInTheDocument();
+    const details = screen.getAllByRole('button', { name: text.metrics.title });
+    expect(details).toHaveLength(2);
+    await userEvent.click(details[1] as HTMLElement);
+    expect(screen.getByText(text.metrics.noModel)).toBeInTheDocument();
     expect(screen.getByText(text.evidence.none)).toBeInTheDocument();
   });
 
@@ -531,11 +550,11 @@ describe('ChatPage', () => {
     renderRoute(`/projects/${base.id}/ask`);
 
     expect(await screen.findByText(new RegExp(text.outdated))).toBeInTheDocument();
-    await userEvent.click(screen.getByText(text.form.advanced));
-    expect(screen.getByRole('radio', { name: text.form.modes.HYBRID })).toBeDisabled();
-    expect(screen.getByRole('radio', { name: text.form.modes.VECTOR })).toBeDisabled();
-    expect(screen.getByRole('radio', { name: text.form.modes.LEXICAL })).toBeChecked();
-    expect(screen.getByText(text.form.vectorUnavailable)).toBeInTheDocument();
+    const mode = screen.getByRole('combobox', { name: text.form.modeLegend });
+    expect(mode).toHaveValue('LEXICAL');
+    expect(mode).toHaveAccessibleDescription(text.form.vectorUnavailable);
+    expect(screen.getByRole('option', { name: text.form.modeOptions.HYBRID })).toBeDisabled();
+    expect(screen.getByRole('option', { name: text.form.modeOptions.VECTOR })).toBeDisabled();
     const max = screen.getByRole('spinbutton', { name: text.form.maxEvidenceLabel });
     await userEvent.clear(max);
     await userEvent.type(max, '3');
@@ -660,5 +679,138 @@ describe('ChatPage', () => {
     expect(questionBox()).toHaveFocus();
     await user.keyboard('/');
     expect(questionBox()).toHaveValue('/');
+  });
+  test('formats the answer lightly, keeps hostile markup as text and previews a citation', async () => {
+    const snippet = Array.from({ length: 20 }, (_, index) => `line ${index + 1}`).join('\n');
+    const answers = [
+      answer({
+        answer: [
+          '**Resumo** do fluxo:',
+          '1. O controller valida [E1]',
+          '2. Veja [o guia](javascript:alert(1)) e ![x](https://evil.example/x.png) [E7]',
+          '',
+          '```java',
+          'refund(id); // [E1]',
+          '```',
+          '<img src=x onerror=alert(1)>',
+        ].join('\n'),
+        evidence: [evidence({ snippet })],
+      }),
+    ];
+    server.use(...handlers({ answers }));
+    renderRoute(`/projects/${base.id}/conversations/${conversationId}`);
+
+    const card = await screen.findByRole('article', { name: text.answer });
+    expect(within(card).getByText('Resumo').tagName).toBe('STRONG');
+    const items = within(card).getAllByRole('listitem');
+    expect(items).toHaveLength(2);
+    expect(items[1]).toHaveTextContent(
+      'Veja [o guia](javascript:alert(1)) e ![x](https://evil.example/x.png) [E7]',
+    );
+    expect(within(card).getByText('<img src=x onerror=alert(1)>')).toBeInTheDocument();
+    expect(card.querySelector('a, img, script, iframe')).toBeNull();
+    expect(card.querySelector('pre code')).toHaveTextContent('refund(id); // [E1]');
+    expect(within(card).getByRole('button', { name: text.copyCode })).toBeInTheDocument();
+    const citations = within(card).getAllByRole('button', { name: citationName });
+    expect(citations).toHaveLength(1);
+
+    (citations[0] as HTMLElement).focus();
+    await waitFor(() => expect(document.querySelector('.hover-card')).not.toBeNull());
+    const preview = document.querySelector('.hover-card') as HTMLElement;
+    expect(within(preview).getByText('linhas 12–14')).toBeInTheDocument();
+    expect(within(preview).getByText('line 12')).toBeInTheDocument();
+    expect(within(preview).getByText('line 15')).toBeInTheDocument();
+    expect(within(preview).queryByText('line 16')).not.toBeInTheDocument();
+    expect(await axeViolations()).toEqual([]);
+  });
+
+  test('the divider resizes the conversation by keyboard and buttons and is remembered', async () => {
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn(() => ({ matches: true, addEventListener: () => {}, removeEventListener: () => {} })),
+    );
+    server.use(...handlers());
+    const { unmount } = renderRoute(`/projects/${base.id}/conversations/${conversationId}`);
+
+    const divider = await screen.findByRole('separator', { name: text.split.label });
+    expect(divider).toHaveAttribute('aria-valuenow', '50');
+    expect(divider).toHaveAttribute('aria-valuetext', text.split.value(50));
+    divider.focus();
+    await userEvent.keyboard('{ArrowRight}{ArrowRight}');
+    expect(divider).toHaveAttribute('aria-valuenow', '60');
+    await userEvent.keyboard('{End}');
+    expect(divider).toHaveAttribute('aria-valuenow', '70');
+    expect(screen.getByRole('button', { name: text.split.wider })).toBeDisabled();
+    await userEvent.click(screen.getByRole('button', { name: text.split.narrower }));
+    expect(divider).toHaveAttribute('aria-valuenow', '60');
+    expect(document.querySelector('.chat__columns')).toHaveStyle({ '--chat-split': '60%' });
+    expect(await axeViolations()).toEqual([]);
+    unmount();
+
+    renderRoute(`/projects/${base.id}/conversations/${conversationId}`);
+    expect(await screen.findByRole('separator', { name: text.split.label })).toHaveAttribute(
+      'aria-valuenow',
+      '60',
+    );
+  });
+
+  test('evidence is grouped by file, walked with the arrows, and the viewer returns to the lines', async () => {
+    const user = userEvent.setup();
+    const second = {
+      id: '0192f5c4-0000-7000-8000-000000000702',
+      citationLabel: 'E2',
+      citedStartLine: 30,
+      citedEndLine: 31,
+      rank: 2,
+    };
+    const fees = {
+      id: '0192f5c4-0000-7000-8000-000000000703',
+      citationLabel: 'E3',
+      path: 'src/billing/Fees.java',
+      rank: 3,
+    };
+    const answers = [
+      answer({
+        answer: 'Total [E1], ajuste [E2] e taxa [E3].',
+        evidence: [evidence(), evidence(fees), evidence(second)],
+      }),
+    ];
+    server.use(
+      ...handlers({ answers }),
+      http.get(`${projectUrl}/evidence/:evidenceId`, () => HttpResponse.json(evidenceDetail())),
+      http.get(`/api/v1/snapshots/${answeredSnapshot}/files/content`, () =>
+        HttpResponse.json(fileContent()),
+      ),
+    );
+    renderRoute(`/projects/${base.id}/conversations/${conversationId}`);
+
+    const panel = await screen.findByRole('region', { name: text.evidence.title });
+    const groups = [...panel.querySelectorAll('.evidence-group')].map((group) => [
+      group.querySelector('.path-trail')?.textContent,
+      [...group.querySelectorAll('.viewer__label')].map((label) => label.textContent),
+    ]);
+    expect(groups).toEqual([
+      ['src/billing/Refund.java', ['E1', 'E2']],
+      ['src/billing/Fees.java', ['E3']],
+    ]);
+    const open = within(panel).getAllByRole('button', { name: /^Abrir E\d/ });
+    expect(open[0]).toHaveAccessibleName('Abrir E1 linhas 12–14 Citada');
+
+    (open[0] as HTMLElement).focus();
+    await user.keyboard('{ArrowDown}{ArrowDown}');
+    expect(open[2]).toHaveFocus();
+    await user.keyboard('{ArrowUp}{Enter}');
+    await waitFor(() =>
+      expect(panel.querySelector('[aria-current="true"] .viewer__label')).toHaveTextContent('E2'),
+    );
+
+    const code = await screen.findByRole('region', {
+      name: text.viewer.codeLabel('src/billing/Refund.java'),
+    });
+    code.scrollTop = 0;
+    await user.click(screen.getByRole('button', { name: text.viewer.goToCited }));
+    await waitFor(() => expect(code.scrollTop).toBeGreaterThan(0));
+    expect(screen.getByRole('button', { name: text.viewer.copyPath })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: text.viewer.copySnippet })).toBeInTheDocument();
   });
 });

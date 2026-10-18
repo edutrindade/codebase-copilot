@@ -1,0 +1,52 @@
+@layer components {
+  .splitter {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    min-width: 2rem;
+  }
+
+  .splitter__inner {
+    position: sticky;
+    top: calc(var(--topbar-height) + var(--space-4));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-1);
+    height: calc(100dvh - var(--topbar-height) - var(--space-8));
+  }
+
+  .splitter__handle {
+    position: relative;
+    flex: 1;
+    width: 0.75rem;
+    margin-top: var(--space-2);
+    border-radius: var(--radius-full);
+    cursor: col-resize;
+    touch-action: none;
+  }
+
+  .splitter__handle::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 2px;
+    background: var(--color-border);
+    border-radius: 1px;
+    translate: -50% 0;
+    transition: background-color var(--duration-fast) var(--ease-out);
+  }
+
+  .splitter__handle:hover::before,
+  .splitter__handle:focus-visible::before {
+    background: var(--color-accent);
+  }
+
+  @media (forced-colors: active) {
+    .splitter__handle::before {
+      background: CanvasText;
+    }
+  }
+}

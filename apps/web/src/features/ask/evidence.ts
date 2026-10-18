@@ -12,6 +12,30 @@ export function sortEvidence(evidence: readonly Evidence[]): Evidence[] {
   );
 }
 
+export interface EvidenceGroup {
+  path: string;
+  evidence: Evidence[];
+}
+
+// Groups follow the first item of each file in sortEvidence order.
+export function groupByFile(evidence: readonly Evidence[]): EvidenceGroup[] {
+  const groups = new Map<string, Evidence[]>();
+  for (const item of sortEvidence(evidence)) {
+    const group = groups.get(item.path);
+    if (group) {
+      group.push(item);
+    } else {
+      groups.set(item.path, [item]);
+    }
+  }
+  return [...groups].map(([path, items]) => ({ path, evidence: items }));
+}
+
+// The order of the evidence list, which [ and ] walk.
+export function listOrder(evidence: readonly Evidence[]): Evidence[] {
+  return groupByFile(evidence).flatMap((group) => group.evidence);
+}
+
 export interface LineRange {
   start: number;
   end: number;

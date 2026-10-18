@@ -1,5 +1,5 @@
 import { FolderOpen, Pencil, Play, Plus, RefreshCw, Settings, Trash } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { Loading } from '../../components/Loading';
 import { ProblemAlert } from '../../components/ProblemAlert';
@@ -11,14 +11,18 @@ import { Card } from '../../components/ui/Card';
 import { CopyButton } from '../../components/ui/CopyButton';
 import { Dialog } from '../../components/ui/Dialog';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { HoverCard } from '../../components/ui/HoverCard';
 import { SelectField, TextAreaField, TextField } from '../../components/ui/Field';
 import { IconButton } from '../../components/ui/IconButton';
 import { Kbd } from '../../components/ui/Kbd';
 import { Menu, MenuItem, MenuLabel, MenuSeparator } from '../../components/ui/Menu';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { Popover } from '../../components/ui/Popover';
 import { Progress } from '../../components/ui/Progress';
 import { RelativeTime } from '../../components/ui/RelativeTime';
+import { SegmentedControl } from '../../components/ui/SegmentedControl';
 import { Skeleton } from '../../components/ui/Skeleton';
+import { Splitter } from '../../components/ui/Splitter';
 import { Stat, StatGrid } from '../../components/ui/Stat';
 import { StatusBadge, type Tone } from '../../components/ui/StatusBadge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/Tabs';
@@ -67,7 +71,37 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
+function SplitSample() {
+  const [split, setSplit] = useState(50);
+  const container = useRef<HTMLDivElement>(null);
+  return (
+    <div
+      ref={container}
+      className="catalog__split"
+      style={{ gridTemplateColumns: `${split}% auto 1fr` }}
+    >
+      <div id="catalog-left" className="catalog__pane">
+        Conversa
+      </div>
+      <Splitter
+        value={split}
+        min={30}
+        max={70}
+        onChange={setSplit}
+        containerRef={container}
+        controls="catalog-left"
+        label="Divisor de exemplo"
+        valueText={(percent) => `Esquerda com ${percent}%`}
+        decreaseLabel="Estreitar a esquerda"
+        increaseLabel="Alargar a esquerda"
+      />
+      <div className="catalog__pane">Evidências e código</div>
+    </div>
+  );
+}
+
 export function CatalogPage() {
+  const [version, setVersion] = useState<'answered' | 'current'>('answered');
   const [dialogOpen, setDialogOpen] = useState(false);
   return (
     <div className="stack catalog">
@@ -250,6 +284,46 @@ export function CatalogPage() {
         >
           <p>Importe uma pasta local ou um ZIP para começar.</p>
         </EmptyState>
+      </Section>
+
+      <Section title="Pergunta e evidências">
+        <div className="actions">
+          <SegmentedControl
+            label="Versão do arquivo"
+            value={version}
+            options={[
+              { value: 'answered', label: 'Da resposta' },
+              { value: 'current', label: 'Atual' },
+            ]}
+            onChange={setVersion}
+          />
+          <p>
+            O total sai do serviço{' '}
+            <HoverCard
+              content={
+                <>
+                  <p>
+                    <code>src/billing/RefundService.java</code>
+                  </p>
+                  <p className="muted">linhas 12–14</p>
+                </>
+              }
+            >
+              <button
+                type="button"
+                className="citation"
+                aria-label="Abrir a evidência E1: src/billing/RefundService.java, linhas 12–14"
+              >
+                E1
+              </button>
+            </HoverCard>
+            .
+          </p>
+          <Popover label="Detalhes da resposta" trigger={<Button size="sm">Detalhes</Button>}>
+            <p>1,2 s · 6 evidências · US$ 0,0004 estimado</p>
+          </Popover>
+        </div>
+        <SplitSample />
       </Section>
 
       <Section title="Formulários">
