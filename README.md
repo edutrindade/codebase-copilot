@@ -1,5 +1,24 @@
 <div align="center">
 
+# Codebase Copilot
+
+**Pergunte qualquer coisa sobre um repositório e receba respostas com evidências: o arquivo e as linhas de onde cada afirmação saiu.**
+
+RAG local-first · Busca híbrida (lexical + vetorial + caminhos) · Citações validadas · Nenhum código importado é executado
+
+![Java 25](https://img.shields.io/badge/Java-25-ED8B00?logo=openjdk&logoColor=white)
+![Spring Boot 4.1](https://img.shields.io/badge/Spring%20Boot-4.1-6DB33F?logo=springboot&logoColor=white)
+![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white)
+![PostgreSQL 17 + pgvector](https://img.shields.io/badge/PostgreSQL%2017-pgvector-4169E1?logo=postgresql&logoColor=white)
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/media/demo-dark.gif">
+  <img src="docs/media/demo-light.gif" alt="Demonstração: uma pergunta sobre o cálculo de reembolso é respondida com citações E1, E2 e E5, e a evidência abre no visualizador de código com as linhas destacadas" width="900">
+</picture>
+
+</div>
+
 ## Por que existe
 
 Entrar num projeto desconhecido significa descobrir onde estão as regras de negócio, como um fluxo atravessa as camadas e quais módulos fazem o quê. Perguntar a um modelo de linguagem sem contexto controlado produz respostas convincentes, mas sem como conferir.
